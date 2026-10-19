@@ -179,6 +179,15 @@ The statement reader that decides where a statement ends, whether a keyword is r
 
 A script (`BEGIN … END`) is not split: the shared splitter does not model it.
 
+### 5.5 SQL writing
+
+[`bigquery/sql-writing.ts`](../../src/lib/db/providers/sql/bigquery/sql-writing.ts) declares how a generated statement spells a literal, a name and a bind for this engine, and it is this engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../../src/lib/db/sql-writing/index.ts)), which the readers in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) and [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) look up.
+A literal is written by `literalBackslash` and read back by `unquoteBackslash`: every escape, the quote's included, is spelled with a backslash, and doubling is not part of the grammar.
+A name is quoted by `identifierBacktickBackslash`: a backtick name escaped inside with a backslash, where a doubled backtick is not an escape but ends the name.
+There is no placeholder (`placeholder: null`), so a generator quotes the value with `quoteLiteral` instead of emitting a bind.
+GoogleSQL escapes the quote as `\'` and does not accept doubling.
+GoogleSQL quotes a name in backticks and escapes inside it with a backslash; a doubled backtick is not an escape there, it ends the name.
+
 ## 6. Dry run and cost estimate
 
 BigQuery has no `EXPLAIN` statement.

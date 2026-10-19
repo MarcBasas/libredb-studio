@@ -2283,6 +2283,18 @@ on every engine (#463); `getSlowQueries()` here reads `V$SQL`
 ([§8](#8-monitoring--health)) and returns `[]` when that read is refused, so the grant is the thing a
 DBA can act on.
 
+### SQL writing
+
+[`sql/oracle-sql-writing.ts`](../../src/lib/db/providers/sql/oracle-sql-writing.ts) declares how a generated statement spells a literal, a name and a bind for this engine, and it is this engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../../src/lib/db/sql-writing/index.ts)), which the readers in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) and [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) look up.
+A literal is written by `literalStandard` and read back by `unquoteStandard`: the quote is doubled and a backslash is data.
+A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-quoted name with an inner double quote doubled.
+A bind is spelled by `placeholderColon`, as `:1`, `:2`.
+`oracledb` binds an array to `:n`.
+The module also declares a `temporalLiteral` form.
+Oracle reads a quoted string in a date position through the session's `NLS_DATE_FORMAT`, `DD-MON-RR` by default, and refuses the ISO text with `ORA-01861: literal does not match format string` (#1400, on Oracle 23.26.3.0.0; the SQL export measured the same refusal for all four date types).
+So a `YYYY-MM-DD` date goes through `TO_DATE` and a `YYYY-MM-DD HH24:MI:SS` timestamp through `TO_TIMESTAMP`, with a mask that spells the text's own form, as the export writes the same types, and the session's format moves nothing.
+Text that is not in that form is quoted as it is: the mask would refuse it, and a plain literal says what the caller had.
+
 ---
 
 ## 11. Error handling

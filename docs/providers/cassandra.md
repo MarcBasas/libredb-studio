@@ -1263,6 +1263,19 @@ slow-query threshold writes to the node's log file rather than to a table."* —
 is **always** empty here, and its hardcoded sentence used to tell the reader to enable
 `pg_stat_statements` (#463).
 
+### SQL writing
+
+[`cassandra/sql-writing.ts`](../../src/lib/db/providers/sql/cassandra/sql-writing.ts) declares how a generated statement spells a literal, a name and a bind for this engine, and it is this engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../../src/lib/db/sql-writing/index.ts)), which the readers in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) and [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) look up.
+A literal is written by `literalStandard` and read back by `unquoteStandard`: the quote is doubled and a backslash is data.
+A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-quoted name with an inner double quote doubled.
+There is no placeholder (`placeholder: null`), so a generator quotes the value with `quoteLiteral` instead of emitting a bind.
+Measured on Cassandra 5.0.9 (2026-08-20), both directions.
+Doubling is the escape: `… WHERE name = 'O''Brien'` runs and matches nothing, so the literal closed at the doubled pair.
+A backslash is data: `… WHERE name = 'a\\b'` runs, and `… WHERE name = 'a\\'` runs too, because the statement reached the server's filtering check, which is only possible if the backslash did not escape the quote that closed the literal.
+The name quote is measured on 5.0.9 as well: `SELECT "id" FROM probe.customers` returns the column, a backtick is ``no viable alternative at character '`'``, and a double-quoted string is a syntax error, so `"` is the name quote and nothing else.
+CQL does bind `?` positionally, and `cassandra-driver` binds an array against it, but only through a prepared statement, which is exactly what the transport does not send (`prepare: false`, so a one-shot statement costs one round trip and no server-side cache entry).
+`CassandraProvider.query()` therefore refuses a non-empty params array outright, and emitting `?` would build a statement whose placeholder the provider then declines to fill.
+
 ---
 
 ## 10. Testing

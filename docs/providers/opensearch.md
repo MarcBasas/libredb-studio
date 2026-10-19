@@ -1438,6 +1438,22 @@ end into a page whose maintenance card is gated on the same capability, and
 row and a declared capability. See
 [elasticsearch.md §9](./elasticsearch.md#9-capabilities--labels) for the measurement.
 
+### SQL writing
+
+[`search/opensearch-sql-writing.ts`](../../src/lib/db/providers/sql/search/opensearch-sql-writing.ts) declares how a generated statement spells a literal, a name and a bind for this engine, and it is this engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../../src/lib/db/sql-writing/index.ts)), which the readers in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) and [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) look up.
+A literal is written by `literalDoubleAndBackslash` and read back by `unquoteDoubleAndBackslash`: the quote is doubled and a backslash escapes, so the backslash is doubled first.
+A name is quoted by `identifierBacktickDoubled`: a backtick name with an inner backtick doubled and a backslash as data.
+There is no placeholder (`placeholder: null`), so a generator quotes the value with `quoteLiteral` instead of emitting a bind.
+OpenSearch reads both escapes, which is why its type id does not share a row with Elasticsearch's.
+Measured on 3.8.0 (2026-08-19): `SELECT 'a''b'` answers `a'b`, so doubling works; `SELECT 'a\'b'` answers `a'b` too, so a backslash escapes the quote; `SELECT 'a\\b'` answers one backslash, so it escapes itself; and `SELECT 'a\'` is a `ParserException`, because the trailing backslash escaped the closing quote and left the literal open, which is exactly the defect #290 is about.
+The fork's SQL plugin reads its literals the way MySQL does, and this row is not an inference from that lineage but the four probes above.
+OpenSearch shares MySQL's backtick, and it is not a stylistic choice: measured 2026-08-19 on 3.8.0, its SQL plugin reads a double-quoted name as a string literal, so `SELECT customer FROM "probe_orders"` is `IndexNotFoundException[no such index ["probe_orders"]]`, quotes and all, while ``FROM `probe_orders` `` is HTTP 200.
+It is worse in a predicate, where nothing fails: `WHERE "customer" = 'acme'` compares two literals and answers 0 rows.
+Backticks work for both a table and a field there, and Elasticsearch 9.1.4 is the exact opposite, so the two search ids cannot share a form.
+The backtick doubling is this repo's own convention carried over from MySQL and is not measured: an index or field name containing a backtick would be needed to probe it, and creating one on the probe cluster was judged not worth polluting the fixtures.
+It is the fail-safe direction either way: a doubled backtick can only make the engine refuse a name, never make it read one it should not.
+Both search endpoints do bind `?`, but the provider's seam carries the statement alone, so its `query()` refuses positional parameters outright, as Elasticsearch's section says.
+
 ---
 
 ## 10. Error handling

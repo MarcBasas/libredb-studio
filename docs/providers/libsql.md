@@ -957,6 +957,15 @@ A row that reads like the old shared list is the engine agreeing with it.
 | `reindexGlobalTitle` | *"Rebuild Indexes"* | Operations tab card heading |
 | `reindexGlobalDesc` | *"Runs bare REINDEX, rebuilding every index in the database."* | Operations tab card description |
 
+### SQL writing
+
+[`libsql/sql-writing.ts`](../../src/lib/db/providers/sql/libsql/sql-writing.ts) declares how a generated statement spells a literal, a name and a bind for this engine, and it is this engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../../src/lib/db/sql-writing/index.ts)), which the readers in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) and [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) look up.
+A literal is written by `literalStandard` and read back by `unquoteStandard`: the quote is doubled and a backslash is data.
+A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-quoted name with an inner double quote doubled.
+There is no placeholder (`placeholder: null`), so a generator quotes the value with `quoteLiteral` instead of emitting a bind.
+Measured on sqld 0.24.33: `SELECT 'it''s'` answers `it's`, and a backslash has no special meaning, the same standard doubling SQLite defines.
+libSQL shares only this grammar with SQLite, through the shared building blocks, and not SQLite's row: SQLite binds `?`, and libSQL's row has no placeholder.
+
 ---
 
 ## 10. Error handling

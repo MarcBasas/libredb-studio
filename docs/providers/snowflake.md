@@ -599,6 +599,14 @@ The absence is `snowflake`'s entry in `EXPECTED_EDIT_ABSTAINERS` (`tests/helpers
 Format uses sql-formatter's Snowflake language (the grammar's `formatterLanguage`), so `QUALIFY` stays a clause on its own line; text that language cannot read, such as a `@stage` reference, is left as written.
 Completion offers Snowflake's own clauses and functions (the grammar's `completionWords`, among them `QUALIFY`, `ARRAY_AGG`, `PARSE_JSON`, `FLATTEN`, `CURRENT_ROLE` and `CURRENT_WAREHOUSE`) beside the shared SQL lists, a function inserted as a call; no `SYSTEM$` function is offered.
 
+### 8.8 SQL writing
+
+[`snowflake/sql-writing.ts`](../../src/lib/db/providers/sql/snowflake/sql-writing.ts) declares how a generated statement spells a literal, a name and a bind for this engine, and it is this engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../../src/lib/db/sql-writing/index.ts)), which the readers in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) and [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) look up.
+A literal is written by `literalDoubleAndBackslash` and read back by `unquoteDoubleAndBackslash`: the quote is doubled and a backslash escapes, so the backslash is doubled first.
+A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-quoted name with an inner double quote doubled.
+There is no placeholder (`placeholder: null`), so a generator quotes the value with `quoteLiteral` instead of emitting a bind.
+Snowflake reads both escapes in a single-quoted string constant: a doubled quote is one quote, and a backslash escapes the next character, so it is doubled first, as Databend's is.
+
 ## 9. The confirmation gate
 
 The gate is a browser confirmation, not a boundary: it asks before a statement runs from the editor, and the role decides what can happen.

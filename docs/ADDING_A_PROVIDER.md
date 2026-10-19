@@ -459,11 +459,16 @@ Declare neither when your engine has nothing to caution about; `POST /api/db/tes
 
 Not in the list: a placeholder helper. `SQLBaseProvider` no longer has one (#304 removed it).
 
-### Positional placeholders (shared module, not inherited)
+### SQL writing (a module beside the provider, not inherited)
 
 | Function | What it does |
 |----------|-------------|
-| `positionalPlaceholder()` ([`src/lib/sql/values.ts`](../src/lib/sql/values.ts), not inherited) | `$1` (PostgreSQL, Couchbase), `?` (MySQL, SQLite, Druid), `:1` (Oracle), `@p1` (SQL Server), `null` where the engine has no positional form |
+| `quoteLiteral()`, `unquoteLiteral()`, `temporalLiteral()` and `positionalPlaceholder()` ([`src/lib/sql/values.ts`](../src/lib/sql/values.ts)), `quoteIdentifier()` ([`src/lib/sql/identifier.ts`](../src/lib/sql/identifier.ts)), not inherited | Each reads the engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../src/lib/db/sql-writing/index.ts)); a placeholder is `$1` (PostgreSQL, Couchbase), `?` (MySQL, SQLite, Druid), `:1` (Oracle), `@p1` (SQL Server), `null` where the engine has no positional form |
+
+A new engine writes its SQL writing module at the placement rule: `<family>/<id>-sql-writing.ts` beside a flat provider, `<family>/<id>/sql-writing.ts` inside a provider directory, and `<id>-sql-writing.ts` per id in a directory that serves two ids.
+The module exports `<ID>_SQL_WRITING: SqlWritingSpec` ([`src/lib/db/sql-writing/types.ts`](../src/lib/db/sql-writing/types.ts)), built from the named building blocks of [`src/lib/db/sql-writing/shared.ts`](../src/lib/db/sql-writing/shared.ts), and imports nothing else.
+Add its row to `SQL_WRITING`, which the compiler holds complete, then run `UPDATE_GOLDEN=1 bun tests/run-tests.ts tests/unit/db/sql-writing/golden.test.ts` to write the engine's golden file, read it, and run the test again without the variable.
+The provider doc gets a `SQL writing` subsection naming the module's literal, identifier and placeholder building blocks, which `tests/unit/db/sql-writing/docs.test.ts` holds to the module.
 
 ## Step 3: Register in the Factory
 
@@ -1102,7 +1107,7 @@ Those three reach code and tests only; the four prose greps of the published blo
       It answers whether the new id is an external engine or an embedded store, and every published database count reads it.
 - [ ] `src/lib/db-showcase.ts`: `SHOWCASE_RANK`, the login showcase's order.
 - [ ] `src/lib/sql/fence-tags.ts`: `ENGINE_FENCE_TAGS`, the fence tags a plan-mode draft may carry.
-- [ ] `src/lib/sql/values.ts`: `LITERAL_ESCAPE`.
+- [ ] `src/lib/db/sql-writing/index.ts`: `SQL_WRITING`, whose row is the module the Step 2 "SQL writing" rule places beside the provider, with its golden file written by `UPDATE_GOLDEN=1`.
 - [ ] `src/lib/export/result-export.ts`: `STANDS_ALONE` and `BINARY_LITERAL`, plus a decision on the partial `DIALECT_TYPES`.
 - [ ] `tests/helpers/census-connection.ts`: `CENSUS_CONNECTION`, the unconnected connection every census builds through the real factory.
 - [ ] `tests/isolated/object-column-declarations.test.ts` (`EXPECTED_COLUMN_KINDS`), `tests/isolated/object-source-declarations.test.ts` (`SOURCE_DECLARATIONS`), `tests/unit/db/result-pagination-capability.test.ts` (`EXPECTED`), `tests/unit/db/container-path-shapes-capability.test.ts` (`EXPECTED_CONTAINER_PATH_SHAPES`), `tests/unit/schema-diff/migration-dialects.test.ts` (`COLUMN_GRAMMAR`), `tests/unit/schema-diff/migration-generator.test.ts` (`MODIFIED_COLUMN_COVERAGE`, `TRANSACTION_WRAPPER_COVERAGE`) and `tests/hooks/use-connection-form.test.ts` (`PICKER_COVERAGE`).

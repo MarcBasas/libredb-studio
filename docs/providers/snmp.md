@@ -96,6 +96,14 @@ GetNext or GetBulk. It parses the message rather than scanning it for tag bytes,
 scan reports a false positive from inside ciphertext, at different offsets under different
 runtimes.
 
+### 5.4 SQL writing
+
+[`snmp/sql-writing.ts`](../../src/lib/db/providers/network/snmp/sql-writing.ts) declares how a generated statement spells a literal, a name and a bind for this engine, and it is this engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../../src/lib/db/sql-writing/index.ts)), which the readers in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) and [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) look up.
+A literal is written by `literalStandard` and read back by `unquoteStandard`: the quote is doubled and a backslash is data.
+A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-quoted name with an inner double quote doubled.
+There is no placeholder (`placeholder: null`), so a generator quotes the value with `quoteLiteral` instead of emitting a bind.
+No measurement stands behind this row; it uses the standard building blocks named above.
+
 ## 6. Objects
 
 Two kinds, `table` and `scalars`. Counts are `{ unavailable }` with a reason and never zero: this

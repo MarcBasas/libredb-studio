@@ -547,6 +547,14 @@ A direct call of `runMaintenance` is refused with a `QueryError`.
 `statementLanguage` carries the read request's schema, because plan mode states it verbatim and it is the only fact about how a statement is written that plan mode's prompt carries per engine: the four keys, the `from` forms, the defaults, two examples, and that no other key is taken, that `offset` and `timestamp` go inside `from`, that the inventory's other columns are fields each message comes back with and not keys of the request, and that a read request reads one topic's messages, never a group's lag.
 The integration test parses each example in it with the provider's own parser.
 
+### SQL writing
+
+[`kafka/sql-writing.ts`](../../src/lib/db/providers/stream/kafka/sql-writing.ts) declares how a generated statement spells a literal, a name and a bind for this engine, and it is this engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../../src/lib/db/sql-writing/index.ts)), which the readers in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) and [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) look up.
+A literal is written by `literalStandard` and read back by `unquoteStandard`: the quote is doubled and a backslash is data.
+A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-quoted name with an inner double quote doubled.
+There is no placeholder (`placeholder: null`), so a generator quotes the value with `quoteLiteral` instead of emitting a bind.
+This engine declares `queryLanguage: "json"`, so no statement is ever built for it to read; what a generator emits for such a connection is portable SQL meant to run elsewhere, and the standard form is the only thing it can claim.
+
 ---
 
 ## 10. Error handling

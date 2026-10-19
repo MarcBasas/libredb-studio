@@ -2340,6 +2340,15 @@ other providers that offer `reindex`, such as SQLite, libSQL and Couchbase, say 
 | `reindexGlobalTitle` | *Rebuild Indexes* |
 | `reindexGlobalDesc` | *Runs REINDEX DATABASE, reconstructing every index in the database.* |
 
+### SQL writing
+
+[`sql/postgres-sql-writing.ts`](../../src/lib/db/providers/sql/postgres-sql-writing.ts) declares how a generated statement spells a literal, a name and a bind for this engine, and it is this engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../../src/lib/db/sql-writing/index.ts)), which the readers in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) and [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) look up.
+A literal is written by `literalStandard` and read back by `unquoteStandard`: the quote is doubled and a backslash is data.
+A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-quoted name with an inner double quote doubled.
+A bind is spelled by `placeholderDollar`, as `$1`, `$2`.
+`standard_conforming_strings` has been on by default since PostgreSQL 9.1, so a backslash in a plain literal is data.
+`pg` takes `$n`.
+
 ---
 
 ## 11. Error handling

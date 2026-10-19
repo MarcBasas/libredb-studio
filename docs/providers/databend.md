@@ -813,6 +813,18 @@ Load rows with `INSERT` or `COPY INTO` in the editor instead.
 | `analyzeGlobalTitle` | Not Run from Studio |
 | `vacuumGlobalTitle` | Not Run from Studio |
 
+### SQL writing
+
+[`databend/sql-writing.ts`](../../src/lib/db/providers/sql/databend/sql-writing.ts) declares how a generated statement spells a literal, a name and a bind for this engine, and it is this engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../../src/lib/db/sql-writing/index.ts)), which the readers in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) and [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) look up.
+A literal is written by `literalDoubleAndBackslash` and read back by `unquoteDoubleAndBackslash`: the quote is doubled and a backslash escapes, so the backslash is doubled first.
+A name is quoted by `identifierBacktickDoubled`: a backtick name with an inner backtick doubled and a backslash as data.
+There is no placeholder (`placeholder: null`), so a generator quotes the value with `quoteLiteral` instead of emitting a bind.
+Databend reads both escapes in a single-quoted string in every one of its five `sql_dialect`s: a doubled quote is one quote and a backslash escapes the next character, so it is doubled first.
+The live round trip of the escaping corpus, `INSERT ... VALUES` included, passed on the pinned image (probe L4).
+Databend reads a backtick name in all five of its `sql_dialect`s, the default PostgreSQL one included, and a doubled backtick is the only escape inside it: the lexer rule has no backslash form, so `x\` is the name `x\`.
+Measured on the pinned image (probe L4): names holding a backtick, a backslash, a quote, `;`, `--`, a newline or a NUL round-trip byte-equal through CREATE TABLE, INSERT and SELECT under both dialects.
+A bare name would be folded to lower case there, which is why the provider quotes every name rather than only the ones that need it.
+
 ## 10. Error handling
 
 Classification reads Databend's code, the gateway's kind, the HTTP status, the transport's failure kind and Studio's own cancel and deadline state, never message text.

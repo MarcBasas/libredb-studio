@@ -802,6 +802,7 @@ const SEARCH_MODULE_CITATIONS = [
   { name: "validateHost", source: "src/lib/db/http/endpoint.ts" },
   { name: "httpOrigin", source: "src/lib/db/http/endpoint.ts" },
   { name: "quoteIdentifier", source: "src/lib/sql/identifier.ts" },
+  { name: "SQL_WRITING", source: "src/lib/db/sql-writing/index.ts" },
   { name: "ELASTICSEARCH_SQL_WRITING", source: "src/lib/db/providers/sql/search/elasticsearch-sql-writing.ts" },
   { name: "OPENSEARCH_SQL_WRITING", source: "src/lib/db/providers/sql/search/opensearch-sql-writing.ts" },
   { name: "ELASTICSEARCH_GRAMMAR", source: "src/lib/sql/grammar.ts" },

@@ -225,6 +225,14 @@ which is a field of the connection rather than a catalog chosen per request.
 The panel never says "Sparkplug Compatible" or "Host Application". A Host Application MUST publish
 STATE (1.4.1, 10.1.2), and this provider publishes nothing.
 
+### SQL writing
+
+[`sparkplug/sql-writing.ts`](../../src/lib/db/providers/industrial/sparkplug/sql-writing.ts) declares how a generated statement spells a literal, a name and a bind for this engine, and it is this engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../../src/lib/db/sql-writing/index.ts)), which the readers in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) and [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) look up.
+A literal is written by `literalStandard` and read back by `unquoteStandard`: the quote is doubled and a backslash is data.
+A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-quoted name with an inner double quote doubled.
+There is no placeholder (`placeholder: null`), so a generator quotes the value with `quoteLiteral` instead of emitting a bind.
+No generator calls `quoteLiteral` for Sparkplug: a read request writes its names into JSON.
+
 ## 10. Error handling
 
 ### 10.1 Every refusal leaves as a `QueryError`

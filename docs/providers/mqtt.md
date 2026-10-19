@@ -388,6 +388,14 @@ read an agent should be handed without a reader looking at it: an agent asked "i
 receive the absence of a topic as evidence it does not exist, which is exactly the inference "Before you
 connect" says cannot be drawn.
 
+### 9.2 SQL writing
+
+[`mqtt/sql-writing.ts`](../../src/lib/db/providers/keyvalue/mqtt/sql-writing.ts) declares how a generated statement spells a literal, a name and a bind for this engine, and it is this engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../../src/lib/db/sql-writing/index.ts)), which the readers in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) and [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) look up.
+A literal is written by `literalStandard` and read back by `unquoteStandard`: the quote is doubled and a backslash is data.
+A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-quoted name with an inner double quote doubled.
+There is no placeholder (`placeholder: null`), so a generator quotes the value with `quoteLiteral` instead of emitting a bind.
+No measurement stands behind this row; it uses the standard building blocks named above.
+
 ## 10. Error handling
 
 Every failure names a cause, and names a remedy wherever one exists.

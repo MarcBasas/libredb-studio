@@ -201,6 +201,7 @@ const OUTLINE: readonly string[] = [
   "## 7. Monitoring & health",
   "## 8. Maintenance",
   "## 9. Capabilities & labels",
+  "### 9.1 SQL writing",
   "## 10. Error handling",
   "## 11. Testing",
   "### 11.1 How the tests work",
@@ -222,6 +223,7 @@ const BROWSER_SET: ReadonlySet<string> = new Set([
   "generators.ts",
   "order.ts",
   "cursor.ts",
+  "sql-writing.ts",
 ]);
 
 /** The version note of contract section 23 (SB1-6.6), the one text three files hold identically. */

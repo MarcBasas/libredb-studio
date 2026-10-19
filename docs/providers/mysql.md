@@ -2367,6 +2367,16 @@ on every engine (#463) — an extension MySQL does not have under any name, whil
 digest table this provider actually reads ([§8](#8-monitoring--health)) is a server switch a DBA can
 act on.
 
+### SQL writing
+
+[`sql/mysql-sql-writing.ts`](../../src/lib/db/providers/sql/mysql-sql-writing.ts) declares how a generated statement spells a literal, a name and a bind for this engine, and it is this engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../../src/lib/db/sql-writing/index.ts)), which the readers in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) and [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) look up.
+A literal is written by `literalDoubleAndBackslash` and read back by `unquoteDoubleAndBackslash`: the quote is doubled and a backslash escapes, so the backslash is doubled first.
+A name is quoted by `identifierBacktickDoubled`: a backtick name with an inner backtick doubled and a backslash as data.
+A bind is spelled by `placeholderQuestion`, as `?` at every position.
+The literal form assumes the default `sql_mode`.
+A server running with `NO_BACKSLASH_ESCAPES` reads the doubled backslash as two characters, which is why binding the value beats quoting it wherever a bind form exists.
+`mysql2` takes `?`.
+
 ---
 
 ## 11. Error handling

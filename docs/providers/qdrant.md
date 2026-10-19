@@ -393,6 +393,14 @@ None: Qdrant has no maintenance operation in v1, so no Admin > Operations card a
 `queryLanguage: "json"` with `queryDialect: "qdrant"`, `containerLevels: []`, `defaultPort: 6333`, `enforcesReadOnly: true`, `statementTerminator: "none"`, and `false` for explain, table creation, transactions, inline row edits, result pagination, external query limiting, maintenance and the connection string.
 A collection is labelled "Collection"; the password field "API key or JWT"; the export menu offers no SQL INSERT or DDL for a Qdrant result.
 
+### SQL writing
+
+[`qdrant/sql-writing.ts`](../../src/lib/db/providers/vector/qdrant/sql-writing.ts) declares how a generated statement spells a literal, a name and a bind for this engine, and it is this engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../../src/lib/db/sql-writing/index.ts)), which the readers in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) and [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) look up.
+A literal is written by `literalStandard` and read back by `unquoteStandard`: the quote is doubled and a backslash is data.
+A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-quoted name with an inner double quote doubled.
+There is no placeholder (`placeholder: null`), so a generator quotes the value with `quoteLiteral` instead of emitting a bind.
+This engine declares `queryLanguage: "json"`, so no statement is ever built for it to read; what a generator emits for such a connection is portable SQL meant to run elsewhere, and the standard form is the only thing it can claim.
+
 ## 10. Error handling
 
 | Answer | What Studio says |

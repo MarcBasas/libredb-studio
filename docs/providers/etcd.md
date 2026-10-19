@@ -438,6 +438,14 @@ It also declares `supportsMaintenance: true`, with `maintenanceOperations: ["com
 A key-prefix row is labelled "Key Prefix", its rows "Key", its read "Get Keys" and its generator "Generate Command"; a click on a group runs `get <group> --prefix --limit=50`, and Generate Command writes that read with the other forms commented below it, or the read alone on a read-only connection.
 A group whose prefix holds a carriage return, a line separator (U+2028) or a paragraph separator (U+2029), which the editor does not keep as the command line spells them, is read through a `txn` whose `get` names the prefix in Go quoting, and Generate Command's one other form for it is the commented `txn` template.
 
+### SQL writing
+
+[`etcd/sql-writing.ts`](../../src/lib/db/providers/keyvalue/etcd/sql-writing.ts) declares how a generated statement spells a literal, a name and a bind for this engine, and it is this engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../../src/lib/db/sql-writing/index.ts)), which the readers in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) and [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) look up.
+A literal is written by `literalStandard` and read back by `unquoteStandard`: the quote is doubled and a backslash is data.
+A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-quoted name with an inner double quote doubled.
+There is no placeholder (`placeholder: null`), so a generator quotes the value with `quoteLiteral` instead of emitting a bind.
+This engine declares `queryLanguage: "json"`, so no statement is ever built for it to read; what a generator emits for such a connection is portable SQL meant to run elsewhere, and the standard form is the only thing it can claim.
+
 ## 10. Error handling
 
 A failure before the request left Studio is a connection error; "etcdserver: no leader" is a lost quorum with nothing applied; a write that met a failure after it was sent says that it may have been applied and that the key should be read again before the command is run again; a read's deadline is a timeout; a permission refusal names the command, the range and what the user may read, "etcd user reader may read: /app/ (prefix), /config/a"; and every other answer is etcd's own words after Studio's.

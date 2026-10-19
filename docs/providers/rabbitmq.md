@@ -211,6 +211,14 @@ Studio never presents such a read as complete:
 
 From 4.3.7 such messages are delivered with those values removed ([§5.3](#53-rendering-rules)); the handling stays on every version, because a development build reports `4.3.0+<sha>`.
 
+### 5.7 SQL writing
+
+[`rabbitmq/sql-writing.ts`](../../src/lib/db/providers/stream/rabbitmq/sql-writing.ts) declares how a generated statement spells a literal, a name and a bind for this engine, and it is this engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../../src/lib/db/sql-writing/index.ts)), which the readers in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) and [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) look up.
+A literal is written by `literalStandard` and read back by `unquoteStandard`: the quote is doubled and a backslash is data.
+A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-quoted name with an inner double quote doubled.
+There is no placeholder (`placeholder: null`), so a generator quotes the value with `quoteLiteral` instead of emitting a bind.
+No generator calls `quoteLiteral` for RabbitMQ: a read request writes its names with `JSON.stringify`.
+
 ## 6. Schema introspection
 
 - Containers: `GET /api/vhosts`; `/` is marked as the session default for the agent walk when the account lists it.

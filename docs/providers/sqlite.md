@@ -1312,6 +1312,14 @@ sends no target, so `runMaintenance('reindex')` here runs a bare `REINDEX`
 | `reindexGlobalTitle` | *Rebuild Indexes* |
 | `reindexGlobalDesc` | *Runs bare REINDEX, rebuilding every index in the database file.* |
 
+### SQL writing
+
+[`sql/sqlite-sql-writing.ts`](../../src/lib/db/providers/sql/sqlite-sql-writing.ts) declares how a generated statement spells a literal, a name and a bind for this engine, and it is this engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../../src/lib/db/sql-writing/index.ts)), which the readers in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) and [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) look up.
+A literal is written by `literalStandard` and read back by `unquoteStandard`: the quote is doubled and a backslash is data.
+A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-quoted name with an inner double quote doubled.
+A bind is spelled by `placeholderQuestion`, as `?` at every position.
+The SQLite drivers take `?`.
+
 ---
 
 ## 10. Error handling

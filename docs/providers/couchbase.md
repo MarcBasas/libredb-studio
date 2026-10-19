@@ -1291,6 +1291,17 @@ control is the only one on this provider, which is what the operation itself req
 `reindexGlobal*` labels above are consequently read by nobody today; they are the wording the card
 would carry if it ever returns.
 
+### SQL writing
+
+[`couchbase/sql-writing.ts`](../../src/lib/db/providers/document/couchbase/sql-writing.ts) declares how a generated statement spells a literal, a name and a bind for this engine, and it is this engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../../src/lib/db/sql-writing/index.ts)), which the readers in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) and [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) look up.
+A literal is written by `literalBackslash` and read back by `unquoteBackslash`: every escape, the quote's included, is spelled with a backslash, and doubling is not part of the grammar.
+A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-quoted name with an inner double quote doubled.
+A bind is spelled by `placeholderDollar`, as `$1`, `$2`.
+SQL++ spells its literals the way JSON does: `char ::= unicode-character | '\' ( '\' | '"' | "'" | 'b' | 'f' | 'n' | 'r' | 't' | 'u' hex hex hex hex )`.
+Doubling is not in that grammar, so a doubled quote is not one literal there.
+The name gets the SQL standard form, which this engine's generators fall back to.
+SQL++ takes its values in `args`, which the statement reads as `$1`, `$2`.
+
 ---
 
 ## 10. Error handling

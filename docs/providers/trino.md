@@ -1734,6 +1734,18 @@ The last one is about the monitoring tab rather than maintenance: the Queries pa
 hardcoded to PostgreSQL's `pg_stat_statements` advice on every engine (#463), and
 what Trino has instead is the coordinator's own bounded history ([§7](#7-monitoring--health)).
 
+### SQL writing
+
+[`trino/sql-writing.ts`](../../src/lib/db/providers/sql/trino/sql-writing.ts) declares how a generated statement spells a literal, a name and a bind for this engine, and it is this engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../../src/lib/db/sql-writing/index.ts)), which the readers in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) and [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) look up.
+A literal is written by `literalStandard` and read back by `unquoteStandard`: the quote is doubled and a backslash is data.
+A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-quoted name with an inner double quote doubled.
+There is no placeholder (`placeholder: null`), so a generator quotes the value with `quoteLiteral` instead of emitting a bind.
+Measured on Trino 476 (2026-08-20), both directions: `SELECT 'O''Brien' AS a` answers `O'Brien`, so doubling is the escape; `SELECT 'a\\b' AS a` answers the two characters `a\\b`, so a backslash is data and doubling it would add a second one to the value.
+Trino spells its backslash escapes in the separate `U&'fo\\+0000F6'` form, exactly as Druid does.
+The name quote is measured on 476: `SELECT "nationkey" FROM tpch.sf1.nation LIMIT 1` returns the column, `SELECT 1 AS "a""b"` names it `a"b`, and a backtick is refused in the engine's own words, "backquoted identifiers are not supported; use double quotes to quote identifiers".
+Trino does bind, through `PREPARE`/`EXECUTE` plus an `X-Trino-Prepared-Statement` header, but the provider's transport seam carries the statement alone, so `TrinoProvider.query()` refuses a non-empty params array outright.
+Emitting `?` would build a statement whose placeholder the provider then declines to fill.
+
 ---
 
 ## 10. Error handling

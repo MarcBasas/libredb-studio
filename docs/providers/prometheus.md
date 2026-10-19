@@ -602,6 +602,15 @@ A direct call of `runMaintenance` is refused with a `QueryError` saying that com
 `entityName` "Metric" and "Metrics", `rowName` and `rowNamePlural` "series" and "series", `selectAction` "Run Instant Query", `generateAction` "Generate Query", `statementLanguage` "PromQL", and the two empty-state sentences of [§7](#7-monitoring--health).
 The maintenance labels carry PromQL-true wording although they are never rendered.
 
+### SQL writing
+
+[`prometheus/sql-writing.ts`](../../src/lib/db/providers/timeseries/prometheus/sql-writing.ts) declares how a generated statement spells a literal, a name and a bind for this engine, and it is this engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../../src/lib/db/sql-writing/index.ts)), which the readers in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) and [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) look up.
+A literal is written by `literalStandard` and read back by `unquoteStandard`: the quote is doubled and a backslash is data.
+A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-quoted name with an inner double quote doubled.
+There is no placeholder (`placeholder: null`), so a generator quotes the value with `quoteLiteral` instead of emitting a bind.
+PromQL is not SQL (#1085), so this is the same reading as the engines that declare `queryLanguage: "json"`.
+A PromQL string escapes with a backslash, but that is not a SQL literal and nothing here builds one.
+
 ---
 
 ## 10. Error handling

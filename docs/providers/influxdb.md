@@ -515,6 +515,16 @@ None: InfluxDB compacts its own storage and keeps no statistics to update.
 | `vacuumGlobalTitle` | Compaction Is the Server's Own |
 | `vacuumGlobalDesc` | InfluxDB compacts its storage on its own schedule, and a connection in Studio is read-only. Nothing runs from here. |
 
+### SQL writing
+
+[`influxdb/influxdb-sql-writing.ts`](../../src/lib/db/providers/timeseries/influxdb/influxdb-sql-writing.ts) declares how a generated statement spells a literal, a name and a bind for this engine, and it is this engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../../src/lib/db/sql-writing/index.ts)), which the readers in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) and [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) look up.
+A literal is written by `literalBackslash` and read back by `unquoteBackslash`: every escape, the quote's included, is spelled with a backslash, and doubling is not part of the grammar.
+A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-quoted name with an inner double quote doubled.
+There is no placeholder (`placeholder: null`), so a generator quotes the value with `quoteLiteral` instead of emitting a bind.
+Measured on InfluxDB 1.13.1: `... WHERE room = 'it\'s'` parses and `... WHERE room = 'it''s'` is `error parsing query: found s, expected ;`; the scanner's string escapes are exactly `\n`, `\\`, `\"` and `\'`.
+No generator calls `quoteLiteral` for InfluxQL: the provider's `influxql-quote.ts` builds every literal and refuses a newline, which a backslash form cannot carry, so the row is the true answer for any future caller.
+InfluxQL is not SQL, and nothing binds there.
+
 ## 10. Error handling
 
 A server's error body is read the way its line sends it: 1.x `{"error": ...}`, 2.x `{"code", "message"}`, 3.x `{"error": ...}` or plain text.

@@ -1481,6 +1481,19 @@ lives on the card that does not render (measured in the browser, 2026-08-19).
 [`TableItem.tsx`](../../src/components/schema-explorer/TableItem.tsx) now asks for both an addressable
 row **and** a declared maintenance capability.
 
+### SQL writing
+
+[`search/elasticsearch-sql-writing.ts`](../../src/lib/db/providers/sql/search/elasticsearch-sql-writing.ts) declares how a generated statement spells a literal, a name and a bind for this engine, and it is this engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../../src/lib/db/sql-writing/index.ts)), which the readers in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) and [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) look up.
+A literal is written by `literalStandard` and read back by `unquoteStandard`: the quote is doubled and a backslash is data.
+A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-quoted name with an inner double quote doubled.
+There is no placeholder (`placeholder: null`), so a generator quotes the value with `quoteLiteral` instead of emitting a bind.
+Elasticsearch doubles the quote and reads a backslash as data.
+Measured on 9.1.4 (2026-08-19): `SELECT 'a''b'` answers `a'b`; `SELECT 'a\\b'` answers the two characters `a\b`; `SELECT 'a\'b'` is a `parsing_exception` at the character after the backslash, which is only possible if the `\` did not escape the quote that closed the literal; and `SELECT 'a\'` returns `a\`.
+The name quote is measured as well: `FROM "probe_orders"` and `SELECT "note.keyword"` both answer 200, and a backtick is refused outright.
+Elasticsearch 9.1.4 is the exact opposite of OpenSearch, answering a backtick with "backquoted identifiers not supported; please use double quotes instead", so the two search ids cannot share a form.
+Both search endpoints do bind `?` (measured: Elasticsearch takes `{"query":"… WHERE id = ?","params":[1]}`, OpenSearch takes a `parameters` array of `{type,value}` objects, both HTTP 200), but they spell the request differently and the provider's seam carries the statement alone, so its `query()` refuses positional parameters outright.
+Emitting `?` would produce a statement whose placeholder the provider then declines to fill.
+
 ---
 
 ## 10. Error handling

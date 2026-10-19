@@ -221,6 +221,15 @@ These were measured on 1.0.22, reported upstream at [gurungabit/db2-node#12](htt
 
 The application's query timeout is not forwarded to Db2: on 1.0.22 the driver's own timeout left the statement running on the server (K14), and on 1.0.24 it cancels it through a second session that needs privileges this version does not ask a user to hold.
 
+### SQL writing
+
+[`db2/sql-writing.ts`](../../src/lib/db/providers/sql/db2/sql-writing.ts) declares how a generated statement spells a literal, a name and a bind for this engine, and it is this engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../../src/lib/db/sql-writing/index.ts)), which the readers in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) and [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) look up.
+A literal is written by `literalStandard` and read back by `unquoteStandard`: the quote is doubled and a backslash is data.
+A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-quoted name with an inner double quote doubled.
+A bind is spelled by `placeholderQuestion`, as `?` at every position.
+Measured on Db2 LUW 12.1.0.0 through db2-node 1.0.22 (#786), both directions: `VALUES 'O''Brien'` answers `O'Brien`, and `VALUES 'a\b'` answers the three characters `a\b` with `LENGTH` 3, so a backslash is data.
+db2-node binds a params array against `?`, measured on the same server (#786).
+
 ## 6. Object surface
 
 ### 6.1 Containers

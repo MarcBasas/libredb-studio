@@ -1478,6 +1478,19 @@ SERVER STATE permission."* The monitoring Queries panel's empty state was hardco
 that DMV ([§8](#8-monitoring--health)) and returns `[]` when the read is refused, so the permission
 is the thing a DBA can act on.
 
+### SQL writing
+
+[`sql/mssql-sql-writing.ts`](../../src/lib/db/providers/sql/mssql-sql-writing.ts) declares how a generated statement spells a literal, a name and a bind for this engine, and it is this engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../../src/lib/db/sql-writing/index.ts)), which the readers in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) and [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) look up.
+A literal is written by `literalUnicode` and read back by `unquoteUnicode`: the quote is doubled, a backslash is data, and the `N` prefix decides that the server reads the text as Unicode.
+A name is quoted by `identifierBracket`: a bracketed name with an inner `]` doubled.
+A bind is spelled by `placeholderAtP`, as `@p1`, `@p2`.
+SQL Server parses a bare literal in the database's collation code page and only an `N`-prefixed one as Unicode, so the prefix is not decoration: every catalog name in `sys` is `sysname`, which is `nvarchar(128)`.
+Measured on SQL Server 2022 CU26, database AdventureWorks2022, collation `SQL_Latin1_General_CP1_CI_AS` (code page 1252), with schemas `Müşteri` and `Müsteri` both present: `SELECT 'Müşteri'` answers `Müsteri`, because `ş` (U+015F) is not in 1252 and the server best-fits it to `s`.
+So `… WHERE s.name = 'Müşteri'` matched `Müsteri.Siparis`, the wrong object, while `… WHERE s.name = N'Müşteri'` matched `Müşteri.Sipariş`.
+With no `Müsteri` present the bare form matched nothing at all.
+Both failures are silent, which is why this dialect does not share the standard literal: the escaping is the same, the code page is not.
+The mssql provider registers its inputs as `p1`, `p2`, … which the statement spells `@p1`, `@p2`.
+
 ---
 
 ## 11. Error handling

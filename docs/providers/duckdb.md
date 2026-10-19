@@ -1346,6 +1346,18 @@ This overlay overrides no Shared member, so every Shared member is the `sql` sta
 `profile_table` is still offered here and answers `UNSUPPORTED_DIALECT` (B111).
 A pack does not open agent mode: execution is gated by `AGENT_EXECUTION_ENGINES` and the execution-profile check.
 
+### 9.4 SQL writing
+
+[`duckdb/sql-writing.ts`](../../src/lib/db/providers/sql/duckdb/sql-writing.ts) declares how a generated statement spells a literal, a name and a bind for this engine, and it is this engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../../src/lib/db/sql-writing/index.ts)), which the readers in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) and [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) look up.
+A literal is written by `literalStandard` and read back by `unquoteStandard`: the quote is doubled and a backslash is data.
+A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-quoted name with an inner double quote doubled.
+A bind is spelled by `placeholderQuestion`, as `?` at every position.
+Measured on DuckDB v1.5.5, both directions: `SELECT 'it''s'` answers `it's`, and `SELECT 'a\b', length('a\b')` answers the three characters `a\b`, so a backslash is data, and doubling it would add a second one to the value.
+The name quote is measured on v1.5.5 too: `"quoted identifier"` works, and `[…]` is a LIST literal here rather than a name quote, so the bracket form would be wrong for it.
+DuckDB binds both forms, measured on v1.5.5: `runAndReadAll("SELECT ?::INTEGER AS a, ?::VARCHAR AS b", [7, "x"])` and `runAndReadAll("SELECT $1::INTEGER AS a", [9])` each answer, so `?` is a choice rather than a reading.
+`$` is overloaded in this dialect: `$tag$…$tag$` is a dollar-quoted string literal (measured), so a `$1` written into a generated statement sits one character away from a form the readers have to tell apart, while `?` has no second meaning anywhere in DuckDB's grammar.
+`?` also matches the positional order the driver binds by, which is the array's, not the digit's.
+
 
 
 ---

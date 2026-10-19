@@ -952,6 +952,14 @@ case-insensitively, would match a read of a node named `drop` and reload the tre
 Labels: entity **Node**/**Nodes**, row **Value**/**Values**, select action **Read**. Generate,
 analyze and vacuum read `Not available`, each with its reason.
 
+### SQL writing
+
+[`opcua/sql-writing.ts`](../../src/lib/db/providers/industrial/opcua/sql-writing.ts) declares how a generated statement spells a literal, a name and a bind for this engine, and it is this engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../../src/lib/db/sql-writing/index.ts)), which the readers in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) and [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) look up.
+A literal is written by `literalStandard` and read back by `unquoteStandard`: the quote is doubled and a backslash is data.
+A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-quoted name with an inner double quote doubled.
+There is no placeholder (`placeholder: null`), so a generator quotes the value with `quoteLiteral` instead of emitting a bind.
+No measurement stands behind this row; it uses the standard building blocks named above.
+
 ## 10. Error handling
 
 A status code becomes a sentence a reader can act on, and the code always travels with it. The table

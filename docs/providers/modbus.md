@@ -215,6 +215,14 @@ answer than the `unknown` that is there now.
 What is still absent is MODBUS/TCP Security on a real device: the TLS dial exists and has never
 been run against one (§12a item 3 of the specification).
 
+### 5.2 SQL writing
+
+[`modbus/sql-writing.ts`](../../src/lib/db/providers/industrial/modbus/sql-writing.ts) declares how a generated statement spells a literal, a name and a bind for this engine, and it is this engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../../src/lib/db/sql-writing/index.ts)), which the readers in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) and [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) look up.
+A literal is written by `literalStandard` and read back by `unquoteStandard`: the quote is doubled and a backslash is data.
+A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-quoted name with an inner double quote doubled.
+There is no placeholder (`placeholder: null`), so a generator quotes the value with `quoteLiteral` instead of emitting a bind.
+No generator calls `quoteLiteral` for Modbus: a read request is JSON and names points.
+
 ## 6. Object edit (#789)
 
 No kind accepts a write of any sort, and the absence is structural rather than this version's
