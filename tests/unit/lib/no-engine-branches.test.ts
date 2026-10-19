@@ -53,7 +53,7 @@ export interface Debt extends Listed {
 /** What each later PR of the engine contract plan moves. */
 const MOVES_IN: Readonly<Record<Debt["pr"], string>> = {
   2: "SQL writing, values: the literal, identifier and placeholder rules",
-  3: "SQL writing, inline editing: the editor's per-engine value rules (docs/BACKLOG.md R4)",
+  3: "SQL writing, inline editing: the editor's per-engine value rules",
   4: "SQL writing, export: the per-engine export tables",
   5: "the SQL grammar: tokenizer, update target, redaction and completion quoting",
   6: "migration DDL (docs/BACKLOG.md D376)",

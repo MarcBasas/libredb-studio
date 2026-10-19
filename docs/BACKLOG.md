@@ -30,7 +30,7 @@ None of it is a GitHub issue.
 - [SQL statement reading](#sql-statement-reading) — S2-S9 · 6
 - [Drivers and connections](#drivers-and-connections) — D1-D376, U17 · 273
 - [Value interpolation](#value-interpolation) — V1
-- [Row editing](#row-editing) — R1–R4 · 4
+- [Row editing](#row-editing) — R1–R3 · 3
 - [Studio UI and query execution](#studio-ui-and-query-execution) — X2-X25, U2-U146 · 133
 - [Dependencies](#dependencies) — P1-P9 · 7
 - [Documentation](#documentation) — DOC3-DOC35 · 31
@@ -3939,16 +3939,6 @@ writes correctly and must keep doing so.
 point on the engines whose drivers round - the scale beside the word, or a second field that says
 it - a whole key is refused only where it can, and a test carries the Oracle and SQL Server pairs
 above beside the fractional ones #969 added.
-
-### R4. Three of the inline editor's value rules are tables keyed by type id
-
-`NO_INSTANT_TYPE_DIALECTS`, `FLOAT64_ONLY_DIALECTS` and `NO_EXACT_DECIMAL_DIALECTS` in `src/hooks/use-inline-editing.ts` are `ReadonlySet<DatabaseConnection["type"]>` tables holding `sqlite` and `libsql`: an engine with no instant type, an engine where `REAL` and `FLOAT` are 64-bit, and an engine with no exact decimal.
-Each is a fact about the engine kept in a UI hook, so a new engine that shares one of them (or a third SQLite-family id) is wrong until someone edits the hook.
-`tests/unit/lib/no-engine-branches.test.ts` allows exactly these three, and the two bound-edit branches beside them, by file and declaration name, and fails when a listed one no longer exists.
-
-Found 2026-10-18 while designing #1822.
-
-**Done when:** the three facts are declared on the provider's capabilities and read from there, the measurements in their docblocks move to `docs/providers/sqlite.md` and `docs/providers/libsql.md`, the inline-editing tests pass unchanged, and the guard's allowlist is empty.
 
 ---
 
