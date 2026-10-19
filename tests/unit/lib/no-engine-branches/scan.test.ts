@@ -26,6 +26,9 @@ describe("keyed-table", () => {
     ],
     ["a Record keyed by an Exclude", 'const X: Record<Exclude<DatabaseType, "libredb">, string> = {} as never;'],
     ["a Map built with type arguments", "const X = new Map<DatabaseType, number>();"],
+    ["a Record keyed by DatabaseType or a word", 'const X: Record<DatabaseType | "default", string> = {} as never;'],
+    ["a Record keyed by DatabaseType or any string", "const X: Record<DatabaseType | string, string> = {};"],
+    ["a Set keyed by a type id or a word", 'const X: Set<"postgres" | "none"> = new Set();'],
   ])("%s", (_name, source) => {
     expect(shapes(source)).toEqual([{ declaration: "X", shape: "keyed-table" }]);
   });
@@ -45,6 +48,10 @@ describe("keyed-table", () => {
 
   test("a Record keyed by a string, or a plain DatabaseType array type, is no table", () => {
     expect(scan("const X: Record<string, DatabaseType> = {};\nconst Y: DatabaseType[] = [];")).toEqual([]);
+  });
+
+  test("a Record keyed by a union of words that are not type ids is no table", () => {
+    expect(scan('const X: Record<"default" | "none" | string, string> = {};')).toEqual([]);
   });
 });
 

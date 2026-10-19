@@ -5,8 +5,9 @@
  * A branch is one of five shapes:
  *
  * - `keyed-table`: a `Record`, `Set`, `Map` or their read-only forms keyed by an engine type, or a mapped type over
- *   one, where an engine type is `DatabaseType`, `DatabaseConnection["type"]`, a union or `Exclude`/`Extract` of
- *   those or of type-id literals, or a type alias of any of these declared in the same file;
+ *   one, where an engine type is `DatabaseType`, `DatabaseConnection["type"]`, a type-id literal, a union with any
+ *   member that is one (so `DatabaseType | "default"` counts), an `Exclude`/`Extract` of one, or a type alias of any
+ *   of these declared in the same file;
  * - `type-id-array`: an array literal holding a type-id string, one finding per array;
  * - `comparison`: `===`, `!==`, `==` or `!=` with a type-id string on either side;
  * - `case-label`: a `case` whose label is a type-id string;
@@ -83,7 +84,7 @@ export function findEngineBranches(path: string, source: string, typeIds: Readon
       const text = stringText(node.literal);
       return text !== undefined && typeIds.has(text);
     }
-    if (ts.isUnionTypeNode(node)) return node.types.every((member) => isEngineType(member, seen));
+    if (ts.isUnionTypeNode(node)) return node.types.some((member) => isEngineType(member, seen));
     if (ts.isIndexedAccessTypeNode(node)) {
       return (
         ts.isTypeReferenceNode(node.objectType) &&

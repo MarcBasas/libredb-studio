@@ -141,6 +141,11 @@ export const FALSE_POSITIVES: readonly Listed[] = [
     reason: "the PostgreSQL image's default role name `postgres`, when POSTGRES_USER is unset",
   },
   {
+    path: "src/components/agent/AnswerCard.tsx",
+    declaration: "LANGUAGE_ACCENTS",
+    reason: "keyed by the agent statement language, some of whose names are spelled like type ids",
+  },
+  {
     path: "src/lib/seed/types.ts",
     declaration: "refuseMcpWhereNotOffered",
     reason: "the parameter type of the `MCP_EXPOSABLE` registry it is handed, which holds no row here",
