@@ -179,6 +179,7 @@ const OUTLINE: readonly string[] = [
   "### 5.6 Bounds",
   "### 5.7 Pagination and the starting token",
   "### 5.8 Cancellation and the confirmation gate",
+  "### 5.9 SQL grammar",
   "## 6. Schema introspection",
   "### 6.1 The object surface",
   "### 6.2 Object source",

@@ -494,6 +494,14 @@ No command writes, so the confirmation gate never asks; a command it refuses by 
 Pulsar reads a folder's children with `list -s P/ -e P//`, which bounds them only under hierarchical order.
 On a namespace that sorts keys naturally, a list or scan with those bounds carries a notice that points to `--prefix P/`, which reads everything under `P/` under either order; on a hierarchical namespace, a range whose lower bound ends in `//` carries the matching notice.
 
+### 5.9 SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/keyvalue/oxia/sql-grammar.ts`](../../src/lib/db/providers/keyvalue/oxia/sql-grammar.ts), the `oxia` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+`readsSqlText` is `false`: `oxia` takes one `oxia client` read command, words split by POSIX shell rules, and a SQL span reader would report its quoting as unreadable and prompt on every run.
+The confirmation gate therefore answers from this engine's row of `NON_SQL_DESTRUCTIVE_VOCABULARY` in `src/lib/db/destructive-commands.ts` instead of a SQL reading.
+Its grammar is `DEFAULT_SQL_GRAMMAR`, the compatibility default, since no SQL grammar of its own applies to this text.
+Redaction is `none`: a redacted statement is stored as `?`, because a reader guessing where a literal ends in a language it does not read can store the literal.
+
 ## 6. Schema introspection
 
 The tree shows shards; keys are listed in the Keys panel and opened in the Source tab.
