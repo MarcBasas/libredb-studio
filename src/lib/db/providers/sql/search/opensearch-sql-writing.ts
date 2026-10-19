@@ -1,4 +1,7 @@
 import {
+  EXACT_DECIMAL_TYPE_NAMES,
+  FLOAT64_TYPE_NAMES,
+  INSTANT_TYPE_NAMES,
   identifierBacktickDoubled,
   literalDoubleAndBackslash,
   unquoteDoubleAndBackslash,
@@ -42,4 +45,9 @@ export const OPENSEARCH_SQL_WRITING: SqlWritingSpec = {
   // placeholder the provider then declines to fill.
   placeholder: null,
   temporalLiteral: null,
+  inlineEdit: {
+    instantTypeNames: INSTANT_TYPE_NAMES,
+    exactDecimalTypeNames: EXACT_DECIMAL_TYPE_NAMES,
+    float64TypeNames: FLOAT64_TYPE_NAMES,
+  },
 };

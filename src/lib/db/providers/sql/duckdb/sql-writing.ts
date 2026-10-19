@@ -1,4 +1,7 @@
 import {
+  EXACT_DECIMAL_TYPE_NAMES,
+  FLOAT64_TYPE_NAMES,
+  INSTANT_TYPE_NAMES,
   identifierDoubleQuoted,
   literalStandard,
   placeholderQuestion,
@@ -26,4 +29,9 @@ export const DUCKDB_SQL_WRITING: SqlWritingSpec = {
   // positional ORDER the driver binds by, which is the array's, not the digit's.
   placeholder: placeholderQuestion,
   temporalLiteral: null,
+  inlineEdit: {
+    instantTypeNames: INSTANT_TYPE_NAMES,
+    exactDecimalTypeNames: EXACT_DECIMAL_TYPE_NAMES,
+    float64TypeNames: FLOAT64_TYPE_NAMES,
+  },
 };

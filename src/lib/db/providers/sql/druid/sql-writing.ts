@@ -1,4 +1,7 @@
 import {
+  EXACT_DECIMAL_TYPE_NAMES,
+  FLOAT64_TYPE_NAMES,
+  INSTANT_TYPE_NAMES,
   identifierDoubleQuoted,
   literalStandard,
   placeholderQuestion,
@@ -18,4 +21,9 @@ export const DRUID_SQL_WRITING: SqlWritingSpec = {
   // provider was written (`src/lib/db/providers/sql/druid/index.ts`).
   placeholder: placeholderQuestion,
   temporalLiteral: null,
+  inlineEdit: {
+    instantTypeNames: INSTANT_TYPE_NAMES,
+    exactDecimalTypeNames: EXACT_DECIMAL_TYPE_NAMES,
+    float64TypeNames: FLOAT64_TYPE_NAMES,
+  },
 };

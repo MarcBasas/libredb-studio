@@ -2,9 +2,8 @@
  * The SQL writing contract: what one engine states about the literals, identifiers and
  * binds a generated statement spells for it.
  *
- * This is the values subset, plus the type of its inline edit fields, `InlineEditSpec`,
- * which `SqlWritingSpec` gains once every engine states one. The export fields arrive with
- * row 4, so no field exists before the code that reads it.
+ * This is the values subset and the inline edit fields, `InlineEditSpec`. The export fields
+ * arrive with row 4, so no field exists before the code that reads it.
  *
  * Every fact is required. A `null` is an answer, not an omission: it says the engine has
  * no form of that kind, and the reader turns it into today's fallback.
@@ -20,6 +19,8 @@ export interface SqlWritingSpec {
   readonly placeholder: ((position: number) => string) | null;
   /** A date or timestamp text as this engine's literal of that kind, or `undefined` to quote it; `null` always quotes. */
   readonly temporalLiteral: ((text: string, kind: "date" | "timestamp") => string | undefined) | null;
+  /** The key column kinds and bound edit the inline editor reads for this engine. */
+  readonly inlineEdit: InlineEditSpec;
 }
 
 /**

@@ -1,4 +1,7 @@
 import {
+  EXACT_DECIMAL_TYPE_NAMES,
+  FLOAT64_TYPE_NAMES,
+  INSTANT_TYPE_NAMES,
   identifierDoubleQuoted,
   literalStandard,
   placeholderQuestion,
@@ -17,4 +20,9 @@ export const DB2_SQL_WRITING: SqlWritingSpec = {
   // db2-node binds a params array against `?`, measured on Db2 LUW 12.1.0.0 (#786).
   placeholder: placeholderQuestion,
   temporalLiteral: null,
+  inlineEdit: {
+    instantTypeNames: INSTANT_TYPE_NAMES,
+    exactDecimalTypeNames: EXACT_DECIMAL_TYPE_NAMES,
+    float64TypeNames: FLOAT64_TYPE_NAMES,
+  },
 };

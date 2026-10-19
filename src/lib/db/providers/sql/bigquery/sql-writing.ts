@@ -1,4 +1,11 @@
-import { identifierBacktickBackslash, literalBackslash, unquoteBackslash } from "@/lib/db/sql-writing/shared";
+import {
+  EXACT_DECIMAL_TYPE_NAMES,
+  FLOAT64_TYPE_NAMES,
+  INSTANT_TYPE_NAMES,
+  identifierBacktickBackslash,
+  literalBackslash,
+  unquoteBackslash,
+} from "@/lib/db/sql-writing/shared";
 import type { SqlWritingSpec } from "@/lib/db/sql-writing/types";
 
 /** How a generated statement spells a literal, a name and a bind for BigQuery. */
@@ -11,4 +18,9 @@ export const BIGQUERY_SQL_WRITING: SqlWritingSpec = {
   quoteIdentifier: identifierBacktickBackslash,
   placeholder: null,
   temporalLiteral: null,
+  inlineEdit: {
+    instantTypeNames: INSTANT_TYPE_NAMES,
+    exactDecimalTypeNames: EXACT_DECIMAL_TYPE_NAMES,
+    float64TypeNames: FLOAT64_TYPE_NAMES,
+  },
 };

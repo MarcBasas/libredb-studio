@@ -9,6 +9,14 @@ import { markdownTable } from "./markdown";
 import { resolveUpdateTarget } from "@/lib/sql/update-target";
 import { cqlFrozenNested, snowflakeVectorType, typedLiteral, UnwritableValue } from "./typed-literals";
 import { isNonFiniteWord, nonFiniteWord, type NonFiniteWord } from "@/lib/non-finite";
+import {
+  ISO_INSTANT_TEXT,
+  ORACLE_BC_DATE_MASK,
+  ORACLE_DATE_MASK,
+  ORACLE_TIMESTAMP_TYPE,
+  ORACLE_ZONED_TIMESTAMP_TYPE,
+  ORACLE_ZONELESS_TEXT,
+} from "@/lib/db/providers/sql/oracle-sql-writing";
 
 /**
  * Turning a result grid into a file the user keeps.
@@ -973,10 +981,6 @@ interface OracleDateColumn {
   text?: "date" | "timestamp" | "zoned";
 }
 
-/** The declared types the Oracle provider reads as wall-clock text (#1131) or an instant (#1224). */
-export const ORACLE_TIMESTAMP_TYPE = /^TIMESTAMP\s*(\(\d\))?$/;
-export const ORACLE_ZONED_TIMESTAMP_TYPE = /^TIMESTAMP\s*(\(\d\))?\s+WITH\s+(LOCAL\s+)?TIME\s+ZONE$/;
-
 function oracleDateColumn(declared: string | undefined): OracleDateColumn {
   const bare = declared?.trim().toUpperCase() ?? "";
   const text =
@@ -1003,10 +1007,6 @@ function pad(value: number, width = 2): string {
   return String(value).padStart(width, "0");
 }
 
-/** The masks `TO_DATE` and `TO_TIMESTAMP` read the provider's text and the `Date` fields through (#1131, #1498). */
-export const ORACLE_DATE_MASK = "YYYY-MM-DD HH24:MI:SS";
-export const ORACLE_BC_DATE_MASK = "SYYYY-MM-DD HH24:MI:SS";
-
 /**
  * An Oracle date literal, from the LOCAL fields for a naive column and the UTC ones for
  * a zoned column (see `oracleDateShape`).
@@ -1032,12 +1032,6 @@ function oracleDateLiteral(value: Date, shape: OracleDateShape): string {
 }
 
 /**
- * The text the Oracle provider reads a DATE and a TIMESTAMP as (#1131): the wall clock,
- * a leading `-` on a BC year, and a fraction only where there is one.
- */
-export const ORACLE_ZONELESS_TEXT = /^(-?)\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d{1,9})?$/;
-
-/**
  * That text as the literal of the declared type, or `undefined` when it is not in that form.
  *
  * Quoted as it is, the text is read through the session's `NLS_DATE_FORMAT`, `DD-MON-RR` by
@@ -1055,14 +1049,6 @@ function oracleTextLiteral(text: string, type: "date" | "timestamp"): string | u
   if (type === "date") return fraction === undefined ? `TO_DATE('${text}', '${mask}')` : undefined;
   return `TO_TIMESTAMP('${text}', '${mask}${fraction === undefined ? "" : ".FF"}')`;
 }
-
-/**
- * The text `Date#toISOString` writes for a year from 0000 to 9999. A year outside that
- * range is written with a sign and six digits (`-000044-…`, `+012026-…`) and does not
- * match: Oracle has no year after 9999, and a BC year's text is left for a separate change
- * (the `Date` path itself writes one as `SYYYY`, #1498), so that text stays quoted.
- */
-export const ISO_INSTANT_TEXT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 
 /**
  * A zoned column's cell as it arrives over HTTP (#1224), as the literal the `Date` of that

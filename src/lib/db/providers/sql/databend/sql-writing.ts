@@ -1,4 +1,7 @@
 import {
+  EXACT_DECIMAL_TYPE_NAMES,
+  FLOAT64_TYPE_NAMES,
+  INSTANT_TYPE_NAMES,
   identifierBacktickDoubled,
   literalDoubleAndBackslash,
   unquoteDoubleAndBackslash,
@@ -22,4 +25,9 @@ export const DATABEND_SQL_WRITING: SqlWritingSpec = {
   quoteIdentifier: identifierBacktickDoubled,
   placeholder: null,
   temporalLiteral: null,
+  inlineEdit: {
+    instantTypeNames: INSTANT_TYPE_NAMES,
+    exactDecimalTypeNames: EXACT_DECIMAL_TYPE_NAMES,
+    float64TypeNames: FLOAT64_TYPE_NAMES,
+  },
 };

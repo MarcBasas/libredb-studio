@@ -1,4 +1,7 @@
 import {
+  EXACT_DECIMAL_TYPE_NAMES,
+  FLOAT64_TYPE_NAMES,
+  INSTANT_TYPE_NAMES,
   identifierDoubleQuoted,
   literalBackslash,
   placeholderDollar,
@@ -18,4 +21,9 @@ export const COUCHBASE_SQL_WRITING: SqlWritingSpec = {
   // SQL++ takes its values in `args`, which the statement reads as `$1`, `$2`.
   placeholder: placeholderDollar,
   temporalLiteral: null,
+  inlineEdit: {
+    instantTypeNames: INSTANT_TYPE_NAMES,
+    exactDecimalTypeNames: EXACT_DECIMAL_TYPE_NAMES,
+    float64TypeNames: FLOAT64_TYPE_NAMES,
+  },
 };

@@ -1,4 +1,11 @@
-import { identifierDoubleQuoted, literalDoubleAndBackslash, unquoteDoublingOnly } from "./shared";
+import {
+  EXACT_DECIMAL_TYPE_NAMES,
+  FLOAT64_TYPE_NAMES,
+  INSTANT_TYPE_NAMES,
+  identifierDoubleQuoted,
+  literalDoubleAndBackslash,
+  unquoteDoublingOnly,
+} from "./shared";
 import type { SqlWritingSpec } from "./types";
 
 /**
@@ -16,4 +23,9 @@ export const UNKNOWN_TYPE_SQL_WRITING: SqlWritingSpec = {
   quoteIdentifier: identifierDoubleQuoted,
   placeholder: null,
   temporalLiteral: null,
+  inlineEdit: {
+    instantTypeNames: INSTANT_TYPE_NAMES,
+    exactDecimalTypeNames: EXACT_DECIMAL_TYPE_NAMES,
+    float64TypeNames: FLOAT64_TYPE_NAMES,
+  },
 };

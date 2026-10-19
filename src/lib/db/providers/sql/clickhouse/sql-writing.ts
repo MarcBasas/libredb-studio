@@ -1,4 +1,7 @@
 import {
+  EXACT_DECIMAL_TYPE_NAMES,
+  FLOAT64_TYPE_NAMES,
+  INSTANT_TYPE_NAMES,
   identifierDoubleQuoted,
   literalDoubleAndBackslash,
   unquoteDoubleAndBackslash,
@@ -16,4 +19,9 @@ export const CLICKHOUSE_SQL_WRITING: SqlWritingSpec = {
   // ClickHouse binds named parameters only and its provider refuses positional ones outright.
   placeholder: null,
   temporalLiteral: null,
+  inlineEdit: {
+    instantTypeNames: INSTANT_TYPE_NAMES,
+    exactDecimalTypeNames: EXACT_DECIMAL_TYPE_NAMES,
+    float64TypeNames: FLOAT64_TYPE_NAMES,
+  },
 };

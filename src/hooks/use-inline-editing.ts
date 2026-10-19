@@ -18,8 +18,8 @@ import {
   ORACLE_TIMESTAMP_TYPE,
   ORACLE_ZONED_TIMESTAMP_TYPE,
   ORACLE_ZONELESS_TEXT,
-} from "@/lib/export/result-export";
-import { MSSQL_DATETIME_TEXT } from "@/lib/export/typed-literals";
+} from "@/lib/db/providers/sql/oracle-sql-writing";
+import { MSSQL_DATETIME_TEXT } from "@/lib/db/providers/sql/mssql-sql-writing";
 import { generatedFieldNames } from "@/components/results-grid/utils";
 
 interface UseInlineEditingParams {

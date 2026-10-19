@@ -1,4 +1,7 @@
 import {
+  EXACT_DECIMAL_TYPE_NAMES,
+  FLOAT64_TYPE_NAMES,
+  INSTANT_TYPE_NAMES,
   identifierBacktickDoubled,
   literalDoubleAndBackslash,
   placeholderQuestion,
@@ -17,4 +20,9 @@ export const MYSQL_SQL_WRITING: SqlWritingSpec = {
   // `mysql2` takes `?`.
   placeholder: placeholderQuestion,
   temporalLiteral: null,
+  inlineEdit: {
+    instantTypeNames: INSTANT_TYPE_NAMES,
+    exactDecimalTypeNames: EXACT_DECIMAL_TYPE_NAMES,
+    float64TypeNames: FLOAT64_TYPE_NAMES,
+  },
 };

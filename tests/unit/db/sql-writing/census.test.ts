@@ -2,7 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { EXTERNAL_DATABASE_TYPES } from "@/lib/db/compatibility";
 import { SQL_WRITING, sqlWritingFor } from "@/lib/db/sql-writing";
 import { NO_CONNECTION_SQL_WRITING } from "@/lib/db/sql-writing/no-connection";
+import { EXACT_DECIMAL_TYPE_NAMES, FLOAT64_TYPE_NAMES, INSTANT_TYPE_NAMES } from "@/lib/db/sql-writing/shared";
 import { UNKNOWN_TYPE_SQL_WRITING } from "@/lib/db/sql-writing/unknown-type";
+import type { SqlWritingSpec } from "@/lib/db/sql-writing/types";
 import type { DatabaseType } from "@/lib/types";
 
 /**
@@ -95,5 +97,50 @@ describe("SQL writing census", () => {
 
   test("a member of the union reads its row", () => {
     expect(sqlWritingFor("postgres")).toBe(SQL_WRITING.postgres);
+  });
+
+  // Every engine but the two that embed SQLite reads the shared type-name sets, and so do
+  // the two named specs, because before the contract a type outside the dialect sets, the
+  // empty string and an unknown string all read those sets.
+  const NO_DECLARED_KINDS = new Set(["sqlite", "libsql"]);
+  const SHARED_SET_ROWS: readonly (readonly [string, SqlWritingSpec])[] = [
+    ...Object.entries(SQL_WRITING).filter(([id]) => !NO_DECLARED_KINDS.has(id)),
+    ["no connection", NO_CONNECTION_SQL_WRITING],
+    ["unknown type", UNKNOWN_TYPE_SQL_WRITING],
+  ];
+
+  for (const [name, spec] of SHARED_SET_ROWS) {
+    test(`${name}: the inline edit reads the shared type-name sets`, () => {
+      expect(spec.inlineEdit.instantTypeNames).toBe(INSTANT_TYPE_NAMES);
+      expect(spec.inlineEdit.exactDecimalTypeNames).toBe(EXACT_DECIMAL_TYPE_NAMES);
+      expect(spec.inlineEdit.float64TypeNames).toBe(FLOAT64_TYPE_NAMES);
+    });
+  }
+
+  test.each(["sqlite", "libsql"] as const)(
+    "%s: no declaration names an instant or exact decimal, and every key is float64",
+    (id) => {
+      const inlineEdit = SQL_WRITING[id].inlineEdit;
+      expect(inlineEdit.instantTypeNames.size).toBe(0);
+      expect(inlineEdit.exactDecimalTypeNames.size).toBe(0);
+      expect(inlineEdit.float64TypeNames).toBe("all");
+    },
+  );
+
+  test("sqlite and libsql each state their own sets", () => {
+    expect(SQL_WRITING.sqlite.inlineEdit.instantTypeNames).not.toBe(SQL_WRITING.libsql.inlineEdit.instantTypeNames);
+    expect(SQL_WRITING.sqlite.inlineEdit.exactDecimalTypeNames).not.toBe(
+      SQL_WRITING.libsql.inlineEdit.exactDecimalTypeNames,
+    );
+  });
+
+  test("only mssql and oracle bind an edit through their own form", () => {
+    const bound = Object.entries(SQL_WRITING)
+      .filter(([, spec]) => spec.inlineEdit.boundEdit !== undefined)
+      .map(([id]) => id)
+      .sort();
+    expect(bound).toEqual(["mssql", "oracle"]);
+    expect(NO_CONNECTION_SQL_WRITING.inlineEdit.boundEdit).toBeUndefined();
+    expect(UNKNOWN_TYPE_SQL_WRITING.inlineEdit.boundEdit).toBeUndefined();
   });
 });
