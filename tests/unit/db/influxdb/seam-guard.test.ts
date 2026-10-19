@@ -12,8 +12,9 @@
  * 5. No file outside `routes.ts` holds a string literal whose whole value starts with `/api/` or equals `/query`,
  *    `/ping` or `/health`; a sentence that mentions a path inside longer text is not a path literal.
  * 6. Each layer value-imports only what contract section 1 lets it (types are free): `connection-options.ts` may take
- *    the value `TUNNEL_FAR_END` from `@/lib/types` (the Qdrant shape, architect amendment from T09), and a file of
- *    no layer fails, so a new file is placed in one on purpose.
+ *    the value `TUNNEL_FAR_END` from `@/lib/types` (the Qdrant shape, architect amendment from T09), the two execution
+ *    UI contract modules may take values from `@/lib/db/execution-ui/shared`, their contract's shared building block,
+ *    and a file of no layer fails, so a new file is placed in one on purpose.
  *
  * Rules 1 to 3 count a type-only import too: they keep modules apart, not values. Module names are resolved as
  * TypeScript resolves them, so an alias counts; a planted module that does not exist yet resolves by its spelling.
@@ -67,6 +68,15 @@ const inDirectory = (target: string): boolean => target.startsWith(`${DIR}/`);
 const isInfluxql = (target: string): boolean => inDirectory(target) && stem(target).startsWith("influxql-");
 const isSql = (target: string): boolean => inDirectory(target) && stem(target).startsWith("sql-");
 
+/**
+ * The per-engine contract modules, each with the contract module whose shared building blocks it may import as values
+ * (rule 6). No other file of this directory may.
+ */
+const CONTRACT_VALUES: Readonly<Record<string, string>> = {
+  "influxdb-execution-ui": "src/lib/db/execution-ui/shared.ts",
+  "influxdb3-execution-ui": "src/lib/db/execution-ui/shared.ts",
+};
+
 /** What the connection layer may import a value from outside this directory. */
 const CONNECTION_OUTSIDE = [
   "src/lib/db/http/",
@@ -82,11 +92,7 @@ const CONNECTION_OUTSIDE = [
  * and the TLS mapping where they are.
  */
 const OUTSIDE_VALUES: Readonly<Record<Layer, readonly string[]>> = {
-  connection: [
-    ...CONNECTION_OUTSIDE,
-    // The engine contract's execution UI rows take the shared commit keyword, a pure module that imports nothing.
-    "src/lib/db/execution-ui/shared.ts",
-  ],
+  connection: CONNECTION_OUTSIDE,
   browser: [],
   "influxql-server": [
     ...CONNECTION_OUTSIDE,
@@ -254,7 +260,8 @@ function seamFindings(file: string, text: string): string[] {
     if (layer === undefined || typeOnly) continue;
     const allowed = inDirectory(target)
       ? insideAllowed(file, layer, target)
-      : OUTSIDE_VALUES[layer].some((prefix) => target.startsWith(prefix)) ||
+      : (Object.hasOwn(CONTRACT_VALUES, name) && target.startsWith(CONTRACT_VALUES[name])) ||
+        OUTSIDE_VALUES[layer].some((prefix) => target.startsWith(prefix)) ||
         (name === "connection-options" &&
           target === "src/lib/types.ts" &&
           names.length > 0 &&
@@ -420,6 +427,12 @@ describe("planted violations fail by name", () => {
       `layer: ${DIR}/labels.ts imports a value from @/lib/types, which its layer may not`,
     ],
     [
+      "labels.ts",
+      "labels.ts",
+      'import { SQL_COMMIT_KEYWORD } from "@/lib/db/execution-ui/shared";\n',
+      `layer: ${DIR}/labels.ts imports a value from @/lib/db/execution-ui/shared, which its layer may not`,
+    ],
+    [
       "connection-options.ts",
       "connection-options.ts",
       'import { isTunnelled } from "@/lib/types";\n',
@@ -472,6 +485,16 @@ describe("planted violations fail by name", () => {
     ["errors.ts", "errors.ts", 'const sentence = "This server has no InfluxDB /query endpoint.";\n'],
     ["monitoring.ts", "monitoring.ts", 'const notAPath = "/api";\n'],
     ["sql-results.ts", "sql-policy.ts", 'import type { Readable } from "node:stream";\n'],
+    [
+      "influxdb-execution-ui.ts",
+      "influxdb-execution-ui.ts",
+      'import { SQL_COMMIT_KEYWORD } from "@/lib/db/execution-ui/shared";\n',
+    ],
+    [
+      "influxdb3-execution-ui.ts",
+      "influxdb3-execution-ui.ts",
+      'import { SQL_COMMIT_KEYWORD } from "@/lib/db/execution-ui/shared";\n',
+    ],
   ])("%s (from %s) with %p passes", (as, from, line) => {
     expect(plant(as, from, line)).toEqual([]);
   });

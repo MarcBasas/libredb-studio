@@ -18,7 +18,8 @@
  * 7. A value is imported from outside this directory only from `@/lib/db/http/*`, `@/lib/db/errors`,
  *    `@/lib/db/types`, `@/lib/db/utils/*`, `@/lib/db/object-kinds`, `@/lib/db/inventory-bounds`, `@/lib/sql/*`,
  *    `@/lib/types`, `@/lib/app-version`, `@/lib/logger`, `../sql-base`, `jose`, `node:crypto` and `node:zlib`; types
- *    are free.
+ *    are free. `execution-ui.ts`, the engine's execution UI contract module, may also import values from
+ *    `@/lib/db/execution-ui/shared`, its contract's shared building block.
  * 8. Only `account.ts` builds an origin: outside it, the only values imported from `@/lib/db/http/endpoint` are
  *    `endpointUrl` and `rejectForeignLink`, which act on an origin already built; and `account-host.ts`, which the
  *    browser bundles, imports nothing.
@@ -58,10 +59,13 @@ const OUTSIDE_VALUES = [
   "src/lib/app-version.ts",
   "src/lib/logger.ts",
   SQL_BASE,
-  // The engine contract's execution UI row takes the shared commit keyword, a pure module that imports nothing.
-  "src/lib/db/execution-ui/shared.ts",
 ];
 const PACKAGE_VALUES = new Set(["jose"]);
+/**
+ * The per-engine contract modules, each with the contract module whose shared building blocks it may import as values
+ * (rule 7). No other file of this directory may.
+ */
+const CONTRACT_VALUES: Readonly<Record<string, string>> = { "execution-ui": "src/lib/db/execution-ui/shared.ts" };
 const BUILTIN_VALUES = new Set(["node:crypto", "node:zlib"]);
 const SOCKET_FACTORIES = ["createNodeTransport", "createNodeByteTransport"];
 const SOCKET_FILES = new Set(["transport", "index"]);
@@ -271,7 +275,8 @@ function seamFindings(file: string, text: string): string[] {
     if (typeOnly || inDirectory(target)) continue;
     const allowed = target.startsWith("package:")
       ? PACKAGE_VALUES.has(target.slice("package:".length))
-      : OUTSIDE_VALUES.some((prefix) => target.startsWith(prefix));
+      : (Object.hasOwn(CONTRACT_VALUES, name) && target.startsWith(CONTRACT_VALUES[name])) ||
+        OUTSIDE_VALUES.some((prefix) => target.startsWith(prefix));
     if (!allowed) findings.push(`rule 7: ${file} imports a value from ${specifier}, which this directory may not`);
   }
 
@@ -558,6 +563,12 @@ describe("planted violations fail by name", () => {
       `rule 7: ${DIR}/index.ts imports a value from @/lib/db/factory, which this directory may not`,
     ],
     [
+      "introspect.ts",
+      "introspect.ts",
+      'import { SQL_COMMIT_KEYWORD } from "@/lib/db/execution-ui/shared";\n',
+      `rule 7: ${DIR}/introspect.ts imports a value from @/lib/db/execution-ui/shared, which this directory may not`,
+    ],
+    [
       "decode.ts",
       "decode.ts",
       'import { readFileSync } from "node:fs";\n',
@@ -616,6 +627,7 @@ describe("planted violations fail by name", () => {
     ["errors.ts", "errors.ts", "const fix = (body: string) => `ALTER USER ADD KEY PAIR k PUBLIC_KEY = '${body}'`;\n"],
     ["index.ts", "index.ts", 'const sentence = "Set Warehouse on the connection to run statements.";\n'],
     ["errors.ts", "errors.ts", 'const sentence = "Snowflake refused POST /api/v2/statements before it ran.";\n'],
+    ["execution-ui.ts", "execution-ui.ts", 'import { SQL_COMMIT_KEYWORD } from "@/lib/db/execution-ui/shared";\n'],
   ])("%s (from %s) with %p passes", (as, from, line) => {
     expect(plant(as, from, line)).toEqual([]);
   });
