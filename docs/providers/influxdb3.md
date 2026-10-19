@@ -441,6 +441,7 @@ There is no placeholder (`placeholder: null`), so a generator quotes the value w
 Measured on InfluxDB 3.12.0: `SELECT 'it''s'` answers `it's`, and `SELECT 'a\b' AS a, length('a\b') AS n` answers `a\b` and 3, so a backslash is data.
 DataFusion also has PostgreSQL-style `E'...'` strings (measured: `SELECT E'a\nb'` decodes the escape), which `quoteLiteral` never emits.
 The engine has placeholders (measured on 3.12.0: `SELECT $1 AS x` and `SELECT ? AS x` both answer `Error during planning: No value found for placeholder ...`), but the route body is exactly `db`, `q` and `format`, so the provider's `query()` refuses a non-empty params array, and emitting a placeholder would build a statement nothing fills.
+Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
 
 ## 10. Error handling
 

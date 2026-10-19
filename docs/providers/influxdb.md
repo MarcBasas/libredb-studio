@@ -524,6 +524,7 @@ There is no placeholder (`placeholder: null`), so a generator quotes the value w
 Measured on InfluxDB 1.13.1: `... WHERE room = 'it\'s'` parses and `... WHERE room = 'it''s'` is `error parsing query: found s, expected ;`; the scanner's string escapes are exactly `\n`, `\\`, `\"` and `\'`.
 No generator calls `quoteLiteral` for InfluxQL: the provider's `influxql-quote.ts` builds every literal and refuses a newline, which a backslash form cannot carry, so the row is the true answer for any future caller.
 InfluxQL is not SQL, and nothing binds there.
+Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
 
 ## 10. Error handling
 

@@ -610,6 +610,7 @@ A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-qu
 There is no placeholder (`placeholder: null`), so a generator quotes the value with `quoteLiteral` instead of emitting a bind.
 PromQL is not SQL (#1085), so this is the same reading as the engines that declare `queryLanguage: "json"`.
 A PromQL string escapes with a backslash, but that is not a SQL literal and nothing here builds one.
+Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
 
 ---
 

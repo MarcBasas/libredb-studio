@@ -528,7 +528,7 @@ The one exception is the engine text `datetime` and `smalldatetime` are read as 
 Measured 2026-10-08 on SQL Server 2022 CU27 (16.0.4295.3), the same two rows read through the provider, exported and replayed under `SET LANGUAGE us_english` and `british`: written with the space, `2026-10-04 12:34:56.123` came back as `2026-04-10` under `british` and `2026-10-25 23:59:59.997` was refused as out of range; written with the `T`, both came back equal under both languages, as they did under `Deutsch`, `Français` and `Japanese` in a direct `CAST`.
 A `datetime2` and a `date` text are written as they are, since those two read `yyyy-mm-dd` the same under every DATEFORMAT.
 
-The inline grid edit opens its editor on that same text and binds the edit as an nvarchar parameter, which those two types also read through DATEFORMAT, so [`use-inline-editing.ts`](../../src/hooks/use-inline-editing.ts) binds an edit still in that form with its space as a `T` too, by the same `MSSQL_DATETIME_TEXT`. A `datetime2` edit, and text in any other shape, is bound as typed.
+The inline grid edit opens its editor on that same text and binds the edit as an nvarchar parameter, which those two types also read through DATEFORMAT, so the inline edit's `boundEdit` in [`sql/mssql-sql-writing.ts`](../../src/lib/db/providers/sql/mssql-sql-writing.ts) binds an edit still in that form with its space as a `T` too, by the same `MSSQL_DATETIME_TEXT`. A `datetime2` edit, and text in any other shape, is bound as typed.
 Measured 2026-10-12 on SQL Server 2022 CU27 (16.0.4295.3), the hook's own `UPDATE … SET [dt] = @p1 WHERE [id] = @p2` with `SET LANGUAGE british` in the same call: `2026-10-04 12:34:57.123` was stored as `2026-04-10` and `2026-10-25 23:59:58.997` was refused as out of range, a `smalldatetime` the same, and each of them with the `T` was stored as written.
 This provider's own sessions read `mdy` today whatever the login's default language: tedious opens every connection with `set dateformat mdy` and `set language us_english`, and `query()` runs each statement through `sp_executesql`, so a `SET LANGUAGE` a user runs ends with that statement (measured on the same server with a login whose default language is `british`). The `T` keeps the edit correct without leaning on that driver default.
 
@@ -1490,6 +1490,10 @@ So `… WHERE s.name = 'Müşteri'` matched `Müsteri.Siparis`, the wrong object
 With no `Müsteri` present the bare form matched nothing at all.
 Both failures are silent, which is why this dialect does not share the standard literal: the escaping is the same, the code page is not.
 The mssql provider registers its inputs as `p1`, `p2`, … which the statement spells `@p1`, `@p2`.
+Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`.
+Its `boundEdit` binds a `datetime` or `smalldatetime` edit still in the provider's `yyyy-mm-dd hh:mi:ss[.mmm]` text (#1452) with its space as a `T`, because the nvarchar parameter reaches those two types through the session's DATEFORMAT.
+Measured 2026-10-12 on SQL Server 2022 CU27 (16.0.4295.3), the inline edit's own `UPDATE … SET [dt] = @p1` under `british`: `2026-10-04 12:34:57.123` was stored as April 10th and `2026-10-25 23:59:58.997` was refused as out of range, while the same text with a `T` was stored as written, and a `smalldatetime` the same ([§5.5](#55-what-the-sql-insert-export-writes-for-a-bit)).
+Every other edit is bound as typed.
 
 ---
 

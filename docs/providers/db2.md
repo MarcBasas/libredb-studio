@@ -229,6 +229,7 @@ A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-qu
 A bind is spelled by `placeholderQuestion`, as `?` at every position.
 Measured on Db2 LUW 12.1.0.0 through db2-node 1.0.22 (#786), both directions: `VALUES 'O''Brien'` answers `O'Brien`, and `VALUES 'a\b'` answers the three characters `a\b` with `LENGTH` 3, so a backslash is data.
 db2-node binds a params array against `?`, measured on the same server (#786).
+Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
 
 ## 6. Object surface
 

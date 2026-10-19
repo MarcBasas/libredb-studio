@@ -2376,6 +2376,7 @@ A bind is spelled by `placeholderQuestion`, as `?` at every position.
 The literal form assumes the default `sql_mode`.
 A server running with `NO_BACKSLASH_ESCAPES` reads the doubled backslash as two characters, which is why binding the value beats quoting it wherever a bind form exists.
 `mysql2` takes `?`.
+Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
 
 ---
 

@@ -389,6 +389,7 @@ A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-qu
 There is no placeholder (`placeholder: null`), so a generator quotes the value with `quoteLiteral` instead of emitting a bind.
 Cypher spells its escapes with a backslash (`\'`, `\"`, `\\`, `\n`, `\uXXXX`), and a doubled quote is not one of them: it closes one string and opens the next.
 The graph lexer ([`src/lib/db/graph/cypher/lexer.ts`](../../src/lib/db/graph/cypher/lexer.ts)) decodes the same set, so the two read a literal alike.
+Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
 
 ## 10. Error handling
 

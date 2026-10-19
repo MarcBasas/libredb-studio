@@ -269,8 +269,9 @@ one over as text of its own accord - and rounds only its decimal family. Oracle'
 five that reaches the grid already wrong, and that is D18, not a sixth thing. What the rounding
 costs the row editor is now one case rather than two: a FRACTIONAL key out of a column declared
 `NUMBER`, `decimal`, `numeric` or `money` is refused before the engine is asked, because the
-declaration says the driver rounded it - `describeFraction` and `EXACT_DECIMAL_TYPE_NAMES` in
-`src/hooks/use-inline-editing.ts`, measured 2026-09-19 on Oracle 26ai Free and SQL Server 2022 CU27.
+declaration says the driver rounded it - `describeFraction` in `src/hooks/use-inline-editing.ts` and
+`EXACT_DECIMAL_TYPE_NAMES` in `src/lib/db/sql-writing/shared.ts`, measured 2026-09-19 on Oracle 26ai
+Free and SQL Server 2022 CU27.
 The key whose digits round to a WHOLE number is still open, and that is R3.
 
 **What is new is that one sentence in the tree is false.** `docs/providers/mssql.md` §5.3 says
@@ -3909,9 +3910,10 @@ the LIMIT case in `tests/unit/sql/update-target.test.ts`, with the engine each s
 
 #969 closed the fractional half of this: a number read out of a column the engine declares `NUMBER`,
 `decimal`, `numeric` or `money` is refused before the engine is asked, because the declaration says
-the driver rounded it - `describeFraction` and `EXACT_DECIMAL_TYPE_NAMES` in
-`src/hooks/use-inline-editing.ts`. Measured 2026-09-19 on Oracle AI Database 26ai Free 23.26.3.0.0
-and SQL Server 2022 CU27: the `NUMBER(20,4)` pair that used to write to `the-neighbour` is refused
+the driver rounded it - `describeFraction` in `src/hooks/use-inline-editing.ts` and
+`EXACT_DECIMAL_TYPE_NAMES` in `src/lib/db/sql-writing/shared.ts`. Measured 2026-09-19 on Oracle AI
+Database 26ai Free 23.26.3.0.0 and SQL Server 2022 CU27: the `NUMBER(20,4)` pair that used to write
+to `the-neighbour` is refused
 with nothing asked of the engine, while `BINARY_DOUBLE`, a whole `NUMBER(10)` key, a SQLite
 `DECIMAL` (that engine has no exact decimal - it stores a double) and the STRING a `numeric` takes
 over `pg`, mysql2 and DuckDB all still write.

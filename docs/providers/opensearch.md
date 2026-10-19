@@ -1453,6 +1453,7 @@ Backticks work for both a table and a field there, and Elasticsearch 9.1.4 is th
 The backtick doubling is this repo's own convention carried over from MySQL and is not measured: an index or field name containing a backtick would be needed to probe it, and creating one on the probe cluster was judged not worth polluting the fixtures.
 It is the fail-safe direction either way: a doubled backtick can only make the engine refuse a name, never make it read one it should not.
 Both search endpoints do bind `?`, but the provider's seam carries the statement alone, so its `query()` refuses positional parameters outright, as Elasticsearch's section says.
+Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
 
 ---
 

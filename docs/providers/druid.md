@@ -1649,6 +1649,7 @@ A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-qu
 A bind is spelled by `placeholderQuestion`, as `?` at every position.
 Druid quotes a string with single quotes and puts its backslash escapes in the separate `U&'fo\00F6'` form, so a backslash in a plain literal is data.
 Druid binds a `parameters` array against `?`, live-verified when the provider was written ([`index.ts`](../../src/lib/db/providers/sql/druid/index.ts)).
+Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
 
 ---
 

@@ -2295,6 +2295,11 @@ The module also declares a `temporalLiteral` form.
 Oracle reads a quoted string in a date position through the session's `NLS_DATE_FORMAT`, `DD-MON-RR` by default, and refuses the ISO text with `ORA-01861: literal does not match format string` (#1400, on Oracle 23.26.3.0.0; the SQL export measured the same refusal for all four date types).
 So a `YYYY-MM-DD` date goes through `TO_DATE` and a `YYYY-MM-DD HH24:MI:SS` timestamp through `TO_TIMESTAMP`, with a mask that spells the text's own form, as the export writes the same types, and the session's format moves nothing.
 Text that is not in that form is quoted as it is: the mask would refuse it, and a plain literal says what the caller had.
+Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`.
+Its `boundEdit` wraps the `:n` bind of a `DATE`, `TIMESTAMP` or `TIMESTAMP WITH [LOCAL] TIME ZONE` edit still in the provider's text in `TO_DATE`, `TO_TIMESTAMP` or `FROM_TZ(TO_TIMESTAMP(…), 'UTC')`, with the masks the SQL INSERT export uses (#1818).
+`oracledb` binds a string as `DB_TYPE_VARCHAR`, which Oracle reads into those columns through the session's `NLS_DATE_FORMAT`, `NLS_TIMESTAMP_FORMAT` or `NLS_TIMESTAMP_TZ_FORMAT`.
+Measured 2026-10-18 on Oracle AI Database 26ai Free 23.26.3.0.0 (`oracledb` 26.0.0, `TZ=Europe/Istanbul`): a bare `:1` was refused with `ORA-01861: literal does not match format string` on `DATE` and `ORA-01843: An invalid month was specified.` on the three timestamp types, while the wrapped bind stored each value equal on the server, BC dates included.
+Every other edit is bound as `:n` untouched.
 
 ---
 

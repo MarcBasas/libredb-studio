@@ -1745,6 +1745,7 @@ Trino spells its backslash escapes in the separate `U&'fo\\+0000F6'` form, exact
 The name quote is measured on 476: `SELECT "nationkey" FROM tpch.sf1.nation LIMIT 1` returns the column, `SELECT 1 AS "a""b"` names it `a"b`, and a backtick is refused in the engine's own words, "backquoted identifiers are not supported; use double quotes to quote identifiers".
 Trino does bind, through `PREPARE`/`EXECUTE` plus an `X-Trino-Prepared-Statement` header, but the provider's transport seam carries the statement alone, so `TrinoProvider.query()` refuses a non-empty params array outright.
 Emitting `?` would build a statement whose placeholder the provider then declines to fill.
+Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
 
 ---
 

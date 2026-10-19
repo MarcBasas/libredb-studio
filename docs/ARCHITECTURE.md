@@ -216,6 +216,7 @@ How a generated statement spells a literal, a name and a bind follows the same r
 `src/lib/db/sql-writing/` holds the `SqlWritingSpec` contract (`types.ts`), the building blocks more than one engine spells alike (`shared.ts`), and `SQL_WRITING` (`index.ts`), a `Record` over `DatabaseType` the compiler holds complete.
 Each row is declared in a module beside its provider, which imports only the contract and the building blocks, so one engine's rules cannot reach another's.
 `quoteLiteral`, `unquoteLiteral`, `temporalLiteral` and `positionalPlaceholder` (`src/lib/sql/values.ts`) and `quoteIdentifier` (`src/lib/sql/identifier.ts`) read the row through `sqlWritingFor`, which gives a missing connection and a string outside the union their own named specs.
+`useInlineEditing` (`src/hooks/use-inline-editing.ts`) reads the row's `inlineEdit` the same way: the type names that make a key column an instant, a 64-bit float or an exact decimal, and the `boundEdit` that wraps an edit's bind where the engine needs one.
 The golden files under `tests/unit/db/sql-writing/golden/` pin every engine's output.
 
 ### 4.2. Authentication Flow

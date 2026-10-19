@@ -232,6 +232,7 @@ A literal is written by `literalStandard` and read back by `unquoteStandard`: th
 A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-quoted name with an inner double quote doubled.
 There is no placeholder (`placeholder: null`), so a generator quotes the value with `quoteLiteral` instead of emitting a bind.
 No generator calls `quoteLiteral` for Sparkplug: a read request writes its names into JSON.
+Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
 
 ## 10. Error handling
 

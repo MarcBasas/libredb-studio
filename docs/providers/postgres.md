@@ -2348,6 +2348,7 @@ A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-qu
 A bind is spelled by `placeholderDollar`, as `$1`, `$2`.
 `standard_conforming_strings` has been on by default since PostgreSQL 9.1, so a backslash in a plain literal is data.
 `pg` takes `$n`.
+Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
 
 ---
 

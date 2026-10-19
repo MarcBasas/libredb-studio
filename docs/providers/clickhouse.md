@@ -1553,6 +1553,7 @@ A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-qu
 There is no placeholder (`placeholder: null`), so a generator quotes the value with `quoteLiteral` instead of emitting a bind.
 This matches what the ClickHouse provider already does when it builds its own literals ([`index.ts`](../../src/lib/db/providers/sql/clickhouse/index.ts)).
 ClickHouse binds named parameters only, and its provider refuses positional ones outright.
+Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
 
 ---
 

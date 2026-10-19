@@ -530,6 +530,7 @@ There is no placeholder (`placeholder: null`), so a generator quotes the value w
 Spark's lexer pairs a backslash with the next character inside `'...'` under every setting, so the quote is written `\'` as Spark's own `Literal.sql` writes it; a doubled quote is an escape only from 4.1, so it is not used.
 Spark SQL (4.1 and 4.2) quotes a name in backticks and doubles a backtick inside it, the form its own `quoteIfNeeded` writes; a double-quoted text is a string literal in Spark, so the standard form would turn a name into a string.
 Names are case-insensitive there, so quoting never changes which object a name means.
+Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
 
 ## 9. The confirmation gate
 

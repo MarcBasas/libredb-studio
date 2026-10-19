@@ -1319,6 +1319,15 @@ A literal is written by `literalStandard` and read back by `unquoteStandard`: th
 A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-quoted name with an inner double quote doubled.
 A bind is spelled by `placeholderQuestion`, as `?` at every position.
 The SQLite drivers take `?`.
+Inline row editing reads a key column's kind through the module's own `inlineEdit`, because SQLite's type words name an affinity and not a storage width.
+`instantTypeNames` is empty: SQLite has no date type, so a `DATE`, `DATETIME` or `TIMESTAMP` column holds the text or integer somebody put in it, and that value is its own identity.
+Measured 2026-09-19 on bun:sqlite (Bun 1.4.0) and libSQL server v0.24.33, `zz_<decl>(k <decl> PRIMARY KEY, note TEXT)` for each of the three declarations against `'2024-01-15'`, `'2026-01-01 10:00:00.123'`, `'2026-01-01T07:00:00.123Z'` and the epoch 1705276800, 24 combinations: every value came back unchanged, `WHERE k IN (?)` matched one group holding one row, and the `UPDATE` changed exactly one row.
+`float64TypeNames` is `"all"`: SQLite has one float width, so `REAL`, `FLOAT`, `DOUBLE` and `DOUBLE PRECISION` are four spellings of one 8-byte double.
+Measured 2026-09-18 on the same two engines, `zz_real(r REAL, f FLOAT, d DOUBLE, dp DOUBLE PRECISION)` answered `real` to `typeof()` for all four, read 0.30000000000000004 back identical, and `WHERE r = 1.5`, `WHERE f = 0.1`, `WHERE d = 0.30000000000000004` and `WHERE dp = 0.1` each matched exactly one row.
+Every declaration and not only `real` and `float`: measured 2026-09-19 on bun:sqlite, a `DATE` column holding the julian day 2460324.75, and `REAL`, `INTEGER`, `TEXT`, `BLOB`, undeclared and `NUMERIC` columns, each matched one row, its own, on the value it handed back.
+`exactDecimalTypeNames` is empty: SQLite has no decimal type, so `DECIMAL(20,4)` takes NUMERIC affinity and stores an integer or an 8-byte double.
+Measured 2026-09-19 on bun:sqlite (Bun 1.4.0), `zz(k DECIMAL(20,4), n NUMERIC(20,4))`: `typeof()` answered `real` for both, 1234567890123456.7891 came back as 1234567890123456.8, which is what the file holds, and `WHERE k = 1234567890123456.8` matched one row, its own.
+Every edit is bound as typed.
 
 ---
 

@@ -606,6 +606,7 @@ A literal is written by `literalDoubleAndBackslash` and read back by `unquoteDou
 A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-quoted name with an inner double quote doubled.
 There is no placeholder (`placeholder: null`), so a generator quotes the value with `quoteLiteral` instead of emitting a bind.
 Snowflake reads both escapes in a single-quoted string constant: a doubled quote is one quote, and a backslash escapes the next character, so it is doubled first, as Databend's is.
+Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
 
 ## 9. The confirmation gate
 

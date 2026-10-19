@@ -1493,6 +1493,7 @@ The name quote is measured as well: `FROM "probe_orders"` and `SELECT "note.keyw
 Elasticsearch 9.1.4 is the exact opposite of OpenSearch, answering a backtick with "backquoted identifiers not supported; please use double quotes instead", so the two search ids cannot share a form.
 Both search endpoints do bind `?` (measured: Elasticsearch takes `{"query":"… WHERE id = ?","params":[1]}`, OpenSearch takes a `parameters` array of `{type,value}` objects, both HTTP 200), but they spell the request differently and the provider's seam carries the statement alone, so its `query()` refuses positional parameters outright.
 Emitting `?` would produce a statement whose placeholder the provider then declines to fill.
+Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
 
 ---
 

@@ -1275,6 +1275,7 @@ A backslash is data: `… WHERE name = 'a\\b'` runs, and `… WHERE name = 'a\\'
 The name quote is measured on 5.0.9 as well: `SELECT "id" FROM probe.customers` returns the column, a backtick is ``no viable alternative at character '`'``, and a double-quoted string is a syntax error, so `"` is the name quote and nothing else.
 CQL does bind `?` positionally, and `cassandra-driver` binds an array against it, but only through a prepared statement, which is exactly what the transport does not send (`prepare: false`, so a one-shot statement costs one round trip and no server-side cache entry).
 `CassandraProvider.query()` therefore refuses a non-empty params array outright, and emitting `?` would build a statement whose placeholder the provider then declines to fill.
+Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
 
 ---
 

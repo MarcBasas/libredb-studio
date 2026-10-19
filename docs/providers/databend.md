@@ -824,6 +824,7 @@ The live round trip of the escaping corpus, `INSERT ... VALUES` included, passed
 Databend reads a backtick name in all five of its `sql_dialect`s, the default PostgreSQL one included, and a doubled backtick is the only escape inside it: the lexer rule has no backslash form, so `x\` is the name `x\`.
 Measured on the pinned image (probe L4): names holding a backtick, a backslash, a quote, `;`, `--`, a newline or a NUL round-trip byte-equal through CREATE TABLE, INSERT and SELECT under both dialects.
 A bare name would be folded to lower case there, which is why the provider quotes every name rather than only the ones that need it.
+Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
 
 ## 10. Error handling
 

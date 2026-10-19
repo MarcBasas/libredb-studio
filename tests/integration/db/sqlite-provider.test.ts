@@ -4760,8 +4760,9 @@ describe("SQL export of a SQLite result (#273)", () => {
  *   TEXT holding an ISO-shaped string      | refused | 1 UPDATE accepted
  *
  * The REAL row is the one case that does NOT close, and the reason is entirely inside
- * the hook: its `FLOAT64_TYPE_NAMES` deliberately omits `real`, because PostgreSQL's
- * and Trino's `real` is 32 bits wide even though SQLite's is 64. Closing it means
+ * the hook: the `FLOAT64_TYPE_NAMES` it reads (`src/lib/db/sql-writing/shared.ts`)
+ * deliberately omits `real`, because PostgreSQL's and Trino's `real` is 32 bits wide even
+ * though SQLite's is 64. Closing it means
  * teaching that set which engine it is reading, in a file this change does not own.
  */
 describe("what the row editor reads off a SQLite result (#273)", () => {

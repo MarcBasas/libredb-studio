@@ -1301,6 +1301,7 @@ SQL++ spells its literals the way JSON does: `char ::= unicode-character | '\' (
 Doubling is not in that grammar, so a doubled quote is not one literal there.
 The name gets the SQL standard form, which this engine's generators fall back to.
 SQL++ takes its values in `args`, which the statement reads as `$1`, `$2`.
+Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
 
 ---
 

@@ -468,7 +468,8 @@ Not in the list: a placeholder helper. `SQLBaseProvider` no longer has one (#304
 A new engine writes its SQL writing module at the placement rule: `<family>/<id>-sql-writing.ts` beside a flat provider, `<family>/<id>/sql-writing.ts` inside a provider directory, and `<id>-sql-writing.ts` per id in a directory that serves two ids.
 The module exports `<ID>_SQL_WRITING: SqlWritingSpec` ([`src/lib/db/sql-writing/types.ts`](../src/lib/db/sql-writing/types.ts)), built from the named building blocks of [`src/lib/db/sql-writing/shared.ts`](../src/lib/db/sql-writing/shared.ts), and imports nothing else.
 Add its row to `SQL_WRITING`, which the compiler holds complete, then run `UPDATE_GOLDEN=1 bun tests/run-tests.ts tests/unit/db/sql-writing/golden.test.ts` to write the engine's golden file, read it, and run the test again without the variable.
-The provider doc gets a `SQL writing` subsection naming the module's literal, identifier and placeholder building blocks, which `tests/unit/db/sql-writing/docs.test.ts` holds to the module.
+The module also states `inlineEdit`: the three key-column type name sets, `instantTypeNames`, `float64TypeNames` and `exactDecimalTypeNames`, each the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` or `EXACT_DECIMAL_TYPE_NAMES` by name, or the module's own where the engine's type words mean something else (SQLite's, for one), and `boundEdit` only where an edit needs a wrapper around its bind (SQL Server, Oracle).
+The provider doc gets a `SQL writing` subsection naming the module's literal, identifier and placeholder building blocks and its `inlineEdit` sets and `boundEdit`, which `tests/unit/db/sql-writing/docs.test.ts` holds to the module.
 
 ## Step 3: Register in the Factory
 

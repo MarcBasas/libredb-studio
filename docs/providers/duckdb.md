@@ -1357,6 +1357,7 @@ The name quote is measured on v1.5.5 too: `"quoted identifier"` works, and `[…
 DuckDB binds both forms, measured on v1.5.5: `runAndReadAll("SELECT ?::INTEGER AS a, ?::VARCHAR AS b", [7, "x"])` and `runAndReadAll("SELECT $1::INTEGER AS a", [9])` each answer, so `?` is a choice rather than a reading.
 `$` is overloaded in this dialect: `$tag$…$tag$` is a dollar-quoted string literal (measured), so a `$1` written into a generated statement sits one character away from a form the readers have to tell apart, while `?` has no second meaning anywhere in DuckDB's grammar.
 `?` also matches the positional order the driver binds by, which is the array's, not the digit's.
+Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
 
 
 

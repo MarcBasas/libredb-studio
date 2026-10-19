@@ -187,6 +187,7 @@ A name is quoted by `identifierBacktickBackslash`: a backtick name escaped insid
 There is no placeholder (`placeholder: null`), so a generator quotes the value with `quoteLiteral` instead of emitting a bind.
 GoogleSQL escapes the quote as `\'` and does not accept doubling.
 GoogleSQL quotes a name in backticks and escapes inside it with a backslash; a doubled backtick is not an escape there, it ends the name.
+Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
 
 ## 6. Dry run and cost estimate
 
