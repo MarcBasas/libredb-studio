@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import {
+  EXACT_DECIMAL_TYPE_NAMES,
+  FLOAT64_TYPE_NAMES,
+  firstWord,
+  INSTANT_TYPE_NAMES,
   identifierBacktickBackslash,
   identifierBacktickDoubled,
   identifierBracket,
@@ -17,6 +21,7 @@ import {
   unquoteDoublingOnly,
   unquoteStandard,
   unquoteUnicode,
+  unwrappedType,
 } from "@/lib/db/sql-writing/shared";
 import { quoteIdentifier } from "@/lib/sql/identifier";
 import { positionalPlaceholder, quoteLiteral, unquoteLiteral } from "@/lib/sql/values";
@@ -84,5 +89,39 @@ describe("SQL writing shared building blocks", () => {
   test("unquoteDoublingOnly reads a doubled quote and not a backslash escape", () => {
     expect(unquoteDoublingOnly("'a''b'")).toBe("a'b");
     expect(unquoteDoublingOnly("'a\\'b'")).toBeUndefined();
+  });
+
+  test("the inline edit type-name sets hold today's words", () => {
+    expect([...INSTANT_TYPE_NAMES].sort()).toEqual([
+      "date",
+      "date32",
+      "datetime",
+      "datetime2",
+      "datetime64",
+      "datetimeoffset",
+      "smalldatetime",
+      "timestamp",
+      "timestamptz",
+    ]);
+    expect([...FLOAT64_TYPE_NAMES].sort()).toEqual(["binary_double", "double", "float64", "float8"]);
+    expect([...EXACT_DECIMAL_TYPE_NAMES].sort()).toEqual([
+      "dec",
+      "decimal",
+      "money",
+      "number",
+      "numeric",
+      "smallmoney",
+    ]);
+  });
+
+  test("unwrappedType lowers the type and takes its ClickHouse wrappers off", () => {
+    expect(unwrappedType(" Nullable(DateTime64(6, 'UTC')) ")).toBe("datetime64(6, 'utc')");
+    expect(unwrappedType("LowCardinality(Nullable(String))")).toBe("string");
+  });
+
+  test("firstWord reads the first word with its parameters off", () => {
+    expect(firstWord("datetime64(6, 'utc')")).toBe("datetime64");
+    expect(firstWord("timestamp(3) with time zone")).toBe("timestamp");
+    expect(firstWord("character varying")).toBe("character");
   });
 });
