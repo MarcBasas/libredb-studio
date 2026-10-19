@@ -46,8 +46,8 @@ export const LIBREDB_SQL_WRITING: SqlWritingSpec = {
       exactNumericType: EXACT_NUMERIC_TYPE,
       numericWrapper: CLICKHOUSE_WRAPPER,
     },
-    // `queryLanguage: "json"`: no statement is ever built for these seven to read, so
-    // the standard form is the only thing an export can claim (as in `values.ts`).
+    // This engine declares `queryLanguage: "json"`, so no statement is ever built for it to
+    // read, and the standard form is the only thing an export can claim (as for its literal).
     binaryLiteral: binaryStandardHex,
     nonFinite: NULL_NON_FINITE,
     insertForm: "values",
