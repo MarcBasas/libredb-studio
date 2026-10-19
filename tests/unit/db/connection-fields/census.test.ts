@@ -102,6 +102,16 @@ describe("the connection-field records (src/lib/db/connection-fields.ts)", () =>
     expect(declared.sort()).toEqual(["elasticsearch", "opcua"]);
   });
 
+  test("a seed-only field is in no other engine's connection fields, so no engine's seed is refused for its own box", () => {
+    for (const [owner, row] of Object.entries(SEED_ONLY_FIELDS)) {
+      if (row === null) continue;
+      for (const [type, fields] of Object.entries(CONNECTION_FIELDS)) {
+        if (type === owner) continue;
+        expect({ type, shared: fields.filter((field) => row.fields.includes(field)) }).toEqual({ type, shared: [] });
+      }
+    }
+  });
+
   test("both records are frozen", () => {
     expect(Object.isFrozen(CONNECTION_FIELDS)).toBe(true);
     expect(Object.isFrozen(SEED_ONLY_FIELDS)).toBe(true);
