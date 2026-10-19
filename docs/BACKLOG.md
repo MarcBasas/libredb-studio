@@ -28,7 +28,7 @@ None of it is a GitHub issue.
 **Sections**
 
 - [SQL statement reading](#sql-statement-reading) — S2-S9 · 6
-- [Drivers and connections](#drivers-and-connections) — D1-D378, U17 · 275
+- [Drivers and connections](#drivers-and-connections) — D1-D379, U17 · 275
 - [Value interpolation](#value-interpolation) — V1
 - [Row editing](#row-editing) — R1–R3 · 3
 - [Studio UI and query execution](#studio-ui-and-query-execution) — X2-X25, U2-U148 · 134
@@ -2100,7 +2100,7 @@ Amended 2026-10-04: the same default bounds each test of `tests/unit/db/etcd/sea
 That file's `beforeAll` already parses the repository once under a 60-second budget, so what ran out was the rule's own walk over the parsed files.
 The file passed alone (59 tests in 6.3 s there, and 60 tests in 3.9 s on `main` at `d994ad72f`), in every full run after that one, and in three runs beside 40 busy loops on a 20-core machine (7 to 10 s each, on `main` at `6dcc67fd6`), so it needs more load than that to fail again.
 This entry is done only when that test also passes repeated runs at the CI job's concurrency, through a timeout of its own or a cheaper walk.
-Amended 2026-10-20: it failed that way again on the `Cross-platform Tests (macos-latest)` job of #1818 on 2026-10-19 (attempt 1 of run 39288327751, 6028 ms), beside D376's failure; attempt 2 passed.
+Amended 2026-10-20: it failed that way again on the `Cross-platform Tests (macos-latest)` job of #1818 on 2026-10-19 (attempt 1 of run 39288327751, 6028 ms), beside D379's failure; attempt 2 passed.
 
 **Done when:** the hook carries a timeout sized for a busy runner (bun's `beforeAll` takes one as its second argument), or makes RSA keys only where a test needs RSA, and the file passes repeated runs at the CI job's concurrency.
 
@@ -3838,18 +3838,6 @@ Found 2026-10-17 while verifying an external review of #1785.
 
 **Done when:** concurrent requests for a stale entry share one retirement and one replacement, for example by taking the entry out of the cache before awaiting its disconnect, no provider is left connected outside the cache, and a test with a disconnect held open and two requests shows one replacement provider and the old one closed.
 
-### D376. The connect-timeout test's waited-seconds case assumes its own 400 ms sleep ends on time
-
-`the seconds are the wait this request made, never a limit it was not given` in `tests/unit/db/http/node-transport-connect-timeout.test.ts` makes a 700 ms deadline, sleeps 400 ms with `setTimeout`, then sends a request to a host whose connect never completes, and expects the failure to name a wait of 0.2 to 0.4 seconds.
-The transport counts that wait from the request's own start (`queuedAt` in `createNodeTransport`, `src/lib/db/http/node-transport.ts`), and `waitedSeconds` in `src/lib/db/errors.ts` names 0.2 only from 150 ms up, so the test holds only while the sleep ends no more than 150 ms late.
-On the `Cross-platform Tests (macos-latest)` job of #1818, attempt 1 of run 39288327751 on 2026-10-19, it failed at line 108 with `expect(received).toBeGreaterThanOrEqual(expected)`, "Expected: >= 0.2", "Received: 0.1", after 704 ms, so the request started with under 150 ms of the deadline left; attempt 2 passed.
-The same attempt also ran D153's etcd `descriptor readers` test out of the default timeout (6028 ms), so the runner was busy, and nothing points at the transport.
-The file passed alone on 2026-10-20 on `main` at `6e611bf73` (12 tests, 3.3 s).
-
-Found on #1818, whose change does not touch the HTTP transport.
-
-**Done when:** the test bounds the named wait by the time it measured itself between sending the request and the deadline, not by the sleep's nominal length, and the file passes repeated runs at the CI job's concurrency.
-
 ### D377. Four test files do seconds of work inside bun's default five-second test timeout
 
 Each test below does its expensive work in the test body and passes no timeout of its own, so bun's default of 5000 ms bounds it.
@@ -3889,6 +3877,18 @@ D329's upper-fold member belongs in whichever home this settles.
 Found on #1850, which moved the spec's quoting beside each provider and left the capability where it was; which of the two the query generators should read is a behaviour question, so that change did not merge them.
 
 **Done when:** one of the two is the only home of the identifier quoting fact and the other reads it, each of the four disagreements above is settled by a measurement on its engine, and a test holds the result for every type-id.
+
+### D379. The connect-timeout test's waited-seconds case assumes its own 400 ms sleep ends on time
+
+`the seconds are the wait this request made, never a limit it was not given` in `tests/unit/db/http/node-transport-connect-timeout.test.ts` makes a 700 ms deadline, sleeps 400 ms with `setTimeout`, then sends a request to a host whose connect never completes, and expects the failure to name a wait of 0.2 to 0.4 seconds.
+The transport counts that wait from the request's own start (`queuedAt` in `createNodeTransport`, `src/lib/db/http/node-transport.ts`), and `waitedSeconds` in `src/lib/db/errors.ts` names 0.2 only from 150 ms up, so the test holds only while the sleep ends no more than 150 ms late.
+On the `Cross-platform Tests (macos-latest)` job of #1818, attempt 1 of run 39288327751 on 2026-10-19, it failed at line 108 with `expect(received).toBeGreaterThanOrEqual(expected)`, "Expected: >= 0.2", "Received: 0.1", after 704 ms, so the request started with under 150 ms of the deadline left; attempt 2 passed.
+The same attempt also ran D153's etcd `descriptor readers` test out of the default timeout (6028 ms), so the runner was busy, and nothing points at the transport.
+The file passed alone on 2026-10-20 on `main` at `6e611bf73` (12 tests, 3.3 s).
+
+Found on #1818, whose change does not touch the HTTP transport.
+
+**Done when:** the test bounds the named wait by the time it measured itself between sending the request and the deadline, not by the sleep's nominal length, and the file passes repeated runs at the CI job's concurrency.
 
 ## Value interpolation
 
