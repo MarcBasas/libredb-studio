@@ -4,7 +4,7 @@
  * reader and completion quoting). Every field is required, so an engine states
  * each fact rather than inheriting one from a base object.
  */
-export type { ConfirmCodeForm, ConfirmFormWhen, ScriptGrammar, SqlGrammar } from "@/lib/sql/grammar";
+export type { SqlGrammar } from "@/lib/sql/grammar";
 import type { SqlGrammar } from "@/lib/sql/grammar";
 
 /** How a statement is redacted before it reaches the query event log. */
