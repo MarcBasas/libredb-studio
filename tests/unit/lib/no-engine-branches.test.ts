@@ -22,7 +22,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { EXTERNAL_DATABASE_TYPES } from "@/lib/db/compatibility";
 import { type BranchFinding, findEngineBranches } from "./no-engine-branches/scan";
@@ -66,6 +66,8 @@ const INBOUND = "an inbound mapping from an outside name to a type id";
 const AGENT_LEG = "the agent-leg pattern, guarded by its own tests";
 const STORAGE_BACKEND = "the storage backend `STORAGE_PROVIDER` names, not an engine";
 const AWS_CLI_SERVICE = "the AWS CLI service name `s3` in a typed command, not the engine";
+const MONACO_LANGUAGE =
+  "a Monaco language id the editor registers, which the dialect editor table picks, not the engine";
 
 /** The registries of spec 5.6, which stay. */
 export const REGISTRIES: readonly Listed[] = [
@@ -166,6 +168,35 @@ export const FALSE_POSITIVES: readonly Listed[] = [
     declaration: "DEPLOY_GROUP_ORDER",
     count: 1,
     reason: "the `kubernetes` channel group of the channel showcase",
+  },
+  {
+    path: "src/lib/distribution/deploy-groups.ts",
+    declaration: "DEPLOY_GROUP_LABELS",
+    count: 1,
+    reason: "keyed by the channel showcase groups, one of which is `kubernetes`",
+  },
+  { path: "src/components/QueryEditor.tsx", declaration: "QueryEditor", count: 2, reason: MONACO_LANGUAGE },
+  { path: "src/lib/editor/etcd-language.ts", declaration: "registerEtcdLanguage", count: 1, reason: MONACO_LANGUAGE },
+  {
+    path: "src/lib/editor/firestore-language.ts",
+    declaration: "registerFirestoreLanguage",
+    count: 1,
+    reason: MONACO_LANGUAGE,
+  },
+  {
+    path: "src/lib/editor/libredb-language.ts",
+    declaration: "registerLibreDBLanguage",
+    count: 1,
+    reason: MONACO_LANGUAGE,
+  },
+  { path: "src/lib/editor/oxia-language.ts", declaration: "registerOxiaLanguage", count: 1, reason: MONACO_LANGUAGE },
+  { path: "src/lib/editor/redis-language.ts", declaration: "registerRedisLanguage", count: 1, reason: MONACO_LANGUAGE },
+  { path: "src/lib/editor/s3-language.ts", declaration: "registerS3Language", count: 1, reason: MONACO_LANGUAGE },
+  {
+    path: "src/lib/seed/vault-client.ts",
+    declaration: "authPath",
+    count: 1,
+    reason: "Vault's default Kubernetes auth mount path `kubernetes`, not the engine",
   },
   {
     path: "src/lib/seed/discovery-fingerprint.ts",
@@ -401,11 +432,17 @@ function listedFiles(...paths: string[]): string[] {
   return [...new Set(listed.split("\0"))].filter((path) => path !== "" && existsSync(join(ROOT, path))).sort();
 }
 
+/** A module a scanned file imports, read so a type alias or constant from it is followed (spec 6.4). */
+const readModule = (path: string): string | undefined => {
+  const absolute = join(ROOT, path);
+  return existsSync(absolute) && statSync(absolute).isFile() ? readFileSync(absolute, "utf8") : undefined;
+};
+
 /** Every branch on a type id in the source files outside the provider layer. */
 function branches(): BranchFinding[] {
   return listedFiles("src")
     .filter((path) => SOURCE_FILE.test(path) && !PROVIDER_LAYER.some((layer) => path.startsWith(layer)))
-    .flatMap((path) => findEngineBranches(path, readFileSync(join(ROOT, path), "utf8"), TYPE_IDS));
+    .flatMap((path) => findEngineBranches(path, readFileSync(join(ROOT, path), "utf8"), TYPE_IDS, readModule));
 }
 
 const LISTS: Readonly<Record<string, readonly Listed[]>> = { REGISTRIES, FALSE_POSITIVES, DEBT };
