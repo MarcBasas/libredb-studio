@@ -436,9 +436,13 @@ export function resolveSqlGrammar(type?: DatabaseType): SqlGrammar {
  * Unknown and absent both answer true, which keeps every existing caller and any
  * host application passing an unrecognised string on today's reading rather than
  * silently switching the SQL checks off.
+ *
+ * A value that is not a string answers true as well, as it did when the non-SQL types were a set compared by
+ * identity: a host calling from plain JavaScript with `new String("mongodb")` was read as SQL, and `sqlGrammarFor`'s
+ * property-key lookup would otherwise convert it to the mongodb row.
  */
 export function readsSqlText(type?: DatabaseType): boolean {
-  return sqlGrammarFor(type).readsSqlText;
+  return typeof type !== "string" || sqlGrammarFor(type).readsSqlText;
 }
 
 /**

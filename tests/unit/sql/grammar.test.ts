@@ -809,4 +809,15 @@ describe("readsSqlText", () => {
     expect(readsSqlText()).toBe(true);
     expect(readsSqlText("not-a-database" as DatabaseType)).toBe(true);
   });
+
+  // A host calling from plain JavaScript can pass a value that is not a string but converts to a non-SQL type id.
+  // Such a value was never a member of the non-SQL set, so it reads as SQL, while `resolveSqlGrammar` keeps the row
+  // its property key names.
+  test.each<[string, unknown]>([
+    ["a String object", new String("mongodb")],
+    ["an array", ["mongodb"]],
+    ["an object with toString", { toString: () => "redis" }],
+  ])("%s naming a non-SQL type is read as SQL", (_label, value) => {
+    expect(readsSqlText(value as DatabaseType)).toBe(true);
+  });
 });
