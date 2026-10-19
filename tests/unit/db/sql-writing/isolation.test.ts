@@ -65,7 +65,7 @@ mock.module(${JSON.stringify(engine.absPath)}, () => ({
         bareTypeFamily: {},
         floatType: /^Float64$/,
         exactNumericType: /^SENTINEL_EXACT$/,
-        numericWrapper: /^SENTINEL_WRAPPER\((.*)\)$/,
+        numericWrapper: /^SENTINEL_WRAPPER<(.*)>$/,
       },
       binaryLiteral: SENTINEL,
       nonFinite: { NaN: "SENTINEL", Infinity: "SENTINEL", "-Infinity": "SENTINEL" },
