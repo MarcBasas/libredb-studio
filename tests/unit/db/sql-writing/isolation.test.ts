@@ -19,10 +19,16 @@ import { GOLDEN_KEYS, goldenFileName } from "./fixtures";
  * Where the committed golden file shows an edit reaching its UPDATE, every edit of a value
  * that is not NULL must carry `BOUND_EDIT`, so the hook read the mocked `inlineEdit`.
  *
- * The export field keeps the engine's own type vocabulary, so declared names are still
- * read, and answers `SENTINEL` for every spelling it writes. The replaced engine's
+ * The export field answers `SENTINEL` for every spelling it writes. The replaced engine's
  * `ddl(inferred)` line must show a quoted name followed by a sentinel type, so the export
  * read the mocked `export` and not a table of its own.
+ *
+ * Its type vocabulary is a sentinel too, one that disagrees with the shared vocabulary on
+ * every declared type the fixtures use: no bare name has a family, no wrapper unwraps, no
+ * exact numeric type matches, and only a bare `Float64` is a float. So `varchar2` stays
+ * declared as it is, and the CSV formula guard quotes every `-Infinity` cell, where the
+ * shared vocabulary would re-spell the one and leave five of the others bare. Either line
+ * moving back to the golden means the export read a vocabulary other than the engine's.
  */
 const GOLDEN_DIR = join(import.meta.dir, "golden");
 const FIXTURES = join(import.meta.dir, "fixtures.ts");
@@ -55,7 +61,12 @@ mock.module(${JSON.stringify(engine.absPath)}, () => ({
       ddlTypes: { text: "SENTINEL", integer: "SENTINEL", numeric: "SENTINEL", boolean: "SENTINEL", timestamp: "SENTINEL", binary: "SENTINEL" },
       standsAlone: [],
       bareSpelling: {},
-      typeVocabulary: actual.${engine.exportName}.export.typeVocabulary,
+      typeVocabulary: {
+        bareTypeFamily: {},
+        floatType: /^Float64$/,
+        exactNumericType: /^SENTINEL_EXACT$/,
+        numericWrapper: /^SENTINEL_WRAPPER\((.*)\)$/,
+      },
       binaryLiteral: SENTINEL,
       nonFinite: { NaN: "SENTINEL", Infinity: "SENTINEL", "-Infinity": "SENTINEL" },
       insertForm: "values",
@@ -119,6 +130,12 @@ describe("SQL writing isolation", () => {
       expect(rendered[engine.id]).toContain('=> "SENTINEL"');
       const ddl = (rendered[engine.id] ?? "").split("\n").find((line) => line.startsWith("ddl(inferred) => "));
       expect(ddl).toContain("SENTINEL SENTINEL");
+      const lineOf = (prefix: string): string | undefined =>
+        (rendered[engine.id] ?? "").split("\n").find((line) => line.startsWith(prefix));
+      expect(lineOf('ddl("varchar2") => ')).toBe('ddl("varchar2") => "CREATE TABLE t (\\n  SENTINEL varchar2\\n);"');
+      expect(lineOf("csv(numeric) => ")).toBe(
+        `csv(numeric) => "nf,lc,df,nm,bd,tx,none\\n${Array(7).fill(`\\"'-Infinity\\"`).join(",")}\\n${Array(7).fill(`\\"'=1+1\\"`).join(",")}"`,
+      );
       if (editsReachUpdate(engine.id)) {
         const edits = valueEdits(rendered[engine.id] ?? "");
         expect(edits.length).toBeGreaterThan(0);
