@@ -1,16 +1,14 @@
 import {
-  BARE_TYPE_FAMILY,
-  CLICKHOUSE_WRAPPER,
   EXACT_DECIMAL_TYPE_NAMES,
-  EXACT_NUMERIC_TYPE,
   FLOAT64_TYPE_NAMES,
-  FLOAT_TYPE,
   identifierDoubleQuoted,
   INSTANT_TYPE_NAMES,
   literalStandard,
   NO_BARE_SPELLING,
   placeholderQuestion,
+  QUOTED_WORD_NON_FINITE,
   STANDARD_DDL_TYPES,
+  STANDARD_TYPE_VOCABULARY,
   unquoteStandard,
 } from "@/lib/db/sql-writing/shared";
 import { binaryUnhex } from "@/lib/db/sql-writing/export-shared";
@@ -71,12 +69,7 @@ export const DUCKDB_SQL_WRITING: SqlWritingSpec = {
       "datetime",
     ],
     bareSpelling: NO_BARE_SPELLING,
-    typeVocabulary: {
-      bareTypeFamily: BARE_TYPE_FAMILY,
-      floatType: FLOAT_TYPE,
-      exactNumericType: EXACT_NUMERIC_TYPE,
-      numericWrapper: CLICKHOUSE_WRAPPER,
-    },
+    typeVocabulary: STANDARD_TYPE_VOCABULARY,
     // `unhex`, and NOT `standard-hex` even though DuckDB is Postgres-shaped everywhere
     // else in this file. Measured on v1.5.5: `X'0102'` is not a binary literal at all -
     // `SELECT typeof(X'0102')` answers `VARCHAR` and `SELECT X'0102'` answers the five
@@ -86,10 +79,7 @@ export const DUCKDB_SQL_WRITING: SqlWritingSpec = {
     // `0102DEADBEEF` with `octet_length(payload)` 6, and `unhex('')` inserts the
     // zero-length blob (`octet_length` 0). `0x0102` is a parser error here.
     binaryLiteral: binaryUnhex,
-    // Replayed into the engine (2026-10-04): PostgreSQL 18.6 and DuckDB read the quoted words into `real`,
-    // `double precision`, `DOUBLE` and `FLOAT` (PostgreSQL also into `timestamptz`, whose
-    // infinities are quoted text anyway).
-    nonFinite: { NaN: "'NaN'", Infinity: "'Infinity'", "-Infinity": "'-Infinity'" },
+    nonFinite: QUOTED_WORD_NON_FINITE,
     insertForm: "values",
     typedLiteral: duckdbLiteral,
   },

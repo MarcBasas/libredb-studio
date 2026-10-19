@@ -1,15 +1,12 @@
 import {
-  BARE_TYPE_FAMILY,
-  CLICKHOUSE_WRAPPER,
   EXACT_DECIMAL_TYPE_NAMES,
-  EXACT_NUMERIC_TYPE,
   FLOAT64_TYPE_NAMES,
-  FLOAT_TYPE,
   identifierDoubleQuoted,
   INSTANT_TYPE_NAMES,
   literalStandard,
   NO_BARE_SPELLING,
   NULL_NON_FINITE,
+  STANDARD_TYPE_VOCABULARY,
   unquoteStandard,
 } from "@/lib/db/sql-writing/shared";
 import { binaryStandardHex } from "@/lib/db/sql-writing/export-shared";
@@ -55,12 +52,7 @@ export const TRINO_SQL_WRITING: SqlWritingSpec = {
     },
     standsAlone: ["varchar", "varbinary", "timestamp", "timestamp without time zone", "timestamp with time zone"],
     bareSpelling: NO_BARE_SPELLING,
-    typeVocabulary: {
-      bareTypeFamily: BARE_TYPE_FAMILY,
-      floatType: FLOAT_TYPE,
-      exactNumericType: EXACT_NUMERIC_TYPE,
-      numericWrapper: CLICKHOUSE_WRAPPER,
-    },
+    typeVocabulary: STANDARD_TYPE_VOCABULARY,
     // Trino measured on 476: `SELECT typeof(X'0102')` answers `varbinary`,
     // `to_hex(X'0102deadbeef')` answers `0102DEADBEEF`, `length(X'')` answers 0, and the
     // whole generated pair replays into the memory connector.

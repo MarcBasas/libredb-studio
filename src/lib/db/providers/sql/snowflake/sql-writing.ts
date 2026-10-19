@@ -1,15 +1,12 @@
 import {
-  BARE_TYPE_FAMILY,
-  CLICKHOUSE_WRAPPER,
   EXACT_DECIMAL_TYPE_NAMES,
-  EXACT_NUMERIC_TYPE,
   FLOAT64_TYPE_NAMES,
-  FLOAT_TYPE,
   identifierDoubleQuoted,
   INSTANT_TYPE_NAMES,
   literalDoubleAndBackslash,
   NO_BARE_SPELLING,
   NOTHING_STANDS_ALONE,
+  STANDARD_TYPE_VOCABULARY,
   unquoteDoubleAndBackslash,
 } from "@/lib/db/sql-writing/shared";
 import { binaryStandardHex } from "@/lib/db/sql-writing/export-shared";
@@ -44,12 +41,7 @@ export const SNOWFLAKE_SQL_WRITING: SqlWritingSpec = {
     // portably until one does.
     standsAlone: NOTHING_STANDS_ALONE,
     bareSpelling: NO_BARE_SPELLING,
-    typeVocabulary: {
-      bareTypeFamily: BARE_TYPE_FAMILY,
-      floatType: FLOAT_TYPE,
-      exactNumericType: EXACT_NUMERIC_TYPE,
-      numericWrapper: CLICKHOUSE_WRAPPER,
-    },
+    typeVocabulary: STANDARD_TYPE_VOCABULARY,
     // Snowflake reads `X'0102deadbeef'` as a BINARY constant, the standard form; not yet measured on an account.
     binaryLiteral: binaryStandardHex,
     // Snowflake's trial setup (2026-10-12) created its FLOAT infinities with `'inf'::FLOAT` and `'-inf'::FLOAT`, and

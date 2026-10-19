@@ -16,16 +16,22 @@ import * as SHARED from "@/lib/db/sql-writing/shared";
 import {
   BARE_TYPE_FAMILY,
   CLICKHOUSE_WRAPPER,
+  EVERY_TYPE_IS_FLOAT64,
   EXACT_DECIMAL_TYPE_NAMES,
   EXACT_NUMERIC_TYPE,
   FLOAT64_TYPE_NAMES,
   FLOAT_TYPE,
   INSTANT_TYPE_NAMES,
   NO_BARE_SPELLING,
+  NO_EXACT_DECIMAL_TYPE_NAMES,
+  NO_INSTANT_TYPE_NAMES,
   NOTHING_STANDS_ALONE,
   literalBackslash,
   NULL_NON_FINITE,
+  QUOTED_WORD_NON_FINITE,
   STANDARD_DDL_TYPES,
+  STANDARD_TYPE_VOCABULARY,
+  VERBATIM_DECLARED_TYPES_STAND_ALONE,
 } from "@/lib/db/sql-writing/shared";
 import { UNKNOWN_TYPE_SQL_WRITING } from "@/lib/db/sql-writing/unknown-type";
 import type { ExportSpec, InferredKind, SqlWritingSpec } from "@/lib/db/sql-writing/types";
@@ -153,11 +159,11 @@ describe("SQL writing census", () => {
     },
   );
 
-  test("sqlite and libsql each state their own sets", () => {
-    expect(SQL_WRITING.sqlite.inlineEdit.instantTypeNames).not.toBe(SQL_WRITING.libsql.inlineEdit.instantTypeNames);
-    expect(SQL_WRITING.sqlite.inlineEdit.exactDecimalTypeNames).not.toBe(
-      SQL_WRITING.libsql.inlineEdit.exactDecimalTypeNames,
-    );
+  test.each(["sqlite", "libsql"] as const)("%s: the inline edit reads the SQLite storage-class facts by name", (id) => {
+    const inlineEdit = SQL_WRITING[id].inlineEdit;
+    expect(inlineEdit.instantTypeNames).toBe(NO_INSTANT_TYPE_NAMES);
+    expect(inlineEdit.exactDecimalTypeNames).toBe(NO_EXACT_DECIMAL_TYPE_NAMES);
+    expect(inlineEdit.float64TypeNames).toBe(EVERY_TYPE_IS_FLOAT64);
   });
 
   test("only mssql and oracle bind an edit through their own form", () => {
@@ -279,6 +285,7 @@ describe("SQL export census", () => {
     });
 
     test(`${id}: the type vocabulary is the shared set`, () => {
+      expect(spec.export.typeVocabulary).toBe(STANDARD_TYPE_VOCABULARY);
       expect(spec.export.typeVocabulary.bareTypeFamily).toBe(BARE_TYPE_FAMILY);
       expect(spec.export.typeVocabulary.floatType).toBe(FLOAT_TYPE);
       expect(spec.export.typeVocabulary.exactNumericType).toBe(EXACT_NUMERIC_TYPE);
@@ -328,8 +335,12 @@ describe("SQL export census", () => {
     }
   });
 
-  test("sqlite and libsql each write their own standing-alone list", () => {
-    expect(SQL_WRITING.sqlite.export.standsAlone).not.toBe(SQL_WRITING.libsql.export.standsAlone);
+  test.each(["sqlite", "libsql"] as const)("%s: keeps every declared type verbatim, by the shared name", (id) => {
+    expect(SQL_WRITING[id].export.standsAlone).toBe(VERBATIM_DECLARED_TYPES_STAND_ALONE);
+  });
+
+  test.each(["postgres", "duckdb"] as const)("%s: writes the quoted non-finite words, by the shared name", (id) => {
+    expect(SQL_WRITING[id].export.nonFinite).toBe(QUOTED_WORD_NON_FINITE);
   });
 
   test("only snowflake writes its INSERT as a SELECT", () => {
@@ -355,6 +366,7 @@ describe("SQL export census", () => {
     expect(spec.export.ddlTypes).toBe(STANDARD_DDL_TYPES);
     expect(spec.export.standsAlone).toBe(NOTHING_STANDS_ALONE);
     expect(spec.export.bareSpelling).toBe(NO_BARE_SPELLING);
+    expect(spec.export.typeVocabulary).toBe(STANDARD_TYPE_VOCABULARY);
     expect(spec.export.typeVocabulary.bareTypeFamily).toBe(BARE_TYPE_FAMILY);
     expect(spec.export.typeVocabulary.floatType).toBe(FLOAT_TYPE);
     expect(spec.export.typeVocabulary.exactNumericType).toBe(EXACT_NUMERIC_TYPE);

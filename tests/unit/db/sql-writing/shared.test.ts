@@ -15,6 +15,7 @@ import {
   BARE_TYPE_FAMILY,
   CLICKHOUSE_WRAPPER,
   EXACT_DECIMAL_TYPE_NAMES,
+  EVERY_TYPE_IS_FLOAT64,
   EXACT_NUMERIC_TYPE,
   FLOAT_TYPE,
   FLOAT64_TYPE_NAMES,
@@ -29,19 +30,24 @@ import {
   literalStandard,
   literalUnicode,
   NO_BARE_SPELLING,
+  NO_EXACT_DECIMAL_TYPE_NAMES,
+  NO_INSTANT_TYPE_NAMES,
   NOTHING_STANDS_ALONE,
   NULL_NON_FINITE,
   placeholderAtP,
   placeholderColon,
   placeholderDollar,
   placeholderQuestion,
+  QUOTED_WORD_NON_FINITE,
   STANDARD_DDL_TYPES,
+  STANDARD_TYPE_VOCABULARY,
   unquoteBackslash,
   unquoteDoubleAndBackslash,
   unquoteDoublingOnly,
   unquoteStandard,
   unquoteUnicode,
   unwrappedType,
+  VERBATIM_DECLARED_TYPES_STAND_ALONE,
 } from "@/lib/db/sql-writing/shared";
 import type { ExportSpec } from "@/lib/db/sql-writing/types";
 import { asBytes } from "@/lib/export/binary";
@@ -192,6 +198,25 @@ describe("SQL export shared building blocks", () => {
     expect(NULL_NON_FINITE).toEqual({ NaN: "NULL", Infinity: "NULL", "-Infinity": "NULL" });
     expect(NOTHING_STANDS_ALONE).toEqual([]);
     expect(NO_BARE_SPELLING).toEqual({});
+    expect(QUOTED_WORD_NON_FINITE).toEqual({ NaN: "'NaN'", Infinity: "'Infinity'", "-Infinity": "'-Infinity'" });
+  });
+
+  test("the SQLite storage-class facts hold today's values", () => {
+    expect(NO_INSTANT_TYPE_NAMES.size).toBe(0);
+    expect(NO_EXACT_DECIMAL_TYPE_NAMES.size).toBe(0);
+    expect(NO_INSTANT_TYPE_NAMES).not.toBe(NO_EXACT_DECIMAL_TYPE_NAMES);
+    expect(EVERY_TYPE_IS_FLOAT64).toBe("all");
+    const narrowedByAffinity = new Set(["enum", "set", "uniqueidentifier", "rowid"]);
+    expect(VERBATIM_DECLARED_TYPES_STAND_ALONE).toEqual(
+      Object.keys(BARE_TYPE_FAMILY).filter((name) => !narrowedByAffinity.has(name)),
+    );
+  });
+
+  test("the standard type vocabulary is the four shared patterns", () => {
+    expect(STANDARD_TYPE_VOCABULARY.bareTypeFamily).toBe(BARE_TYPE_FAMILY);
+    expect(STANDARD_TYPE_VOCABULARY.floatType).toBe(FLOAT_TYPE);
+    expect(STANDARD_TYPE_VOCABULARY.exactNumericType).toBe(EXACT_NUMERIC_TYPE);
+    expect(STANDARD_TYPE_VOCABULARY.numericWrapper).toBe(CLICKHOUSE_WRAPPER);
   });
 
   test("the type vocabulary patterns read today's spellings", () => {

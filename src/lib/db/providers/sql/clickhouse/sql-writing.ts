@@ -1,14 +1,11 @@
 import {
-  BARE_TYPE_FAMILY,
-  CLICKHOUSE_WRAPPER,
   EXACT_DECIMAL_TYPE_NAMES,
-  EXACT_NUMERIC_TYPE,
   FLOAT64_TYPE_NAMES,
-  FLOAT_TYPE,
   identifierDoubleQuoted,
   INSTANT_TYPE_NAMES,
   literalDoubleAndBackslash,
   NO_BARE_SPELLING,
+  STANDARD_TYPE_VOCABULARY,
   unquoteDoubleAndBackslash,
 } from "@/lib/db/sql-writing/shared";
 import { binaryUnhex } from "@/lib/db/sql-writing/export-shared";
@@ -69,12 +66,7 @@ export const CLICKHOUSE_SQL_WRITING: SqlWritingSpec = {
       "year",
     ],
     bareSpelling: NO_BARE_SPELLING,
-    typeVocabulary: {
-      bareTypeFamily: BARE_TYPE_FAMILY,
-      floatType: FLOAT_TYPE,
-      exactNumericType: EXACT_NUMERIC_TYPE,
-      numericWrapper: CLICKHOUSE_WRAPPER,
-    },
+    typeVocabulary: STANDARD_TYPE_VOCABULARY,
     // Measured on 26.7.1: `unhex('0102deadbeef')` into a `String` column reads back as
     // `hex(payload)` = `0102DEADBEEF` with `length(payload)` 6, and `length(unhex(''))`
     // is 0.

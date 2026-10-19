@@ -1385,7 +1385,7 @@ The module's `export` field writes a result export's column types from `STANDARD
 Each name in `standsAlone` was measured on DuckDB v1.5.5, one `CREATE TABLE probe (c <name>)` per name read back out of `duckdb_columns().data_type`, and resolved to an unnarrowed type: the seven text spellings to `VARCHAR`, the four byte ones to `BLOB`, the four moment ones to `TIMESTAMP` (and `TIMESTAMP WITH TIME ZONE` to itself).
 `numeric` and `decimal` are the absences that matter: DuckDB accepts both and stores `DECIMAL(18,3)`, which rounds away every value past the third decimal, so they are re-spelled from their family.
 A binary cell is written by `binaryUnhex`, not the standard hex: measured on v1.5.5, `SELECT typeof(X'0102')` answers `VARCHAR` and `SELECT X'0102'` answers the five characters `x0102`, while `unhex('0102deadbeef')` answers a real `BLOB` that reads back as `hex(payload)` = `0102DEADBEEF` with `octet_length(payload)` 6, `unhex('')` inserts the zero-length blob, and `0x0102` is a parser error.
-`nonFinite` writes the quoted words `'NaN'`, `'Infinity'` and `'-Infinity'`, which DuckDB read back into `DOUBLE` and `FLOAT` when replayed (2026-10-04).
+`nonFinite` is `QUOTED_WORD_NON_FINITE`, which writes the quoted words `'NaN'`, `'Infinity'` and `'-Infinity'`, which DuckDB read back into `DOUBLE` and `FLOAT` when replayed (2026-10-04).
 `typedLiteral` writes intervals, maps, structs and the other cells whose JSON form DuckDB refuses, from the engine's own [`duckdb/typed-literals.ts`](../../src/lib/db/providers/sql/duckdb/typed-literals.ts).
 `NO_BARE_SPELLING` completes it.
 

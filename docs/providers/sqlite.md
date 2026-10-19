@@ -1347,17 +1347,17 @@ A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-qu
 A bind is spelled by `placeholderQuestion`, as `?` at every position.
 The SQLite drivers take `?`.
 Inline row editing reads a key column's kind through the module's own `inlineEdit`, because SQLite's type words name an affinity and not a storage width.
-`instantTypeNames` is empty: SQLite has no date type, so a `DATE`, `DATETIME` or `TIMESTAMP` column holds the text or integer somebody put in it, and that value is its own identity.
+`instantTypeNames` is the empty `NO_INSTANT_TYPE_NAMES`: SQLite has no date type, so a `DATE`, `DATETIME` or `TIMESTAMP` column holds the text or integer somebody put in it, and that value is its own identity.
 Measured 2026-09-19 on bun:sqlite (Bun 1.4.0) and libSQL server v0.24.33, `zz_<decl>(k <decl> PRIMARY KEY, note TEXT)` for each of the three declarations against `'2024-01-15'`, `'2026-01-01 10:00:00.123'`, `'2026-01-01T07:00:00.123Z'` and the epoch 1705276800, 24 combinations: every value came back unchanged, `WHERE k IN (?)` matched one group holding one row, and the `UPDATE` changed exactly one row.
-`float64TypeNames` is `"all"`: SQLite has one float width, so `REAL`, `FLOAT`, `DOUBLE` and `DOUBLE PRECISION` are four spellings of one 8-byte double.
+`float64TypeNames` is `EVERY_TYPE_IS_FLOAT64`, `"all"`: SQLite has one float width, so `REAL`, `FLOAT`, `DOUBLE` and `DOUBLE PRECISION` are four spellings of one 8-byte double.
 Measured 2026-09-18 on the same two engines, `zz_real(r REAL, f FLOAT, d DOUBLE, dp DOUBLE PRECISION)` answered `real` to `typeof()` for all four, read 0.30000000000000004 back identical, and `WHERE r = 1.5`, `WHERE f = 0.1`, `WHERE d = 0.30000000000000004` and `WHERE dp = 0.1` each matched exactly one row.
 Every declaration and not only `real` and `float`: measured 2026-09-19 on bun:sqlite, a `DATE` column holding the julian day 2460324.75, and `REAL`, `INTEGER`, `TEXT`, `BLOB`, undeclared and `NUMERIC` columns, each matched one row, its own, on the value it handed back.
-`exactDecimalTypeNames` is empty: SQLite has no decimal type, so `DECIMAL(20,4)` takes NUMERIC affinity and stores an integer or an 8-byte double.
+`exactDecimalTypeNames` is the empty `NO_EXACT_DECIMAL_TYPE_NAMES`: SQLite has no decimal type, so `DECIMAL(20,4)` takes NUMERIC affinity and stores an integer or an 8-byte double.
 Measured 2026-09-19 on bun:sqlite (Bun 1.4.0), `zz(k DECIMAL(20,4), n NUMERIC(20,4))`: `typeof()` answered `real` for both, 1234567890123456.7891 came back as 1234567890123456.8, which is what the file holds, and `WHERE k = 1234567890123456.8` matched one row, its own.
 Every edit is bound as typed.
 
 The module's `export` field writes a result export's column types from `STANDARD_DDL_TYPES`, SQLite's column types being advisory affinities anyway.
-Each name in `standsAlone` was measured, one `CREATE TABLE probe (c <name>)` per name on SQLite through `bun:sqlite`, read back out of `pragma_table_info`, and is listed only because SQLite both accepted it and stored it unnarrowed.
+Each name in `standsAlone`, the shared `VERBATIM_DECLARED_TYPES_STAND_ALONE`, was measured, one `CREATE TABLE probe (c <name>)` per name on SQLite through `bun:sqlite`, read back out of `pragma_table_info`, and is listed only because SQLite both accepted it and stored it unnarrowed.
 SQLite keeps a declared type as the exact string it was given (`pragma_table_info` answers `varchar2` for `varchar2`), so the spelling the source engine used is the one that survives.
 SQLite's `enum`, `uniqueidentifier` and `rowid` are absent: SQLite parses any type name, so the narrowing is in the affinity, and these three match none of its keywords, so the column is NUMERIC and `INSERT INTO p (c) VALUES ('007')` reads back as the integer 7 (measured), where the same insert into `varchar2` reads back as the text `007`.
 `set` is not in SQLite's grammar as a type name at all (`near "set": syntax error`).

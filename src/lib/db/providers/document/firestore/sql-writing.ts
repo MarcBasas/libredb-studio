@@ -1,10 +1,6 @@
 import {
-  BARE_TYPE_FAMILY,
-  CLICKHOUSE_WRAPPER,
   EXACT_DECIMAL_TYPE_NAMES,
-  EXACT_NUMERIC_TYPE,
   FLOAT64_TYPE_NAMES,
-  FLOAT_TYPE,
   identifierDoubleQuoted,
   INSTANT_TYPE_NAMES,
   literalStandard,
@@ -12,6 +8,7 @@ import {
   NOTHING_STANDS_ALONE,
   NULL_NON_FINITE,
   STANDARD_DDL_TYPES,
+  STANDARD_TYPE_VOCABULARY,
   unquoteStandard,
 } from "@/lib/db/sql-writing/shared";
 import { binaryStandardHex } from "@/lib/db/sql-writing/export-shared";
@@ -37,12 +34,7 @@ export const FIRESTORE_SQL_WRITING: SqlWritingSpec = {
     // Firestore has no statement form for an export.
     standsAlone: NOTHING_STANDS_ALONE,
     bareSpelling: NO_BARE_SPELLING,
-    typeVocabulary: {
-      bareTypeFamily: BARE_TYPE_FAMILY,
-      floatType: FLOAT_TYPE,
-      exactNumericType: EXACT_NUMERIC_TYPE,
-      numericWrapper: CLICKHOUSE_WRAPPER,
-    },
+    typeVocabulary: STANDARD_TYPE_VOCABULARY,
     // Firestore has no statement language for a value either; the inert default, as Oxia's.
     binaryLiteral: binaryStandardHex,
     nonFinite: NULL_NON_FINITE,

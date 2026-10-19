@@ -1,15 +1,12 @@
 import {
-  BARE_TYPE_FAMILY,
-  CLICKHOUSE_WRAPPER,
   EXACT_DECIMAL_TYPE_NAMES,
-  EXACT_NUMERIC_TYPE,
   FLOAT64_TYPE_NAMES,
-  FLOAT_TYPE,
   identifierDoubleQuoted,
   INSTANT_TYPE_NAMES,
   literalStandard,
   NO_BARE_SPELLING,
   NULL_NON_FINITE,
+  STANDARD_TYPE_VOCABULARY,
   unquoteStandard,
 } from "@/lib/db/sql-writing/shared";
 import { binaryZeroX } from "@/lib/db/sql-writing/export-shared";
@@ -71,12 +68,7 @@ export const CASSANDRA_SQL_WRITING: SqlWritingSpec = {
     },
     standsAlone: ["varchar", "text", "blob", "decimal", "timestamp"],
     bareSpelling: NO_BARE_SPELLING,
-    typeVocabulary: {
-      bareTypeFamily: BARE_TYPE_FAMILY,
-      floatType: FLOAT_TYPE,
-      exactNumericType: EXACT_NUMERIC_TYPE,
-      numericWrapper: CLICKHOUSE_WRAPPER,
-    },
+    typeVocabulary: STANDARD_TYPE_VOCABULARY,
     // Measured on Cassandra 5.0.9: the generated pair replays, and `SELECT "payload"`
     // answers `0x0102deadbeef`. Bare `0x` is the empty blob: `blobAsText(0x)` answers
     // the empty string rather than raising, and `X'…'` is not in the grammar at all.

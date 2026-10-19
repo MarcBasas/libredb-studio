@@ -1,11 +1,7 @@
 import { binaryStandardHex } from "./export-shared";
 import {
-  BARE_TYPE_FAMILY,
-  CLICKHOUSE_WRAPPER,
   EXACT_DECIMAL_TYPE_NAMES,
-  EXACT_NUMERIC_TYPE,
   FLOAT64_TYPE_NAMES,
-  FLOAT_TYPE,
   INSTANT_TYPE_NAMES,
   identifierDoubleQuoted,
   literalStandard,
@@ -14,6 +10,7 @@ import {
   NOTHING_STANDS_ALONE,
   NULL_NON_FINITE,
   STANDARD_DDL_TYPES,
+  STANDARD_TYPE_VOCABULARY,
 } from "./shared";
 import type { SqlWritingSpec } from "./types";
 
@@ -40,12 +37,7 @@ export const NO_CONNECTION_SQL_WRITING: SqlWritingSpec = {
     ddlTypes: STANDARD_DDL_TYPES,
     standsAlone: NOTHING_STANDS_ALONE,
     bareSpelling: NO_BARE_SPELLING,
-    typeVocabulary: {
-      bareTypeFamily: BARE_TYPE_FAMILY,
-      floatType: FLOAT_TYPE,
-      exactNumericType: EXACT_NUMERIC_TYPE,
-      numericWrapper: CLICKHOUSE_WRAPPER,
-    },
+    typeVocabulary: STANDARD_TYPE_VOCABULARY,
     binaryLiteral: binaryStandardHex,
     nonFinite: NULL_NON_FINITE,
     insertForm: "values",

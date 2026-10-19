@@ -1,10 +1,6 @@
 import {
-  BARE_TYPE_FAMILY,
-  CLICKHOUSE_WRAPPER,
   EXACT_DECIMAL_TYPE_NAMES,
-  EXACT_NUMERIC_TYPE,
   FLOAT64_TYPE_NAMES,
-  FLOAT_TYPE,
   identifierDoubleQuoted,
   INSTANT_TYPE_NAMES,
   literalStandard,
@@ -13,6 +9,7 @@ import {
   NULL_NON_FINITE,
   placeholderQuestion,
   STANDARD_DDL_TYPES,
+  STANDARD_TYPE_VOCABULARY,
   unquoteStandard,
 } from "@/lib/db/sql-writing/shared";
 import { binaryStandardHex } from "@/lib/db/sql-writing/export-shared";
@@ -39,12 +36,7 @@ export const DRUID_SQL_WRITING: SqlWritingSpec = {
     ddlTypes: STANDARD_DDL_TYPES,
     standsAlone: NOTHING_STANDS_ALONE,
     bareSpelling: NO_BARE_SPELLING,
-    typeVocabulary: {
-      bareTypeFamily: BARE_TYPE_FAMILY,
-      floatType: FLOAT_TYPE,
-      exactNumericType: EXACT_NUMERIC_TYPE,
-      numericWrapper: CLICKHOUSE_WRAPPER,
-    },
+    typeVocabulary: STANDARD_TYPE_VOCABULARY,
     // Druid is the one row here
     // that is NOT measured: its SQL is Calcite's, which spells a binary literal `X'…'`,
     // and a standalone Druid takes no INSERT at all (that needs the MSQ extension), so

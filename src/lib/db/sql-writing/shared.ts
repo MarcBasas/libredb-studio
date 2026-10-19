@@ -7,7 +7,7 @@
  * fresh process.
  */
 import type { NonFiniteWord } from "@/lib/non-finite";
-import type { InferredKind, SqlWritingSpec } from "./types";
+import type { ExportTypeVocabulary, InferredKind, SqlWritingSpec } from "./types";
 
 type Escape = SqlWritingSpec["escapeLiteral"];
 type Unescape = SqlWritingSpec["unescapeLiteral"];
@@ -291,6 +291,105 @@ export const EXACT_DECIMAL_TYPE_NAMES: ReadonlySet<string> = new Set([
   "smallmoney",
 ]);
 
+// The SQLite storage-class facts: what the inline edit reads on the two engines whose type
+// words name an AFFINITY and not a storage width, SQLite and libSQL, which embeds it. Both
+// modules import each fact by name; a sentence that holds for one of them only stays in
+// that engine's module beside the reference.
+
+/**
+ * No declared type is an INSTANT, so the words that name one everywhere else state nothing
+ * here.
+ *
+ * SQLITE HAS NO DATE TYPE. A column declared `DATE`, `DATETIME` or `TIMESTAMP` picks no
+ * storage class from its declaration: it holds the TEXT somebody put in it, or the integer,
+ * and `sqlite3_column_decltype` reports the declaration back verbatim beside it. So the
+ * value the driver hands over IS the value the row holds, it is its own identity, and it
+ * matches when it is sent back — which is the opposite of what the word means everywhere
+ * else, where the driver hands over a `Date` or a rendering of one.
+ *
+ * MEASURED 2026-09-19 on bun:sqlite (Bun 1.4.0) and on libSQL server v0.24.33 over its HTTP
+ * pipeline, `zz_<decl>(k <decl> PRIMARY KEY, note TEXT)` for each of `DATE`, `DATETIME` and
+ * `TIMESTAMP` against `'2024-01-15'`, `'2026-01-01 10:00:00.123'`, the ISO text
+ * `'2026-01-01T07:00:00.123Z'` and the integer epoch 1705276800 — three declarations by
+ * four value shapes by two engines, 24 combinations. Every one reported the declaration
+ * back verbatim, answered `text` (or `integer`, for the epoch) to `typeof()`, handed the
+ * value back unchanged, matched ONE group holding ONE row for `WHERE k IN (?)`, and changed
+ * exactly one row on the `UPDATE` that followed.
+ *
+ * NO OTHER DIALECT but SQLite and libSQL states this, and the closed side is the safe side
+ * here as everywhere else in the inline edit. MEASURED the same day: PostgreSQL 16.15
+ * `zz_m1_ts(ts_id timestamp PRIMARY KEY)` holding 10:00:00.123456 and .654321 answered ZERO
+ * rows for the `'2026-01-01T07:00:00.123Z'` the browser holds and zero for
+ * `'2026-01-01 10:00:00.123'`, with both rows still in the table; MySQL 8.4.11
+ * `zz_m1_dt(d_id DATETIME(6) PRIMARY KEY)` answered zero for both of the same two. Those
+ * engines really do store something the value in front of us is only a rendering of, so
+ * they keep the refusal.
+ *
+ * A `Date` is refused on every dialect including these two, because `String(date)` is a
+ * rendering whatever holds it: the driver never produces one, so it can only have come
+ * from the host application the embeddable shell runs inside.
+ */
+export const NO_INSTANT_TYPE_NAMES: ReadonlySet<string> = new Set<string>();
+
+/**
+ * No declared type is an EXACT DECIMAL: the words that are one elsewhere are an AFFINITY
+ * here, not an exact decimal type at all.
+ *
+ * SQLITE HAS NO DECIMAL TYPE, the way it has no date type (`NO_INSTANT_TYPE_NAMES` above)
+ * and no 32-bit float (`EVERY_TYPE_IS_FLOAT64` below). A column declared `DECIMAL(20,4)` or
+ * `NUMERIC(20,4)` takes NUMERIC affinity and stores an integer or an 8-byte double — so
+ * what the driver hands over IS the value the row holds, and "the driver rounded it to fit"
+ * would be false about it.
+ *
+ * MEASURED 2026-09-19 on bun:sqlite (Bun 1.4.0), `zz(k DECIMAL(20,4), n NUMERIC(20,4))`:
+ * `pragma_table_info` reports both declarations back verbatim, `typeof()` answers `real`
+ * for both, 1234567890123456.7891 comes back as the double 1234567890123456.8 — which is
+ * exactly what the file now holds, not a rounding of it — and `WHERE k = 1234567890123456.8`
+ * matched ONE row, its own.
+ */
+export const NO_EXACT_DECIMAL_TYPE_NAMES: ReadonlySet<string> = new Set<string>();
+
+/**
+ * Only ONE float width exists, so every declaration states it.
+ *
+ * SQLite has no 32-bit float: `REAL`, `FLOAT`, `DOUBLE` and `DOUBLE PRECISION` are four
+ * spellings of one storage class, 8 bytes of IEEE double, which is exactly as wide as the
+ * JavaScript number in front of us. So on this dialect the declaration DOES say the
+ * width, and the refusal's sentence — "nothing here says the column holds it as a 64-bit
+ * float" — is false about it.
+ *
+ * MEASURED 2026-09-18 through the real provider path, on bun:sqlite (Bun 1.4.0) and on
+ * libSQL server v0.24.33 over its HTTP pipeline: `zz_real(r REAL, f FLOAT, d DOUBLE, dp
+ * DOUBLE PRECISION)` reported those four decltypes and answered `real` to `typeof()` for
+ * every one of them; 0.30000000000000004 was written and read back identical, which no
+ * 32-bit column can do; and `WHERE r = 1.5`, `WHERE f = 0.1`, `WHERE d =
+ * 0.30000000000000004` and `WHERE dp = 0.1` each matched exactly one row on both.
+ *
+ * NO OTHER DIALECT but SQLite and libSQL states this, and each was measured rather than
+ * assumed. PostgreSQL 16.15: `real` and `float4` are both spelled `real` by `pg`, both
+ * `pg_column_size` 4, and `0.1::real::float8` is 0.10000000149011612 — a different number
+ * to the double 0.1. MySQL 8.4.11: one row holding 0.1 in a `FLOAT` and a `DOUBLE` answered
+ * `f = 0.1` FALSE and `d = 0.1` TRUE. DuckDB: `REAL` and `FLOAT` are one 32-bit type, handed
+ * over as 0.10000000149011612, and `r::DOUBLE = 0.1` is false. Trino was not reachable to
+ * measure, so it keeps the refusal — the closed side is the safe side, which is what this
+ * rule already chose.
+ *
+ * And "all" rather than the words `real` and `float`: whatever a column is called, a
+ * fractional value in it is the 8-byte double the file holds, so it is its own identity and
+ * the length rule - which exists to catch the printed form of a 32-bit float - has nothing
+ * to catch.
+ *
+ * MEASURED 2026-09-19 on bun:sqlite (Bun 1.4.0), one row per declaration: `DATE` holding
+ * `julianday('2024-01-15 06:00:00')` (2460324.75, `typeof` real), `REAL`, `INTEGER`, `TEXT`,
+ * `BLOB`, no declaration at all, and `NUMERIC` holding 0.30000000000000004. Every one came
+ * back as the value the file holds and `WHERE k = <value>` matched ONE row, its own.
+ *
+ * Reading only the words `real` and `float` refused the rest of them: a `DATE` column
+ * holding a julian day is nine digits, which the length rule reads as "could be a 32-bit
+ * float", and the sentence it showed was the one this rule exists to say is false on SQLite.
+ */
+export const EVERY_TYPE_IS_FLOAT64 = "all" as const;
+
 /**
  * One declared type in lower case with its wrappers off.
  *
@@ -356,6 +455,19 @@ export const NULL_NON_FINITE: Readonly<Record<NonFiniteWord, string>> = {
   NaN: "NULL",
   Infinity: "NULL",
   "-Infinity": "NULL",
+};
+
+/**
+ * NaN and the infinities as the quoted words, which the engine reads back into a float column.
+ *
+ * Replayed into the engine (2026-10-04): PostgreSQL 18.6 and DuckDB read the quoted words into `real`,
+ * `double precision`, `DOUBLE` and `FLOAT` (PostgreSQL also into `timestamptz`, whose
+ * infinities are quoted text anyway).
+ */
+export const QUOTED_WORD_NON_FINITE: Readonly<Record<NonFiniteWord, string>> = {
+  NaN: "'NaN'",
+  Infinity: "'Infinity'",
+  "-Infinity": "'-Infinity'",
 };
 
 /**
@@ -436,6 +548,62 @@ export const BARE_TYPE_FAMILY: Readonly<Record<string, InferredKind>> = {
 };
 
 /**
+ * A declared type is kept verbatim, so every candidate stands alone: each name of
+ * `BARE_TYPE_FAMILY` (above) but the four the affinity narrows.
+ *
+ * SQLite's `enum`, `uniqueidentifier` and `rowid`. SQLite parses any type name, so
+ * the narrowing is in the AFFINITY: these three match none of its keywords, so the
+ * column is NUMERIC and `INSERT INTO p (c) VALUES ('007')` reads back as the integer
+ * 7 (measured), where the same insert into `varchar2` reads back as the text `007`.
+ * `set` is not in SQLite's grammar as a type name at all (`near "set": syntax
+ * error`).
+ *
+ * Every candidate name but those four: SQLite keeps a declared type as the exact string
+ * it was given (`pragma_table_info` answers `varchar2` for `varchar2`), so the spelling
+ * the source engine used is the one that survives.
+ */
+export const VERBATIM_DECLARED_TYPES_STAND_ALONE: readonly string[] = [
+  "character varying",
+  "varchar",
+  "varchar2",
+  "nvarchar",
+  "nvarchar2",
+  "character",
+  "char",
+  "nchar",
+  "text",
+  "ntext",
+  "tinytext",
+  "mediumtext",
+  "longtext",
+  "clob",
+  "nclob",
+  "binary",
+  "varbinary",
+  "raw",
+  "blob",
+  "tinyblob",
+  "mediumblob",
+  "longblob",
+  "bytea",
+  "image",
+  "numeric",
+  "decimal",
+  "number",
+  "binary_double",
+  "binary_float",
+  "money",
+  "timestamp",
+  "timestamp without time zone",
+  "timestamp with time zone",
+  "datetime",
+  "datetime2",
+  "smalldatetime",
+  "datetimeoffset",
+  "year",
+];
+
+/**
  * A declared type that holds a binary float, spelled the way the providers report it:
  * PostgreSQL's `real` / `double precision`, DuckDB's `FLOAT` / `DOUBLE`, SQLite's
  * declared `REAL`, Oracle's `BINARY_DOUBLE` / `BINARY_FLOAT`, and `float4`/`float8`.
@@ -452,3 +620,11 @@ export const EXACT_NUMERIC_TYPE = /^(numeric|decimal|number|decfloat)(\s*\(\s*\d
 
 /** ClickHouse's wrappers, which change nothing about whether the column holds numbers. */
 export const CLICKHOUSE_WRAPPER = /^\s*(?:Nullable|LowCardinality)\((.*)\)\s*$/;
+
+/** The patterns every engine reads a declared type with: the four above, shared by name. */
+export const STANDARD_TYPE_VOCABULARY: ExportTypeVocabulary = {
+  bareTypeFamily: BARE_TYPE_FAMILY,
+  floatType: FLOAT_TYPE,
+  exactNumericType: EXACT_NUMERIC_TYPE,
+  numericWrapper: CLICKHOUSE_WRAPPER,
+};

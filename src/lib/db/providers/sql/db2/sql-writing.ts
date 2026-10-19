@@ -1,10 +1,6 @@
 import {
-  BARE_TYPE_FAMILY,
-  CLICKHOUSE_WRAPPER,
   EXACT_DECIMAL_TYPE_NAMES,
-  EXACT_NUMERIC_TYPE,
   FLOAT64_TYPE_NAMES,
-  FLOAT_TYPE,
   identifierDoubleQuoted,
   INSTANT_TYPE_NAMES,
   literalStandard,
@@ -12,6 +8,7 @@ import {
   NOTHING_STANDS_ALONE,
   NULL_NON_FINITE,
   placeholderQuestion,
+  STANDARD_TYPE_VOCABULARY,
   unquoteStandard,
 } from "@/lib/db/sql-writing/shared";
 import { binaryBinaryHex } from "@/lib/db/sql-writing/export-shared";
@@ -49,12 +46,7 @@ export const DB2_SQL_WRITING: SqlWritingSpec = {
     // re-spelled from its family.
     standsAlone: NOTHING_STANDS_ALONE,
     bareSpelling: NO_BARE_SPELLING,
-    typeVocabulary: {
-      bareTypeFamily: BARE_TYPE_FAMILY,
-      floatType: FLOAT_TYPE,
-      exactNumericType: EXACT_NUMERIC_TYPE,
-      numericWrapper: CLICKHOUSE_WRAPPER,
-    },
+    typeVocabulary: STANDARD_TYPE_VOCABULARY,
     // Measured on Db2 LUW 12.1.0.0 (#786): `INSERT … VALUES (X'0102deadbeef')` into a `BLOB` or a
     // `VARBINARY` column is SQL0408N, "a value is not compatible with the data type of its
     // assignment target", because `X'…'` is a character string here. `BX'0102deadbeef'` goes into

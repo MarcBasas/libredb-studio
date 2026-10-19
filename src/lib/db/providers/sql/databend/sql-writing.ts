@@ -1,14 +1,11 @@
 import {
-  BARE_TYPE_FAMILY,
-  CLICKHOUSE_WRAPPER,
   EXACT_DECIMAL_TYPE_NAMES,
-  EXACT_NUMERIC_TYPE,
   FLOAT64_TYPE_NAMES,
-  FLOAT_TYPE,
   identifierBacktickDoubled,
   INSTANT_TYPE_NAMES,
   literalDoubleAndBackslash,
   NO_BARE_SPELLING,
+  STANDARD_TYPE_VOCABULARY,
   unquoteDoubleAndBackslash,
 } from "@/lib/db/sql-writing/shared";
 import { binaryUnhex } from "@/lib/db/sql-writing/export-shared";
@@ -55,12 +52,7 @@ export const DATABEND_SQL_WRITING: SqlWritingSpec = {
     // Databend has no row (design 7.2, X01): its `Timestamp` keeps microseconds without a precision and its `Decimal`
     // always carries its own, so no bare name it reports narrows the value its INSERT writes back.
     bareSpelling: NO_BARE_SPELLING,
-    typeVocabulary: {
-      bareTypeFamily: BARE_TYPE_FAMILY,
-      floatType: FLOAT_TYPE,
-      exactNumericType: EXACT_NUMERIC_TYPE,
-      numericWrapper: CLICKHOUSE_WRAPPER,
-    },
+    typeVocabulary: STANDARD_TYPE_VOCABULARY,
     // Databend reads a quoted string into BINARY through `binary_input_format`, utf-8 by default, so the standard
     // `X'…'` was not its measured spelling: M08b inserted `unhex('00ff10')` on the pinned image and M08c read back the
     // three bytes as `00FF10` (design 7.2, X01).

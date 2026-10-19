@@ -1,15 +1,12 @@
 import {
-  BARE_TYPE_FAMILY,
-  CLICKHOUSE_WRAPPER,
   EXACT_DECIMAL_TYPE_NAMES,
-  EXACT_NUMERIC_TYPE,
   FLOAT64_TYPE_NAMES,
-  FLOAT_TYPE,
   identifierBacktickDoubled,
   INSTANT_TYPE_NAMES,
   literalDoubleAndBackslash,
   NULL_NON_FINITE,
   placeholderQuestion,
+  STANDARD_TYPE_VOCABULARY,
   unquoteDoubleAndBackslash,
 } from "@/lib/db/sql-writing/shared";
 import { binaryStandardHex } from "@/lib/db/sql-writing/export-shared";
@@ -46,12 +43,7 @@ export const MYSQL_SQL_WRITING: SqlWritingSpec = {
     // ROUNDS a `.999` replayed into them up to the next second, so they are written at precision 6
     // (#1386).
     bareSpelling: { bit: "bit(64)", datetime: "datetime(6)", timestamp: "timestamp(6)", time: "time(6)" },
-    typeVocabulary: {
-      bareTypeFamily: BARE_TYPE_FAMILY,
-      floatType: FLOAT_TYPE,
-      exactNumericType: EXACT_NUMERIC_TYPE,
-      numericWrapper: CLICKHOUSE_WRAPPER,
-    },
+    typeVocabulary: STANDARD_TYPE_VOCABULARY,
     // Measured on MySQL 26.7.0: `SELECT HEX(X'0102deadbeef')` answers `0102DEADBEEF` and
     // `SELECT LENGTH(X'')` answers 0, so MySQL is on `binaryStandardHex` rather than `binaryZeroX` even
     // though it accepts `0x0102deadbeef` too: a zero-length value has no `0x` spelling

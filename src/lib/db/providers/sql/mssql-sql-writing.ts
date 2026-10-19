@@ -1,18 +1,15 @@
 import { binaryZeroX, normalized } from "@/lib/db/sql-writing/export-shared";
 import {
-  BARE_TYPE_FAMILY,
-  CLICKHOUSE_WRAPPER,
   EXACT_DECIMAL_TYPE_NAMES,
-  EXACT_NUMERIC_TYPE,
   firstWord,
   FLOAT64_TYPE_NAMES,
-  FLOAT_TYPE,
   identifierBracket,
   INSTANT_TYPE_NAMES,
   literalUnicode,
   NO_BARE_SPELLING,
   NULL_NON_FINITE,
   placeholderAtP,
+  STANDARD_TYPE_VOCABULARY,
   unquoteUnicode,
   unwrappedType,
 } from "@/lib/db/sql-writing/shared";
@@ -124,12 +121,7 @@ export const MSSQL_SQL_WRITING: SqlWritingSpec = {
       "datetimeoffset",
     ],
     bareSpelling: NO_BARE_SPELLING,
-    typeVocabulary: {
-      bareTypeFamily: BARE_TYPE_FAMILY,
-      floatType: FLOAT_TYPE,
-      exactNumericType: EXACT_NUMERIC_TYPE,
-      numericWrapper: CLICKHOUSE_WRAPPER,
-    },
+    typeVocabulary: STANDARD_TYPE_VOCABULARY,
     // Measured on SQL Server 2022: `SELECT CONVERT(varchar(64), 0x0102deadbeef, 2)`
     // answers `0102DEADBEEF`, `DATALENGTH(0x)` answers 0, so the empty case is spelled,
     // and `SELECT X'0102'` is `Msg 207 … Invalid column name 'X'`.

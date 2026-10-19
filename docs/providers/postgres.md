@@ -2386,7 +2386,7 @@ The hex-input form is written as a plain literal rather than `E'\\x…'` because
 Each name in `standsAlone` was measured, one `CREATE TABLE probe (c <name>)` per name on PostgreSQL 18.4, read back out of `format_type`, and is listed only because PostgreSQL both accepted it and stored it unnarrowed.
 `character varying` is unbounded there.
 `bareSpelling` writes a bare `bit` as `bit varying`: `pg` hands a bit string back as text such as `1010`, which a bare `bit` (`bit(1)`) refuses with `bit string length 4 does not match type bit(1)`, and `bit varying` takes at any length (#1386).
-`nonFinite` writes NaN and the infinities as the quoted words `'NaN'`, `'Infinity'` and `'-Infinity'`: replayed into PostgreSQL 18.6 (2026-10-04), they read back into `real`, `double precision` and `timestamptz`.
+`nonFinite` is `QUOTED_WORD_NON_FINITE`, which writes NaN and the infinities as the quoted words `'NaN'`, `'Infinity'` and `'-Infinity'`: replayed into PostgreSQL 18.6 (2026-10-04), they read back into `real`, `double precision` and `timestamptz`.
 `typedLiteral` writes the cells whose generic form PostgreSQL refuses, arrays and intervals among them, from the engine's own [`postgres-typed-literals.ts`](../../src/lib/db/providers/sql/postgres-typed-literals.ts).
 
 ---

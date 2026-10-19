@@ -1,15 +1,12 @@
 import {
-  BARE_TYPE_FAMILY,
-  CLICKHOUSE_WRAPPER,
   EXACT_DECIMAL_TYPE_NAMES,
-  EXACT_NUMERIC_TYPE,
   FLOAT64_TYPE_NAMES,
-  FLOAT_TYPE,
   identifierDoubleQuoted,
   INSTANT_TYPE_NAMES,
   literalStandard,
   NO_BARE_SPELLING,
   placeholderColon,
+  STANDARD_TYPE_VOCABULARY,
   unquoteStandard,
 } from "@/lib/db/sql-writing/shared";
 import { binaryHexToRaw } from "@/lib/db/sql-writing/export-shared";
@@ -264,12 +261,7 @@ export const ORACLE_SQL_WRITING: SqlWritingSpec = {
       "timestamp with time zone",
     ],
     bareSpelling: NO_BARE_SPELLING,
-    typeVocabulary: {
-      bareTypeFamily: BARE_TYPE_FAMILY,
-      floatType: FLOAT_TYPE,
-      exactNumericType: EXACT_NUMERIC_TYPE,
-      numericWrapper: CLICKHOUSE_WRAPPER,
-    },
+    typeVocabulary: STANDARD_TYPE_VOCABULARY,
     binaryLiteral: binaryHexToRaw,
     // Replayed into the engine (2026-10-04): Oracle AI Database 23.26.3 reads its own
     // constants into `BINARY_DOUBLE` and `BINARY_FLOAT`.

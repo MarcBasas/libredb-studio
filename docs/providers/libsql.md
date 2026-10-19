@@ -988,17 +988,16 @@ There is no placeholder (`placeholder: null`), so a generator quotes the value w
 Measured on sqld 0.24.33: `SELECT 'it''s'` answers `it's`, and a backslash has no special meaning, the same standard doubling SQLite defines.
 libSQL shares only this grammar with SQLite, through the shared building blocks, and not SQLite's row: SQLite binds `?`, and libSQL's row has no placeholder.
 Inline row editing reads a key column's kind through the module's own `inlineEdit`, because libSQL embeds SQLite and SQLite's type words name an affinity and not a storage width.
-`instantTypeNames` is empty: a `DATE`, `DATETIME` or `TIMESTAMP` column holds the text or integer somebody put in it, and that value is its own identity.
+`instantTypeNames` is the empty `NO_INSTANT_TYPE_NAMES`: a `DATE`, `DATETIME` or `TIMESTAMP` column holds the text or integer somebody put in it, and that value is its own identity.
 Measured 2026-09-19 on libSQL server v0.24.33 over its HTTP pipeline and on bun:sqlite (Bun 1.4.0), `zz_<decl>(k <decl> PRIMARY KEY, note TEXT)` for each of the three declarations against `'2024-01-15'`, `'2026-01-01 10:00:00.123'`, `'2026-01-01T07:00:00.123Z'` and the epoch 1705276800, 24 combinations: every value came back unchanged, `WHERE k IN (?)` matched one group holding one row, and the `UPDATE` changed exactly one row, libSQL identical to bun:sqlite on all twelve of its own.
-`float64TypeNames` is `"all"`: SQLite has one float width, so `REAL`, `FLOAT`, `DOUBLE` and `DOUBLE PRECISION` are four spellings of one 8-byte double.
+`float64TypeNames` is `EVERY_TYPE_IS_FLOAT64`, `"all"`: SQLite has one float width, so `REAL`, `FLOAT`, `DOUBLE` and `DOUBLE PRECISION` are four spellings of one 8-byte double.
 Measured 2026-09-18 on libSQL server v0.24.33 and bun:sqlite, `zz_real(r REAL, f FLOAT, d DOUBLE, dp DOUBLE PRECISION)` answered `real` to `typeof()` for all four, read 0.30000000000000004 back identical, and `WHERE r = 1.5`, `WHERE f = 0.1`, `WHERE d = 0.30000000000000004` and `WHERE dp = 0.1` each matched exactly one row on both.
-`exactDecimalTypeNames` is empty: SQLite has no decimal type, so `DECIMAL(20,4)` takes NUMERIC affinity and stores an integer or an 8-byte double.
+`exactDecimalTypeNames` is the empty `NO_EXACT_DECIMAL_TYPE_NAMES`: SQLite has no decimal type, so `DECIMAL(20,4)` takes NUMERIC affinity and stores an integer or an 8-byte double.
 That was measured 2026-09-19 on bun:sqlite only ([SQLite](sqlite.md)): `WHERE k = 1234567890123456.8` matched one row, its own; libSQL states it because it embeds the same engine and reports the same `sqlite3_column_decltype` declarations.
 Every edit is bound as typed.
 
 The module's `export` field writes a result export's column types from `STANDARD_DDL_TYPES`, NaN and the infinities as NULL through `NULL_NON_FINITE`, no re-spelling through `NO_BARE_SPELLING`, and a binary cell through `binaryStandardHex` (`X'0102'`).
-`standsAlone` is the SQLite list, for the same measured reason: libSQL is SQLite 3.47.0, and `pragma_table_info` there answers the declared spelling verbatim too (measured on sqld 0.24.33).
-It is written out rather than aliased, so a future divergence can be recorded in one engine's row without touching the other.
+`standsAlone` is the SQLite list, `VERBATIM_DECLARED_TYPES_STAND_ALONE`, held by name for the same measured reason: libSQL is SQLite 3.47.0, and `pragma_table_info` there answers the declared spelling verbatim too (measured on sqld 0.24.33).
 
 ---
 
