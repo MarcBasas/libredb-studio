@@ -27,15 +27,15 @@ export const GOLDEN_KEYS: readonly string[] = Object.freeze([
 ]);
 
 /** The trailing backslash, the lone quote, NUL, newline and a non-Latin-1 name are the escape edges. */
-const LITERAL_VALUES = ["", "it's", "a\\b", "a\\", "'", "a\\'b", "Müşteri", "x\u0000y", "line\nbreak"];
+export const LITERAL_VALUES = ["", "it's", "a\\b", "a\\", "'", "a\\'b", "Müşteri", "x\u0000y", "line\nbreak"];
 
 /** Literal texts as a catalog reports them, each read by one dialect's rules and not another's. */
-const RAW_LITERALS = ["'a''b'", "'a\\'b'", "N'x'", "'open", "'a'b'"];
+export const RAW_LITERALS = ["'a''b'", "'a\\'b'", "N'x'", "'open", "'a'b'"];
 
-const IDENTIFIER_NAMES = ["plain", 'x"y', "a`b", "a]b", "a\\b"];
+export const IDENTIFIER_NAMES = ["plain", 'x"y', "a`b", "a]b", "a\\b"];
 
 /** Two digits is where a placeholder spelled by string surgery would go wrong. */
-const PLACEHOLDER_POSITIONS = [1, 2, 10];
+export const PLACEHOLDER_POSITIONS = [1, 2, 10];
 
 const TEMPORAL_VALUES: ReadonlyArray<readonly [string, "date" | "timestamp"]> = [
   ["2026-01-27", "date"],
