@@ -25,20 +25,29 @@ function scriptFor(engine: EngineModule): string {
   return `
 import { mock } from "bun:test";
 const SENTINEL = () => "SENTINEL";
+const actual = await import(${JSON.stringify(engine.absPath)});
 mock.module(${JSON.stringify(engine.absPath)}, () => ({
+  ...actual,
   ${engine.exportName}: {
     escapeLiteral: SENTINEL,
     unescapeLiteral: SENTINEL,
     quoteIdentifier: SENTINEL,
     placeholder: SENTINEL,
     temporalLiteral: SENTINEL,
+    inlineEdit: {
+      instantTypeNames: new Set(),
+      exactDecimalTypeNames: new Set(),
+      float64TypeNames: "all",
+      boundEdit: SENTINEL,
+    },
   },
 }));
 const { GOLDEN_KEYS, renderGolden } = await import(${JSON.stringify(FIXTURES)});
 const keyOf = ${keyOf.toString()};
 const out = {};
-for (const key of GOLDEN_KEYS) out[key] = renderGolden(keyOf(key));
-console.log(JSON.stringify(out));
+for (const key of GOLDEN_KEYS) out[key] = await renderGolden(keyOf(key));
+// Awaited: console.log of this much output into the pipe is cut at 64 KiB when the process exits.
+await Bun.write(Bun.stdout, JSON.stringify(out));
 `;
 }
 

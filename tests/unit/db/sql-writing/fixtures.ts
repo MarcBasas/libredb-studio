@@ -5,7 +5,8 @@
  * only today's public functions, so a file under `golden/` records what the tree
  * answered before any per-engine module existed, and a diff in one is a behaviour
  * change. The isolation test reuses `renderGolden` to prove that one engine's row
- * cannot move another engine's output.
+ * cannot move another engine's output. The inline edit lines come last, from
+ * `renderInlineEditGolden`.
  *
  * Four keys are not engines. `no-connection` is the generator that has no connection
  * to name a dialect, so it renders `undefined`. `empty-string` renders `""`, which a
@@ -19,6 +20,7 @@ import { EXTERNAL_DATABASE_TYPES } from "@/lib/db/compatibility";
 import { quoteIdentifier } from "@/lib/sql/identifier";
 import { positionalPlaceholder, quoteLiteral, temporalLiteral, unquoteLiteral } from "@/lib/sql/values";
 import type { DatabaseType } from "@/lib/types";
+import { renderInlineEditGolden } from "./inline-edit-fixtures";
 
 export const GOLDEN_KEYS: readonly string[] = Object.freeze([
   ...EXTERNAL_DATABASE_TYPES,
@@ -49,7 +51,7 @@ const TEMPORAL_VALUES: ReadonlyArray<readonly [string, "date" | "timestamp"]> = 
 
 const show = (value: unknown): string => (value === undefined ? "undefined" : JSON.stringify(value));
 
-export function renderGolden(type: string | undefined): string {
+export async function renderGolden(type: string | undefined): Promise<string> {
   const dialect = type as DatabaseType | undefined;
   const lines: string[] = [];
   const line = (call: string, result: unknown) => lines.push(`${call} => ${show(result)}`);
@@ -75,7 +77,7 @@ export function renderGolden(type: string | undefined): string {
   for (const [value, kind] of TEMPORAL_VALUES) {
     line(`temporalLiteral(${show(value)}, ${show(kind)}, ${t})`, temporalLiteral(value, kind, dialect));
   }
-  return `${lines.join("\n")}\n`;
+  return `${lines.join("\n")}\n${await renderInlineEditGolden(type)}`;
 }
 
 /** The golden file name of a key. */

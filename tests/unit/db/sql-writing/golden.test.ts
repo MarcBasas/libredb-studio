@@ -25,9 +25,9 @@ describe("SQL writing golden output", () => {
   });
 
   for (const key of GOLDEN_KEYS) {
-    test(key, () => {
+    test(key, async () => {
       const file = path.join(GOLDEN_DIR, goldenFileName(key));
-      const rendered = renderGolden(keyOf(key));
+      const rendered = await renderGolden(keyOf(key));
       if (process.env.UPDATE_GOLDEN === "1") {
         fs.writeFileSync(file, rendered);
         throw new Error("golden files written, commit them");
