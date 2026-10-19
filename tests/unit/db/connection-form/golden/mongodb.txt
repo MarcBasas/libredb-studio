@@ -69,8 +69,8 @@ input#password type="password" placeholder="***" describedby=none
 label[for=database] "Database Name"
 input#database type=none placeholder="db" describedby=none
 label[for=authSource] "Authentication Database"
-input#authSource type=none placeholder="admin" describedby=none
-p#none "The database the user was created in, usually admin. Leave empty when the credentials live in the database above."
+input#authSource type=none placeholder="admin" describedby="authSource-hint"
+p#authSource-hint "The database the user was created in, usually admin. Leave empty when the credentials live in the database above."
 button "SSL / TLS"
 button "SSH Tunnel"
 button "Cancel"

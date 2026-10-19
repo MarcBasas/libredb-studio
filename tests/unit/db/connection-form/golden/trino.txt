@@ -63,11 +63,11 @@ input#port type=none placeholder=none describedby=none
 label[for=user] "Username"
 input#user type=none placeholder="user" describedby=none
 label[for=password] "Password"
-input#password type="password" placeholder="***" describedby=none
-p#none "Trino refuses a password over plain HTTP. Enable TLS below, or leave this empty to connect as an unauthenticated user."
+input#password type="password" placeholder="***" describedby="password-hint"
+p#password-hint "Trino refuses a password over plain HTTP. Enable TLS below, or leave this empty to connect as an unauthenticated user."
 label[for=database] "Catalog Name"
-input#database type=none placeholder="tpch" describedby=none
-p#none "The Trino catalog to open, such as tpch or hive. Its schemas are the level below."
+input#database type=none placeholder="tpch" describedby="database-hint"
+p#database-hint "The Trino catalog to open, such as tpch or hive. Its schemas are the level below."
 label[for=schema] "Schema Name"
 input#schema type=none placeholder="default" describedby=none
 p#none "Used for unqualified table names in queries and Create Table. Leave empty to qualify names yourself. Run SHOW SCHEMAS to list the catalog's schemas."

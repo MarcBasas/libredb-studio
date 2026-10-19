@@ -80,8 +80,6 @@ export interface DatabaseUIConfig {
    * The connection dialog's label for a field, where this engine names the field differently from
    * the dialog's own word (#1085). Read through `connectionFieldLabel`, so an engine relabels a
    * field by declaring it here rather than by another per-type branch in `ConnectionModal.tsx`.
-   * The branches that name Couchbase's bucket, Trino's catalog, Cassandra's keyspace and libSQL's
-   * token predate this and stay where they are; moving them onto this declaration is a backlog item.
    */
   fieldLabels?: Partial<Record<ConnectionField, string>>;
   /**
@@ -92,10 +90,16 @@ export interface DatabaseUIConfig {
   /**
    * The connection dialog's placeholder for a field, where this engine's example differs from the dialog's own.
    * Read through `connectionFieldPlaceholder`; the `host`, `user`, `password`, `database`, `schema`, `region`,
-   * `location`, `privateKey` and `amqpPort` boxes read it. A declared `schema` example also stands in for the dialog's
+   * `location`, `privateKey`, `amqpPort` and `connectionString` boxes read it. A declared `schema` example also stands in for the dialog's
    * own sentence under that box, so the engine's hint is the only one drawn there.
    */
   fieldPlaceholders?: Partial<Record<ConnectionField, string>>;
+  /**
+   * Where the connection dialog draws a field: `"advanced"` behind the Advanced accordion, `"open"` with the other
+   * fields. Read through `connectionFieldPlacement`; absent means open. The dialog draws the accordion only for an
+   * engine that places one of its `connectionFields` there.
+   */
+  fieldPlacement?: Partial<Record<ConnectionField, "open" | "advanced">>;
   /**
    * The sentence under the Host box derived from what is typed in it, such as the host a Snowflake account
    * identifier resolves to, or `undefined` while the text derives nothing. Drawn in place of the static `fieldHints`
@@ -489,13 +493,26 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     // `user` is for a self-hosted server started with SQLD_HTTP_AUTH, which checks a
     // user name and password as HTTP Basic: the transport sends Basic whenever a
     // connection names a user and the bearer token otherwise. The form still labels
-    // `password` "Auth Token" (see ConnectionModal.tsx), the credential Turso Cloud and
+    // `password` "Auth Token" (fieldLabels below), the credential Turso Cloud and
     // a JWT-checking server take, and the hint below says when that box is a password.
     // No `database`: the database IS the host on Turso Cloud, and a self-hosted server
     // serves one per namespace hostname.
     connectionFields: CONNECTION_FIELDS.libsql,
+    fieldLabels: {
+      // libSQL's usual credential is a TOKEN its server minted (Turso prints one per
+      // database), so the shared `password` field holds a JWT here and is relabelled
+      // rather than left to be guessed at. A self-hosted server started with
+      // SQLD_HTTP_AUTH checks a user name and password instead, and the Username box's
+      // declared hint below says when this box takes the password.
+      password: "Auth Token",
+    },
+    fieldPlaceholders: {
+      connectionString: "libsql://<database>-<org>.turso.io?authToken=<jwt>",
+    },
     fieldHints: {
       user: "Only for a self-hosted libSQL server started with SQLD_HTTP_AUTH, which checks a user name and password as HTTP Basic: the Auth Token box then takes the password. Leave it empty for Turso Cloud and for a server that checks tokens.",
+      password:
+        "Turso Cloud mints this per database (`turso db tokens create`). A self-hosted libSQL server started without authentication takes none - leave it empty.",
     },
   },
   mongodb: {
@@ -505,6 +522,23 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     defaultPort: "27017",
     showConnectionStringToggle: true,
     connectionFields: CONNECTION_FIELDS.mongodb,
+    fieldPlaceholders: {
+      connectionString: "mongodb://localhost:27017/mydb  or  mongodb+srv://...",
+    },
+    fieldHints: {
+      // MongoDB keeps its users in a database of their own, and the driver checks the
+      // credentials against whichever database the URI names when nothing says otherwise.
+      // So the ordinary deployment - users in `admin`, data elsewhere - had no way through
+      // the discrete fields at all, and failed as a credentials error.
+      //
+      // In the open rather than behind the Advanced accordion for the
+      // reason Cassandra's field is: the deployment that needs it is
+      // the ordinary one, and the failure without it is a credentials error
+      // that names nothing. The connection-string mode has no such field -
+      // a pasted URI carries `?authSource=` itself.
+      authSource:
+        "The database the user was created in, usually admin. Leave empty when the credentials live in the database above.",
+    },
   },
   redis: {
     icon: RedisIcon,
@@ -526,6 +560,10 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     defaultPort: "1521",
     showConnectionStringToggle: false,
     connectionFields: CONNECTION_FIELDS.oracle,
+    fieldPlacement: { serviceName: "advanced" },
+    fieldHints: {
+      serviceName: "If empty, the Database Name field is used as the service name.",
+    },
   },
   // IBM Db2 LUW (#786). No connection-string toggle: a `db2://` paste fills the fields, the Oracle
   // precedent. No password hint: a declared hint is drawn whatever SSL Mode says, and the cleartext
@@ -550,6 +588,10 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     defaultPort: "1433",
     showConnectionStringToggle: false,
     connectionFields: CONNECTION_FIELDS.mssql,
+    fieldPlacement: { instanceName: "advanced" },
+    fieldHints: {
+      instanceName: "For named instances (e.g. SQLEXPRESS). Leave empty for default instance.",
+    },
   },
   couchbase: {
     icon: CouchbaseIcon,
@@ -560,6 +602,14 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     defaultPort: "8091",
     showConnectionStringToggle: true,
     connectionFields: CONNECTION_FIELDS.couchbase,
+    fieldLabels: {
+      // Couchbase pins one bucket per connection (issue #262, decision 4), so the shared
+      // `database` field holds a bucket name and the form must say so.
+      database: "Bucket Name",
+    },
+    fieldPlaceholders: {
+      connectionString: "couchbase://localhost:8091/travel-sample  or  couchbases://cb.<id>.cloud.couchbase.com/...",
+    },
   },
   clickhouse: {
     icon: ClickHouseIcon,
@@ -570,6 +620,11 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     defaultPort: "8123",
     showConnectionStringToggle: true,
     connectionFields: CONNECTION_FIELDS.clickhouse,
+    fieldPlaceholders: {
+      // The MongoDB example, which the dialog showed every toggle engine but Couchbase and libSQL before this
+      // declaration existed. Kept as it was, although it is not a ClickHouse address.
+      connectionString: "mongodb://localhost:27017/mydb  or  mongodb+srv://...",
+    },
   },
   druid: {
     icon: DruidIcon,
@@ -654,8 +709,30 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     // the two search engines: a coordinator fronts MANY catalogs (measured on 476,
     // `SHOW CATALOGS` answers jmx, memory, system, tpcds, tpch) and a connection pins
     // one, the way a PostgreSQL connection pins a database. The form labels it
-    // "Catalog" rather than "Database" - see ConnectionModal.tsx.
+    // "Catalog" rather than "Database" (fieldLabels below).
     connectionFields: CONNECTION_FIELDS.trino,
+    fieldLabels: {
+      // Trino pins one CATALOG the way Couchbase pins a bucket (issue #424 Phase 2).
+      // "Database" would be the wrong word twice over: a Trino catalog is a whole external
+      // system (`hive`, `iceberg`, `tpch`), and the field is the one thing a user cannot
+      // guess - a coordinator with no catalog selected resolves no table at all.
+      database: "Catalog Name",
+    },
+    fieldPlaceholders: {
+      database: "tpch",
+    },
+    fieldHints: {
+      // Measured on Trino 476 with authentication DISABLED: a request
+      // carrying `Authorization: Basic` over plain HTTP is answered 401,
+      // "Password not allowed for insecure authentication". So a
+      // password is a TLS-only credential here, and typing one into an
+      // http:// connection BREAKS a connection that would otherwise
+      // work. The provider refuses the combination outright; this says
+      // so before the user reaches that error.
+      password:
+        "Trino refuses a password over plain HTTP. Enable TLS below, or leave this empty to connect as an unauthenticated user.",
+      database: "The Trino catalog to open, such as tpch or hive. Its schemas are the level below.",
+    },
   },
   cassandra: {
     icon: CassandraIcon,
@@ -679,8 +756,30 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     // customers` answers "No keyspace has been specified. USE a keyspace, or
     // explicitly specify keyspace.tablename", and a keyspace that does not exist
     // fails the CONNECT rather than the first statement. The form labels it
-    // "Keyspace" - see ConnectionModal.tsx.
+    // "Keyspace" (fieldLabels below).
     connectionFields: CONNECTION_FIELDS.cassandra,
+    fieldLabels: {
+      // Cassandra pins one KEYSPACE the same way (issue #424 Phase 4). "Database" is the
+      // wrong word here too: a keyspace carries the replication settings, not just a
+      // namespace, and without one pinned an unqualified table name resolves to nothing
+      // at all - measured on 5.0.9, "No keyspace has been specified. USE a keyspace, or
+      // explicitly specify keyspace.tablename".
+      database: "Keyspace Name",
+    },
+    fieldPlaceholders: {
+      database: "probe",
+    },
+    fieldHints: {
+      database:
+        "The keyspace to open. Tables inside it are the level below; statements can still name any keyspace in full.",
+      // Drawn in the open, not behind the Advanced accordion that holds
+      // Oracle's service name and SQL Server's instance name. Those two are
+      // refinements; this one is mandatory - `cassandra-driver` refuses to
+      // build a load-balancing policy without it, so a connection with this
+      // empty cannot open at all.
+      localDataCenter:
+        "Required: the Cassandra driver refuses to connect without it. A stock single-node install reports datacenter1; the server lists the ones it has if this is wrong.",
+    },
   },
   prometheus: {
     icon: PrometheusIcon,
@@ -1608,7 +1707,7 @@ export function offersSslPanel(type: DatabaseType): boolean {
  *
  * The fallback is the caller's because the dialog's own words are not one table: the `database`
  * field alone reads "Database Name", "Database File Path" or "Database Name (optional override)"
- * by the mode the form is in, and the per-type branches still choose several. `port` shares the
+ * by the mode the form is in. `port` shares the
  * host row's label, so the dialog draws one for it only where one is declared: an engine that
  * declares none keeps the row it always had.
  */
@@ -1623,11 +1722,15 @@ export function connectionFieldPlaceholder(config: DatabaseUIConfig, field: Conn
 
 /**
  * The sentence the connection dialog draws under one field, or `undefined` where the engine
- * declares none (#1085). There is no fallback: a field with no declared hint draws nothing new,
- * and the per-type hints `ConnectionModal.tsx` already writes stay beside it.
+ * declares none (#1085). There is no fallback: a field with no declared hint draws nothing.
  */
 export function connectionFieldHint(config: DatabaseUIConfig, field: ConnectionField): string | undefined {
   return config.fieldHints?.[field];
+}
+
+/** Where the connection dialog draws one field: the engine's declared `fieldPlacement`, else in the open. */
+export function connectionFieldPlacement(config: DatabaseUIConfig, field: ConnectionField): "open" | "advanced" {
+  return config.fieldPlacement?.[field] ?? "open";
 }
 
 /**

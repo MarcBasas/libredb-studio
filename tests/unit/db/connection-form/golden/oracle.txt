@@ -142,8 +142,8 @@ label[for=database] "Database Name"
 input#database type=none placeholder="db" describedby=none
 button "Advanced"
 label[for=none] "Service Name"
-input#none type=none placeholder="ORCL or XEPDB1" describedby=none
-p#none "If empty, the Database Name field is used as the service name."
+input#none type=none placeholder="ORCL or XEPDB1" describedby="serviceName-hint"
+p#serviceName-hint "If empty, the Database Name field is used as the service name."
 button "SSL / TLS"
 button "SSH Tunnel"
 button "Cancel"

@@ -142,8 +142,8 @@ label[for=database] "Database Name"
 input#database type=none placeholder="db" describedby=none
 button "Advanced"
 label[for=none] "Instance Name"
-input#none type=none placeholder="SQLEXPRESS" describedby=none
-p#none "For named instances (e.g. SQLEXPRESS). Leave empty for default instance."
+input#none type=none placeholder="SQLEXPRESS" describedby="instanceName-hint"
+p#instanceName-hint "For named instances (e.g. SQLEXPRESS). Leave empty for default instance."
 button "SSL / TLS"
 button "SSH Tunnel"
 button "Cancel"

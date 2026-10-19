@@ -65,11 +65,11 @@ input#user type=none placeholder="user" describedby=none
 label[for=password] "Password"
 input#password type="password" placeholder="***" describedby=none
 label[for=database] "Keyspace Name"
-input#database type=none placeholder="probe" describedby=none
-p#none "The keyspace to open. Tables inside it are the level below; statements can still name any keyspace in full."
+input#database type=none placeholder="probe" describedby="database-hint"
+p#database-hint "The keyspace to open. Tables inside it are the level below; statements can still name any keyspace in full."
 label[for=localDataCenter] "Local Data Center"
-input#localDataCenter type=none placeholder="datacenter1" describedby=none
-p#none "Required: the Cassandra driver refuses to connect without it. A stock single-node install reports datacenter1; the server lists the ones it has if this is wrong."
+input#localDataCenter type=none placeholder="datacenter1" describedby="localDataCenter-hint"
+p#localDataCenter-hint "Required: the Cassandra driver refuses to connect without it. A stock single-node install reports datacenter1; the server lists the ones it has if this is wrong."
 button "SSL / TLS"
 button "SSH Tunnel"
 button "Cancel"
