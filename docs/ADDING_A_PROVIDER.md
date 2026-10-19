@@ -1181,7 +1181,6 @@ Those three reach code and tests only; the four prose greps of the published blo
       The `Record<ExplainFormat, …>` registry is exhaustive, so this and the next item must land
       together or neither compiles
 - [ ] `src/lib/explain/index.ts` — register the strategy
-- [ ] `src/lib/connection-string-parser.ts` — the scheme(s), if `supportsConnectionString`
 - [ ] `src/lib/query-generators.ts` — only if the dialect needs its own branch; the default is
       PostgreSQL-shaped, so check before assuming it fits
 - [ ] `src/lib/db/sql-grammar/`: write your engine's grammar module, `<family>/<id>/sql-grammar.ts`
