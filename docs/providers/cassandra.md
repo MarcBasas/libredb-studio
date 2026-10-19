@@ -625,7 +625,7 @@ off a neighbour:
 | block comments | **flat** | `SELECT /* a /* b */ id …` returns the row |
 | `q'…'` | **not a literal** | `q'{it''s}'` is `no viable alternative at input '{it's}'` |
 
-`cassandra` is deliberately **absent** from `NON_SQL_DIALECTS`. That set asks whether the text is
+`cassandra` deliberately declares `readsSqlText: true` in `src/lib/db/providers/sql/cassandra/sql-grammar.ts`. That fact asks whether the text is
 SQL-*shaped* so that a span reader can find where a literal ends and where a comment hides a write —
 and CQL is written with the same statement keywords, the same `'…'` literals with doubled quotes, the
 same `"…"` quoted names and the same `--` / `/* */` comments. The keywords it *lacks* are a smaller

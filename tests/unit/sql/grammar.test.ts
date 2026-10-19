@@ -368,10 +368,10 @@ describe("hashRunIsAmbiguous", () => {
  * `MODIFIED_COLUMN_COVERAGE`): a `Record<DatabaseType, …>` the compiler refuses to
  * accept until the new id is listed.
  *
- * Neither table in `grammar.ts` can enforce this on its own - `SQL_GRAMMARS` is a
- * `Partial<Record<…>>` because "absent" is a meaningful answer, and the non-SQL set
- * is a set. So a provider added without touching that file silently inherits the
- * compatibility grammar and is silently declared to write SQL, and nothing fails.
+ * When this table was written, neither table in `grammar.ts` could enforce this on its own - `SQL_GRAMMARS` was a
+ * `Partial<Record<…>>` because "absent" was a meaningful answer, and the non-SQL set
+ * was a set. So a provider added without touching that file silently inherited the
+ * compatibility grammar and was silently declared to write SQL, and nothing failed.
  * Deciding is mandatory; deciding "leave it at the default" is a fine decision.
  */
 const GRAMMAR_COVERAGE: Record<DatabaseType, "established" | "default"> = {
