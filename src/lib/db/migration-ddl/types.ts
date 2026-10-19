@@ -38,7 +38,7 @@ export type CreateTableDdl =
 
 export interface TableDdlRefused {
   readonly tableDdl: "refused";
-  /** The one line after the header in place of any DDL (today NO_TABLE_DDL with NO_COLUMN_MODIFICATION's label and reason). */
+  /** The one line after the header in place of any DDL ("-- <label>: Cannot generate table DDL. <reason>"). */
   readonly refusal: string;
   readonly transactionWrapper: null;
   readonly reasons: readonly string[];

@@ -114,7 +114,7 @@ describe("migration DDL registry census", () => {
     expect(Object.isFrozen(MIGRATION_DDL)).toBe(true);
   });
 
-  test("the refused ids are today's NO_TABLE_DDL", () => {
+  test("the refused ids are the REFUSED list, the engines that print no table DDL", () => {
     expect(ids.filter((id) => MIGRATION_DDL[id].tableDdl === "refused").sort()).toEqual([...REFUSED].sort());
   });
 
