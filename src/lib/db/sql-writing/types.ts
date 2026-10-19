@@ -1,3 +1,5 @@
+import type { NonFiniteWord } from "@/lib/non-finite";
+
 /**
  * The SQL writing contract: what one engine states about the literals, identifiers and
  * binds a generated statement spells for it.
@@ -43,4 +45,67 @@ export interface InlineEditSpec {
     declaredType: string | undefined,
     bind: (value: string) => string,
   ) => string | undefined;
+}
+
+/** The kinds of column a value can be inferred to be, before an engine spells them. */
+export type InferredKind = "text" | "integer" | "numeric" | "boolean" | "timestamp" | "binary";
+
+/** The generic writer, for a scalar inside a composite value. */
+export type ScalarLiteral = (value: unknown) => string;
+
+/** One cell written from its column's declared type, or `undefined` to leave it to the generic writer. */
+export type TypedWriter = (value: unknown, declared: string | undefined, scalar: ScalarLiteral) => string | undefined;
+
+/** One column's literal writer, prepared from its declared type; undefined hands the cell to the generic writer. */
+export type ColumnWriter = (value: unknown) => string | undefined;
+
+/** The patterns a declared type is read with before the export decides how to write its cells. */
+export interface ExportTypeVocabulary {
+  /** The bare names that narrow below the value the wire hands back, each with the family it is re-spelled from. */
+  readonly bareTypeFamily: Readonly<Record<string, InferredKind>>;
+  /** A declared type that holds a binary float, spelled the way the providers report it. */
+  readonly floatType: RegExp;
+  /** The exact numeric types that can hold an infinity, with or without a precision. */
+  readonly exactNumericType: RegExp;
+  /** The wrappers that change nothing about whether the column holds numbers. */
+  readonly numericWrapper: RegExp;
+}
+
+/**
+ * What one engine states about the result export's SQL forms: the CREATE TABLE types and
+ * the INSERT literals a generated file spells for it.
+ */
+export interface ExportSpec {
+  /**
+   * How the engine spells the inferred kinds, total over the six. The generic set is not
+   * portable, and the statement is meant to be run against the engine it was read from;
+   * engines on the standard spelling import `STANDARD_DDL_TYPES`.
+   */
+  readonly ddlTypes: Readonly<Record<InferredKind, string>>;
+  /** The bare names the engine stands behind, so they are written through verbatim. */
+  readonly standsAlone: readonly string[];
+  /**
+   * The bare names the engine narrows below the value its own driver hands back, each with
+   * the spelling written instead, so the INSERT written beside the CREATE TABLE neither
+   * fails nor rounds.
+   */
+  readonly bareSpelling: Readonly<Record<string, string>>;
+  /** The patterns a declared type is read with, per engine. */
+  readonly typeVocabulary: ExportTypeVocabulary;
+  /** A binary value as a literal the engine accepts; there is no portable spelling. */
+  readonly binaryLiteral: (bytes: Uint8Array) => string;
+  /** NaN and the infinities as the engine reads them back into a float column; engines that write NULL import `NULL_NON_FINITE`. */
+  readonly nonFinite: Readonly<Record<NonFiniteWord, string>>;
+  /** Whether an INSERT is written `INSERT INTO t (...) VALUES (...);` or `INSERT INTO t (...) SELECT ...;`. */
+  readonly insertForm: "values" | "select";
+  /** A rewrite of a declared type the engine needs before a CREATE TABLE takes it, ahead of the bare-name completion. */
+  readonly rewriteDeclared?: (declared: string) => string;
+  /** A column type from the first sample; a defined result is the declaration, ahead of the bare-name completion. */
+  readonly declareFromSample?: (declared: string, sample: unknown) => string | undefined;
+  /** A literal that depends on the declared type, for the cells the generic writer spells in a form the engine refuses. */
+  readonly typedLiteral?: TypedWriter;
+  /** Per-column literal writers prepared from the declared types. */
+  readonly columnWriters?: (declared: readonly (string | undefined)[]) => readonly (ColumnWriter | undefined)[];
+  /** A key the result cannot supply: the note prepended to CREATE TABLE and the definition added. */
+  readonly createTableKey?: { readonly note: string; readonly clause: (quotedColumns: readonly string[]) => string };
 }

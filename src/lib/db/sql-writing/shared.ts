@@ -3,10 +3,11 @@
  *
  * An engine module imports the one it uses by name, so a change here shows in the golden
  * output of every engine that imports it, and nowhere else. This module is a leaf: it
- * imports nothing from the tree, so any engine module can import it first in a fresh
- * process.
+ * imports nothing from the tree but types, so any engine module can import it first in a
+ * fresh process.
  */
-import type { SqlWritingSpec } from "./types";
+import type { NonFiniteWord } from "@/lib/non-finite";
+import type { InferredKind, SqlWritingSpec } from "./types";
 
 type Escape = SqlWritingSpec["escapeLiteral"];
 type Unescape = SqlWritingSpec["unescapeLiteral"];
@@ -317,3 +318,137 @@ export function unwrappedType(declaredType: string): string {
 export function firstWord(name: string): string {
   return name.split("(")[0].trim().split(/\s+/)[0];
 }
+
+// The result export's building blocks: the tables an engine with nothing special to say
+// imports by name, and the patterns a declared type is read with. Each is today's value
+// in `src/lib/export/result-export.ts`, which reads its own copy until its tables become
+// reads of each engine's export spec.
+
+/**
+ * How each dialect spells the inferred kinds.
+ *
+ * The generic set is not portable, and the statement is meant to be run against the
+ * engine it was read from: Oracle has no `TEXT` and no `BOOLEAN` before 23c, SQL
+ * Server has no `BOOLEAN` at all, and a bare `NUMERIC` on MySQL is `DECIMAL(10,0)` —
+ * which silently truncates every decimal it was chosen for. Only the dialects that
+ * disagree with the standard spelling appear here; the rest fall through to it,
+ * including SQLite, whose column types are advisory affinities anyway.
+ */
+export const STANDARD_DDL_TYPES: Readonly<Record<InferredKind, string>> = {
+  text: "TEXT",
+  integer: "BIGINT",
+  numeric: "DOUBLE PRECISION",
+  boolean: "BOOLEAN",
+  timestamp: "TIMESTAMP",
+  // `BLOB` is the standard spelling and MySQL, SQLite, Oracle and Cassandra all take
+  // it verbatim, so the four that would otherwise need a row here do not get one.
+  binary: "BLOB",
+};
+
+/** No bare name is written through verbatim: every one is re-spelled from its family. */
+export const NOTHING_STANDS_ALONE: readonly string[] = [];
+
+/** No bare name is narrowed below the value the driver hands back, so none is re-spelled. */
+export const NO_BARE_SPELLING: Readonly<Record<string, string>> = {};
+
+/** NaN and the infinities written as NULL, by every dialect that cannot store them or was not replayed. */
+export const NULL_NON_FINITE: Readonly<Record<NonFiniteWord, string>> = {
+  NaN: "NULL",
+  Infinity: "NULL",
+  "-Infinity": "NULL",
+};
+
+/**
+ * The family a BARE declared type belongs to, for the names that cannot stand alone.
+ *
+ * The four biggest providers declare a bare base name — `varchar`, `decimal`,
+ * `VARCHAR2`, `nvarchar`, `varbinary` — because a length or a precision cannot be
+ * recovered from the wire, and `src/lib/db/providers/sql/column-types.ts` says why it
+ * must not be guessed at: a MySQL `varchar(40)` reports `columnLength` 160 under
+ * utf8mb4 and 120 under utf8mb3, `mssql` reports 65535 as its sentinel for
+ * `varchar(MAX)`, and Oracle reports precision 0 for `COUNT(*)` and scale -127 for
+ * `1/3`. So the length is genuinely gone, and a bare name carries exactly as much
+ * information as one of the inferred kinds above — which is what this maps it to, so
+ * that the dialect tables spell it the same way they spell an inferred column.
+ *
+ * Measured by replaying the generated `CREATE TABLE` into the engine it was read from:
+ *
+ *   mysql:  ERROR 1064 … near ',\n  `body` text,'   (the bare `varchar` before it)
+ *   oracle: ORA-00906: missing left parenthesis      (the bare VARCHAR2)
+ *   mssql:  parses, then INFORMATION_SCHEMA.COLUMNS reports nvarchar length 1,
+ *           varchar length 1, varbinary length 1, decimal precision 18 scale 0
+ *
+ * The silent narrowing is the worst of the three: the file replays and the data is
+ * truncated. Two more of the same class were measured and are covered here — `CREATE
+ * TABLE t (c decimal)` is `decimal(10,0)` on MySQL and `NUMBER(*,0)` on Oracle, both
+ * of which round every decimal the column existed for, and `character` is
+ * `character(1)` even on Postgres.
+ *
+ * Only the four families whose parameters the wire drops are listed. `bit` is measured
+ * to narrow to `bit(1)` on Postgres and MySQL and is deliberately NOT here: `pg` hands
+ * a bit string back as `"1010"` and `mysql2` hands it back as a Buffer, so the two
+ * drivers need different families for the same name, and completing it to one of them
+ * would break the INSERT this same export writes for the other.
+ */
+export const BARE_TYPE_FAMILY: Readonly<Record<string, InferredKind>> = {
+  "character varying": "text",
+  varchar: "text",
+  varchar2: "text",
+  nvarchar: "text",
+  nvarchar2: "text",
+  character: "text",
+  char: "text",
+  nchar: "text",
+  text: "text",
+  ntext: "text",
+  tinytext: "text",
+  mediumtext: "text",
+  longtext: "text",
+  clob: "text",
+  nclob: "text",
+  enum: "text",
+  set: "text",
+  uniqueidentifier: "text",
+  rowid: "text",
+  binary: "binary",
+  varbinary: "binary",
+  raw: "binary",
+  blob: "binary",
+  tinyblob: "binary",
+  mediumblob: "binary",
+  longblob: "binary",
+  bytea: "binary",
+  image: "binary",
+  numeric: "numeric",
+  decimal: "numeric",
+  number: "numeric",
+  binary_double: "numeric",
+  binary_float: "numeric",
+  money: "numeric",
+  timestamp: "timestamp",
+  "timestamp without time zone": "timestamp",
+  "timestamp with time zone": "timestamp",
+  datetime: "timestamp",
+  datetime2: "timestamp",
+  smalldatetime: "timestamp",
+  datetimeoffset: "timestamp",
+  year: "integer",
+};
+
+/**
+ * A declared type that holds a binary float, spelled the way the providers report it:
+ * PostgreSQL's `real` / `double precision`, DuckDB's `FLOAT` / `DOUBLE`, SQLite's
+ * declared `REAL`, Oracle's `BINARY_DOUBLE` / `BINARY_FLOAT`, and `float4`/`float8`.
+ */
+export const FLOAT_TYPE = /^(double( precision)?|real|float\d*|binary_(double|float))$/i;
+
+/**
+ * The exact numeric types that can hold an infinity, as the providers spell them: PostgreSQL's
+ * `numeric` (14 and later), Snowflake's `DECFLOAT`, and the `decimal`/`number` spellings, with or
+ * without a precision. Used only by the CSV writer, which lets `-Infinity` through its formula
+ * guard in a numeric column (`toCsv`).
+ */
+export const EXACT_NUMERIC_TYPE = /^(numeric|decimal|number|decfloat)(\s*\(\s*\d+\s*(,\s*-?\d+\s*)?\))?$/i;
+
+/** ClickHouse's wrappers, which change nothing about whether the column holds numbers. */
+export const CLICKHOUSE_WRAPPER = /^\s*(?:Nullable|LowCardinality)\((.*)\)\s*$/;

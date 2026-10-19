@@ -68,13 +68,22 @@ const forbiddenImports = (file: string, text?: string): string[] =>
     .map(({ specifier, typeOnly }) => (typeOnly ? `type ${specifier}` : specifier));
 
 /** What `types.ts` or `shared.ts` imports beyond a type-only import of the contract's types; both are leaves. */
-const LEAF_TYPE_ONLY_ALLOWED = new Set(["./types", "@/lib/db/sql-writing/types", "@/lib/types"]);
+const LEAF_TYPE_ONLY_ALLOWED = new Set(["./types", "@/lib/db/sql-writing/types", "@/lib/types", "@/lib/non-finite"]);
 const LEAVES = ["types.ts", "shared.ts"].map((name) => join(ROOT, "src", "lib", "db", "sql-writing", name));
 
-const leafViolations = (file: string, text?: string): string[] =>
+const leafViolations = (file: string, text?: string, valueAllowed: ReadonlySet<string> = new Set()): string[] =>
   importsOf(file, text)
-    .filter(({ specifier, typeOnly }) => !(typeOnly && LEAF_TYPE_ONLY_ALLOWED.has(specifier)))
+    .filter(
+      ({ specifier, typeOnly }) => !valueAllowed.has(specifier) && !(typeOnly && LEAF_TYPE_ONLY_ALLOWED.has(specifier)),
+    )
     .map(({ specifier, typeOnly }) => (typeOnly ? `type ${specifier}` : specifier));
+
+/**
+ * The engine-neutral export helpers (spec 5.3): a leaf one level up, which may also take
+ * values from `shared.ts` and `@/lib/non-finite`, and still nothing from the export path.
+ */
+const EXPORT_LEAF = join(ROOT, "src", "lib", "db", "sql-writing", "export-shared.ts");
+const EXPORT_LEAF_ALLOWED = new Set(["./shared", "@/lib/db/sql-writing/shared", "@/lib/non-finite"]);
 
 describe("SQL writing seam", () => {
   // Every engine module may import these two, so an import here reaches every engine transitively.
@@ -94,6 +103,20 @@ describe("SQL writing seam", () => {
     ]);
     expect(leafViolations(shared, `import { SqlWritingSpec } from "./types";\n`)).toEqual(["./types"]);
     expect(leafViolations(shared, `import type { SqlWritingSpec } from "./types";\n`)).toEqual([]);
+  });
+
+  test("export-shared.ts: imports only the shared leaf, the non-finite words and types", () => {
+    expect(leafViolations(EXPORT_LEAF, undefined, EXPORT_LEAF_ALLOWED)).toEqual([]);
+  });
+
+  test("a planted import in the export leaf is caught", () => {
+    expect(
+      leafViolations(
+        EXPORT_LEAF,
+        `import { buildResultExport } from "@/lib/export/result-export";\n`,
+        EXPORT_LEAF_ALLOWED,
+      ),
+    ).toEqual(["@/lib/export/result-export"]);
   });
 
   test("the modules on disk are the registry's rows", () => {

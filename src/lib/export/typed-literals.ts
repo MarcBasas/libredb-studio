@@ -4,6 +4,18 @@ import { quoteLiteral } from "@/lib/sql/values";
 import { asBytes, binaryText } from "./binary";
 import { isNonFiniteWord, nonFiniteWord, type NonFiniteWord } from "@/lib/non-finite";
 import { jsonText } from "./json";
+import {
+  bareNumber,
+  type ClickHouseType,
+  floatWord,
+  isRecord,
+  namedField,
+  normalized,
+  NUMERIC_TEXT,
+  parseTypeCall,
+  UnwritableValue,
+} from "@/lib/db/sql-writing/export-shared";
+import type { ScalarLiteral, TypedWriter } from "@/lib/db/sql-writing/types";
 import { MSSQL_DATETIME_TEXT } from "@/lib/db/providers/sql/mssql-sql-writing";
 
 /**
@@ -25,29 +37,10 @@ import { MSSQL_DATETIME_TEXT } from "@/lib/db/providers/sql/mssql-sql-writing";
  * `undefined` and is written by the generic writer exactly as before.
  */
 
-/** The generic writer, for a scalar inside a composite value. */
-export type ScalarLiteral = (value: unknown) => string;
-
-/**
- * A cell the dialect has no literal for: a composite whose value does not have the shape
- * its declared type says (a tuple of the wrong length, a scalar where a list belongs).
- * Thrown rather than written in the generic form, because that form is exactly what the
- * engine refuses on replay, and one refused statement stops the whole file; the caller
- * skips the row with a comment instead.
- */
-export class UnwritableValue extends Error {}
-
-type TypedWriter = (value: unknown, declared: string | undefined, scalar: ScalarLiteral) => string | undefined;
-
-/** A plain object: what JSON makes of a record, and not an array or a byte container. */
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value) && asBytes(value) === undefined;
-}
-
-/** A declared type with its case and inner runs of spaces normalized, since both are engine output. */
-function normalized(declared: string | undefined): string {
-  return declared?.trim().toLowerCase().replace(/\s+/g, " ") ?? "";
-}
+// The two names the tests and `result-export.ts` read from here, now declared in the
+// engine-neutral export leaf and the contract's types.
+export { UnwritableValue };
+export type { ScalarLiteral };
 
 // ---------------------------------------------------------------------------------------
 // PostgreSQL
@@ -183,46 +176,6 @@ const mssqlLiteral: TypedWriter = (value, declared) => {
 // ClickHouse
 // ---------------------------------------------------------------------------------------
 
-/** A ClickHouse type split into its name and its top-level arguments: `Map(String, Int32)`. */
-interface ClickHouseType {
-  name: string;
-  args: string[];
-}
-
-/**
- * The top-level comma-separated arguments of a type's argument list, with single- and
- * double-quoted runs and `()`/`<>` nesting respected (`Enum8('a,b' = 1)`, `STRUCT("a,b"
- * INTEGER)`, `map<int, set<text>>`).
- */
-function splitArguments(text: string): string[] {
-  const args: string[] = [];
-  let depth = 0;
-  let quote: string | undefined;
-  let start = 0;
-  for (let index = 0; index < text.length; index++) {
-    const char = text[index];
-    if (quote !== undefined) {
-      if (char === quote) quote = undefined;
-    } else if (char === "'" || char === '"') quote = char;
-    else if (char === "(" || char === "<") depth++;
-    else if (char === ")" || char === ">") depth--;
-    else if (char === "," && depth === 0) {
-      args.push(text.slice(start, index).trim());
-      start = index + 1;
-    }
-  }
-  args.push(text.slice(start).trim());
-  return args;
-}
-
-/** `Name(args)` or `name<args>`, split into its name and its top-level arguments. */
-function parseTypeCall(declared: string, open = "(", close = ")"): ClickHouseType {
-  const text = declared.trim();
-  const at = text.indexOf(open);
-  if (at <= 0 || !text.endsWith(close) || !/^[A-Za-z0-9_ ]+$/.test(text.slice(0, at))) return { name: text, args: [] };
-  return { name: text.slice(0, at).trim(), args: splitArguments(text.slice(at + 1, -1)) };
-}
-
 function parseClickHouseType(declared: string): ClickHouseType {
   return parseTypeCall(declared);
 }
@@ -243,7 +196,6 @@ function tupleElement(arg: string): { name?: string; type: string } {
 }
 
 const CLICKHOUSE_NUMBER = /^(U?Int\d+|Float\d+|Decimal\d*|BFloat16)$/;
-const NUMERIC_TEXT = /^-?\d+(\.\d+)?$/;
 
 /**
  * The words a non-finite float travels as (`src/lib/non-finite.ts`), and ClickHouse's own
@@ -316,42 +268,6 @@ const clickhouseLiteral: TypedWriter = (value, declared, scalar) => {
   if (name !== "Array" && name !== "Map" && name !== "Tuple") return undefined;
   return clickHouseValue(value, declared, scalar);
 };
-
-// ---------------------------------------------------------------------------------------
-// Shared by the three typed-literal grammars below
-// ---------------------------------------------------------------------------------------
-
-/** A number, or the text of one (how a JSON result keeps a wide integer's digits), written bare. */
-function bareNumber(value: unknown): string | undefined {
-  if (typeof value === "number" && Number.isFinite(value)) return String(value);
-  return typeof value === "string" && NUMERIC_TEXT.test(value) ? value : undefined;
-}
-
-/**
- * NaN or an infinity, as the word it travels as (`src/lib/non-finite.ts`): a number from a
- * host that built its rows itself, or the word a result carried through JSON.
- */
-function floatWord(value: unknown): NonFiniteWord | undefined {
-  if (typeof value === "number") return nonFiniteWord(value);
-  return isNonFiniteWord(value) ? value : undefined;
-}
-
-/**
- * The type names with a space in them that a Trino `row(...)` field can be WITHOUT a field
- * name, so `timestamp(3) with time zone` is not read as a field `timestamp(3)` of type
- * `with time zone`.
- */
-const MULTI_WORD_TYPE =
-  /^((timestamp|time)(\(\d+\))? with(out)? time zone|double precision|interval (day to second|year to month))$/i;
-
-/** A `name type` field of a Trino `row(...)` or a DuckDB `STRUCT(...)`, its name unquoted. */
-function namedField(arg: string): { name: string; type: string } | undefined {
-  if (MULTI_WORD_TYPE.test(arg.trim())) return undefined;
-  const match = /^("(?:[^"]|"")*"|[A-Za-z_][A-Za-z0-9_]*)\s+(\S.*)$/.exec(arg);
-  if (match === null) return undefined;
-  const name = match[1].startsWith('"') ? match[1].slice(1, -1).replace(/""/g, '"') : match[1];
-  return { name, type: match[2] };
-}
 
 // ---------------------------------------------------------------------------------------
 // Trino

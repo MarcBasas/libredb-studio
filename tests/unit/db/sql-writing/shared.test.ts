@@ -1,6 +1,22 @@
 import { describe, expect, test } from "bun:test";
 import {
+  asBytes as exportSharedAsBytes,
+  binaryBinaryHex,
+  binaryHexToRaw,
+  binaryPgBytea,
+  binaryStandardHex,
+  binaryTextBackslash,
+  binaryUnhex,
+  binaryZeroX,
+  jsonText as exportSharedJsonText,
+  splitArguments,
+} from "@/lib/db/sql-writing/export-shared";
+import {
+  BARE_TYPE_FAMILY,
+  CLICKHOUSE_WRAPPER,
   EXACT_DECIMAL_TYPE_NAMES,
+  EXACT_NUMERIC_TYPE,
+  FLOAT_TYPE,
   FLOAT64_TYPE_NAMES,
   firstWord,
   INSTANT_TYPE_NAMES,
@@ -12,10 +28,14 @@ import {
   literalDoubleAndBackslash,
   literalStandard,
   literalUnicode,
+  NO_BARE_SPELLING,
+  NOTHING_STANDS_ALONE,
+  NULL_NON_FINITE,
   placeholderAtP,
   placeholderColon,
   placeholderDollar,
   placeholderQuestion,
+  STANDARD_DDL_TYPES,
   unquoteBackslash,
   unquoteDoubleAndBackslash,
   unquoteDoublingOnly,
@@ -23,6 +43,10 @@ import {
   unquoteUnicode,
   unwrappedType,
 } from "@/lib/db/sql-writing/shared";
+import type { ExportSpec } from "@/lib/db/sql-writing/types";
+import { asBytes } from "@/lib/export/binary";
+import { jsonText } from "@/lib/export/json";
+import { buildResultExport } from "@/lib/export/result-export";
 import { quoteIdentifier } from "@/lib/sql/identifier";
 import { positionalPlaceholder, quoteLiteral, unquoteLiteral } from "@/lib/sql/values";
 import type { DatabaseType } from "@/lib/types";
@@ -123,5 +147,85 @@ describe("SQL writing shared building blocks", () => {
     expect(firstWord("datetime64(6, 'utc')")).toBe("datetime64");
     expect(firstWord("timestamp(3) with time zone")).toBe("timestamp");
     expect(firstWord("character varying")).toBe("character");
+  });
+});
+
+/** One engine of each binary literal form, with the literal it writes for `BYTES` and for no bytes. */
+const BYTES = new Uint8Array([0x01, 0x02, 0xde, 0xad, 0xbe, 0xef]);
+const NO_BYTES = new Uint8Array([]);
+
+const BINARY_FORMS: ReadonlyArray<readonly [DatabaseType, (bytes: Uint8Array) => string, string, string]> = [
+  ["postgres", binaryPgBytea, "'\\x0102deadbeef'::bytea", "'\\x'::bytea"],
+  ["mssql", binaryZeroX, "0x0102deadbeef", "0x"],
+  ["db2", binaryBinaryHex, "BX'0102deadbeef'", "BX''"],
+  ["oracle", binaryHexToRaw, "HEXTORAW('0102deadbeef')", "HEXTORAW('')"],
+  ["clickhouse", binaryUnhex, "unhex('0102deadbeef')", "unhex('')"],
+  ["mysql", binaryStandardHex, "X'0102deadbeef'", "X''"],
+  ["bigquery", binaryTextBackslash, "'\\\\x0102deadbeef'", "'\\\\x'"],
+];
+
+/** The literal today's INSERT export writes for a one-cell binary row on `dialect`. */
+function exportedBinary(dialect: DatabaseType, bytes: Uint8Array): string | undefined {
+  const { content } = buildResultExport("sql-insert", { rows: [{ b: bytes }], fields: ["b"], tabName: "t", dialect });
+  return /VALUES \((.*)\);$/.exec(content)?.[1];
+}
+
+describe("SQL export shared building blocks", () => {
+  for (const [engine, write, full, empty] of BINARY_FORMS) {
+    test(`${write.name} writes what ${engine} writes today`, () => {
+      expect(write(BYTES)).toBe(full);
+      expect(write(NO_BYTES)).toBe(empty);
+      expect(write(BYTES)).toBe(exportedBinary(engine, BYTES) as string);
+      expect(write(NO_BYTES)).toBe(exportedBinary(engine, NO_BYTES) as string);
+    });
+  }
+
+  test("the default tables hold today's values", () => {
+    expect(STANDARD_DDL_TYPES).toEqual({
+      text: "TEXT",
+      integer: "BIGINT",
+      numeric: "DOUBLE PRECISION",
+      boolean: "BOOLEAN",
+      timestamp: "TIMESTAMP",
+      binary: "BLOB",
+    });
+    expect(NULL_NON_FINITE).toEqual({ NaN: "NULL", Infinity: "NULL", "-Infinity": "NULL" });
+    expect(NOTHING_STANDS_ALONE).toEqual([]);
+    expect(NO_BARE_SPELLING).toEqual({});
+  });
+
+  test("the type vocabulary patterns read today's spellings", () => {
+    expect(FLOAT_TYPE.test("binary_double")).toBe(true);
+    expect(EXACT_NUMERIC_TYPE.test("decfloat")).toBe(true);
+    expect(CLICKHOUSE_WRAPPER.exec("Nullable(Float64)")?.[1]).toBe("Float64");
+  });
+
+  test("the shared patterns fill an export spec's type vocabulary", () => {
+    const vocabulary: ExportSpec["typeVocabulary"] = {
+      bareTypeFamily: BARE_TYPE_FAMILY,
+      floatType: FLOAT_TYPE,
+      exactNumericType: EXACT_NUMERIC_TYPE,
+      numericWrapper: CLICKHOUSE_WRAPPER,
+    };
+    expect(Object.keys(vocabulary.bareTypeFamily)).toHaveLength(42);
+    expect(vocabulary.bareTypeFamily.varchar2).toBe("text");
+    expect(vocabulary.bareTypeFamily.bytea).toBe("binary");
+    expect(vocabulary.bareTypeFamily.money).toBe("numeric");
+    expect(vocabulary.bareTypeFamily.datetimeoffset).toBe("timestamp");
+    expect(vocabulary.bareTypeFamily.year).toBe("integer");
+    expect(Object.hasOwn(vocabulary.bareTypeFamily, "bit")).toBe(false);
+  });
+
+  test("splitArguments splits at top-level commas only", () => {
+    expect(splitArguments("'a,b' = 1, map<int, set<text>>, \"x,y\" INTEGER")).toEqual([
+      "'a,b' = 1",
+      "map<int, set<text>>",
+      '"x,y" INTEGER',
+    ]);
+  });
+
+  test("the export modules re-export the leaf's helpers rather than copies", () => {
+    expect(jsonText).toBe(exportSharedJsonText);
+    expect(asBytes).toBe(exportSharedAsBytes);
   });
 });
