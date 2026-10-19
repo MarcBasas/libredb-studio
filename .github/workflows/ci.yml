@@ -592,7 +592,18 @@ jobs:
           # Two runners. The provider reaches the network through `node-opcua-client`, and Bun and Node
           # do not resolve or socket alike; a check that ran on one of them would be a claim about one.
           bun tests/live/opcua-live-check.ts
-          bun build --target=node --outfile=/tmp/opcua-live-check.mjs tests/live/opcua-live-check.ts
+          # THE EXTERNALS ARE NOT A PRECAUTION, they are what the first CI run measured. Without
+          # them this line exits 1 with `Could not resolve` for `proper-lockfile`, for seven
+          # `@duckdb/node-bindings-*/duckdb.node` paths and for `../build/Release/cpufeatures.node`
+          # (run 39294474038, reproduced locally on bun 1.4.2). The reason is the one the Sparkplug
+          # step's file already names: this check reaches `createDatabaseProvider`, the factory
+          # imports every provider, and DuckDB's bindings for the other six platforms cannot be
+          # resolved on this one. Node loads what it needs at run time from node_modules for the
+          # platform it is on, and `cpu-features` is loaded by ssh2 inside a try/catch.
+          # MEASURED: the five other provider bundles in this job build with no external at all,
+          # so the flags are on the one line that needs them rather than on all six.
+          bun build --target=node --outfile=/tmp/opcua-live-check.mjs tests/live/opcua-live-check.ts \
+            --external proper-lockfile --external "@duckdb/*" --external cpu-features
           node /tmp/opcua-live-check.mjs
 
       - name: MTConnect provider check
