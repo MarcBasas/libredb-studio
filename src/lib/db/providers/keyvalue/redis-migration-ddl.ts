@@ -2,8 +2,8 @@
  * Redis cannot apply a relational table diff through SQL, so `refusal` is the one line the migration prints after its
  * header, in place of any DDL.
  *
- * The migration text carries no transaction wrapper (#284): `redis` writes no SQL text at all (`NON_SQL_DIALECTS` in
- * `src/lib/sql/grammar.ts`), and wrapping non-SQL command text in SQL statements is wrong.
+ * The migration text carries no transaction wrapper (#284): `redis` writes no SQL text at all (`readsSqlText: false` in
+ * its `sql-grammar` module), and wrapping non-SQL command text in SQL statements is wrong.
  */
 import type { MigrationDdlSpec } from "@/lib/db/migration-ddl/types";
 

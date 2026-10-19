@@ -320,7 +320,7 @@ These partial records deliberately have none:
 | The engine overlays' `statistics` | `src/lib/agent/languages/sql/engines/` | Prometheus holds no table statistics a run knows how to read; its series counts are TSDB top-N figures, not estimates |
 | `ENGINE_URI_SCHEMES` | `src/lib/connection-string-parser.ts` | No connection string ([§4.5](#45-no-connection-string)) |
 | `createTable` | `src/lib/db/types.ts` (`CreateTableSpec`) | Only engines that declare a `createTable` reach the Create Table form; Prometheus declares none |
-| `SQL_GRAMMARS` | `src/lib/sql/grammar.ts` | PromQL is not SQL, and `prometheus` is in `NON_SQL_DIALECTS`. Nothing on the run path reads PromQL under a SQL grammar: the confirmation gate answers from the `prometheus` row of `NON_SQL_DESTRUCTIVE_VOCABULARY` before any SQL reading ([§5.1](#51-the-call)), the multi-statement route is taken only where `queryLanguage` is `sql`, and the provider's own `prepareQuery` returns the text unchanged |
+| `SQL_GRAMMAR` | `src/lib/db/sql-grammar/` | PromQL is not SQL, and the `prometheus` row declares `readsSqlText: false` ([§5.7](#57-sql-grammar)). Nothing on the run path reads PromQL under a SQL grammar: the confirmation gate answers from the `prometheus` row of `NON_SQL_DESTRUCTIVE_VOCABULARY` before any SQL reading ([§5.1](#51-the-call)), the multi-statement route is taken only where `queryLanguage` is `sql`, and the provider's own `prepareQuery` returns the text unchanged |
 | `AGENT_EXECUTION_ENGINES` | `src/lib/agent/engine-support.ts` | Agent execute mode is a non-goal; plan mode and the `operations` workflow still reach the server |
 
 `src/lib/sql/identifier.ts` is a `switch` with a `default` and needs no case.
@@ -462,6 +462,14 @@ Both the cancel route and the query route detect cancellation by presence (`supp
 None: `supportsExplain` is `false`, and the plan view is not offered.
 
 ---
+
+### 5.7 SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/timeseries/prometheus/sql-grammar.ts`](../../src/lib/db/providers/timeseries/prometheus/sql-grammar.ts), the `prometheus` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+`readsSqlText` is `false`: `prometheus` takes a PromQL expression (#1085), whose strings escape with a backslash, so a SQL span reader reads `'it\'s'` as a literal that never closes, the false prompt #297 measured on Redis; the provider extends `BaseDatabaseProvider`.
+The confirmation gate therefore answers from this engine's row of `NON_SQL_DESTRUCTIVE_VOCABULARY` in `src/lib/db/destructive-commands.ts` instead of a SQL reading.
+Its grammar is `DEFAULT_SQL_GRAMMAR`, the compatibility default, since no SQL grammar of its own applies to this text.
+Redaction is `none`: a redacted statement is stored as `?`, because a reader guessing where a literal ends in a language it does not read can store the literal.
 
 ## 6. Schema introspection
 
@@ -725,7 +733,7 @@ See [`docs/API_DOCS.md`](../API_DOCS.md) for the full request and response contr
 
 [`PROMETHEUS_MIGRATION_DDL`](../../src/lib/db/providers/timeseries/prometheus/migration-ddl.ts) is what the schema-diff migration generator writes for `prometheus`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
 It declines the whole diff: `refusal` is the one line the migration prints after its header, in place of any DDL, and `transactionWrapper` is `null`.
-`prometheus` text is PromQL, not SQL (`NON_SQL_DIALECTS`), so there is no table DDL to wrap (#284, #1085).
+`prometheus` text is PromQL, not SQL (`readsSqlText: false`, [§5.7](#57-sql-grammar)), so there is no table DDL to wrap (#284, #1085).
 
 The refusal reason it prints, verbatim:
 

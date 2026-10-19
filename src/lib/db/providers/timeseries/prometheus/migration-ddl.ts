@@ -3,7 +3,7 @@
  * HTTP API declares no column anywhere. The sentence is the one `refusal` prints when it declines the whole diff.
  *
  * The migration text carries no transaction wrapper (#284): `prometheus` text is PromQL, not SQL
- * (`NON_SQL_DIALECTS`). `refusal` declines its whole diff before any wrapper is written.
+ * (`readsSqlText: false` in its `sql-grammar` module). `refusal` declines its whole diff before any wrapper is written.
  */
 import type { MigrationDdlSpec } from "@/lib/db/migration-ddl/types";
 

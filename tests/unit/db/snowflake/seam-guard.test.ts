@@ -18,8 +18,9 @@
  *    or literals, appear only in `statements.ts`, `rows.ts` and `decode.ts`.
  * 7. A value is imported from outside this directory only from `@/lib/db/http/*`, `@/lib/db/errors`,
  *    `@/lib/db/types`, `@/lib/db/utils/*`, `@/lib/db/object-kinds`, `@/lib/db/inventory-bounds`, `@/lib/sql/*`,
- *    `@/lib/types`, `@/lib/app-version`, `@/lib/logger`, `../sql-base`, `jose`, `node:crypto` and `node:zlib`; types
- *    are free. `migration-ddl.ts`, the engine's migration DDL contract module, may also import values from
+ *    `@/lib/types`, `@/lib/app-version`, `@/lib/logger`, `../sql-base`, `@/lib/db/sql-grammar/shared` (the SQL
+ *    grammar contract's building blocks, for `sql-grammar.ts`), `jose`, `node:crypto` and `node:zlib`; types are
+ *    free. `migration-ddl.ts`, the engine's migration DDL contract module, may also import values from
  *    `@/lib/db/migration-ddl/*`, its contract's shared building blocks.
  * 8. Only `account.ts` builds an origin: outside it, the only values imported from `@/lib/db/http/endpoint` are
  *    `endpointUrl` and `rejectForeignLink`, which act on an origin already built; and `account-host.ts`, which the
@@ -60,6 +61,7 @@ const OUTSIDE_VALUES = [
   "src/lib/app-version.ts",
   "src/lib/logger.ts",
   SQL_BASE,
+  "src/lib/db/sql-grammar/shared.ts",
 ];
 /**
  * The per-engine contract modules, each with the contract directory whose shared building blocks it may import as

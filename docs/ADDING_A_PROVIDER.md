@@ -1112,7 +1112,7 @@ Those three reach code and tests only; the four prose greps of the published blo
 
 **Also always, and not named above until the Kafka provider found them (#1088):** each is a record, a population or a pinned list no search above prints by itself.
 
-- [ ] `src/lib/db/destructive-commands.ts`: `NON_SQL_DESTRUCTIVE_VOCABULARY`, a row for every id `NON_SQL_DIALECTS` names, which `tests/unit/db/destructive-commands.test.ts` holds to exactly those ids.
+- [ ] `src/lib/db/destructive-commands.ts`: `NON_SQL_DESTRUCTIVE_VOCABULARY`, a row for every id whose grammar module declares `readsSqlText: false`, which `tests/unit/db/destructive-commands.test.ts` holds to exactly those ids.
       A text that cannot write takes the row that names no operation and decides alone, the Prometheus and Kafka shape.
 - [ ] `src/lib/db/migration-ddl/index.ts`: the new id's row in `MIGRATION_DDL`, which the compiler holds complete.
       Write the row's module beside the provider at the placement rule, `<family>/<id>-migration-ddl.ts` for a flat provider or `<family>/<id>/migration-ddl.ts` for a directory one, as a `MigrationDdlSpec`: `tableDdl: "refused"` with its one `refusal` line for an engine whose diff gets no table DDL at all, or `"written"` with every statement kind and a `transactionWrapper` decision (#284), sharing PostgreSQL's spelling only by importing a named building block from `shared.ts` (#269).
@@ -1166,18 +1166,28 @@ Those three reach code and tests only; the four prose greps of the published blo
 - [ ] `src/lib/connection-string-parser.ts` — the scheme(s), if `supportsConnectionString`
 - [ ] `src/lib/query-generators.ts` — only if the dialect needs its own branch; the default is
       PostgreSQL-shaped, so check before assuming it fits
-- [ ] `src/lib/sql/grammar.ts` — **two decisions, neither of which the compiler can force.** First,
-      whether your engine's query text is SQL at all (`NON_SQL_DIALECTS`): an id absent from that set is
-      declared to write SQL, and the confirmation gate then applies a SQL span reader to it — which for
-      a JSON or command-line grammar reports ordinary text as unreadable and prompts on every run (#297).
-      Second, the four grammar facts (`SQL_GRAMMARS`): `#`, `[…]`, whether block comments nest, and
-      whether `q'…'` is a literal. An id absent from that table reads under the compatibility default,
-      which is SQL Server's bracket reading and MySQL-ish everything else — fine where your engine
-      agrees, a lost row bound or a false prompt where it does not (that is what PostgreSQL's bracket
-      row cost before it was established). Establish each fact from your engine's own documentation or
-      its driver's tokenizer, never from a neighbouring dialect, and leave it at the default rather than
-      guess. `tests/unit/sql/grammar.test.ts` holds `Record<DatabaseType, …>` maps for both decisions,
-      so the compiler will at least stop you from *forgetting* that a decision exists
+- [ ] `src/lib/db/sql-grammar/`: write your engine's grammar module, `<family>/<id>/sql-grammar.ts`
+      under `src/lib/db/providers/` (or `<family>/<id>-sql-grammar.ts` beside a provider that is one
+      flat file), exporting `<ID>_SQL_GRAMMAR` with every fact of `SqlGrammarSpec`, and add its row to
+      `SQL_GRAMMAR` in `src/lib/db/sql-grammar/index.ts`, which the compiler holds total over
+      `DatabaseType`. **Two of its facts are decisions the compiler cannot make for you.** First,
+      `readsSqlText`: `true` declares the text SQL, and the confirmation gate then applies a SQL span
+      reader to it, which for a JSON or command-line grammar reports ordinary text as unreadable and
+      prompts on every run (#297); it must agree with the provider's `queryLanguage`, which
+      `tests/isolated/sql-grammar-reads-sql-text.test.ts` holds. Second, `grammar`: your own constant
+      with `#`, `[…]`, whether block comments nest and whether `q'…'` is a literal, or
+      `DEFAULT_SQL_GRAMMAR`, the compatibility default, which is SQL Server's bracket reading and
+      MySQL-ish everything else: fine where your engine agrees, a lost row bound or a false prompt
+      where it does not (that is what PostgreSQL's bracket row cost before it was established).
+      Establish each fact from your engine's own documentation or its driver's tokenizer, never from a
+      neighbouring dialect, and leave it at the default rather than guess. `redaction` says what a
+      redacted query event keeps: `sql` with the name quote, `command` with the module's own reader,
+      or `none`, which stores `?`. An engine on `DEFAULT_SQL_GRAMMAR` or with `readsSqlText: false`
+      takes `none` or `command`, never `sql`, because a reader guessing where a literal ends can store
+      the literal; `tests/unit/db/sql-grammar/census.test.ts` holds it. Then regenerate the golden file with
+      `UPDATE_GOLDEN=1 bun tests/run-tests.ts tests/unit/db/sql-grammar/golden.test.ts`, commit it,
+      and add the `SQL grammar` subsection to your provider doc, which
+      `tests/unit/db/sql-grammar/docs.test.ts` holds to the module
 - [ ] `src/lib/db/types.ts`: `queryLanguage`, only when the engine's query text is neither SQL nor JSON.
       A new member is not neutral: a reader written `=== "json"` sends it into its SQL branch and one written `!== "sql"` into its MongoDB branch, so every reader needs an explicit arm or a test pinning that its branch is right.
       `grep -rn queryLanguage src` is not the whole population: `src/components/agent/AnswerCard.tsx` reads it through `editorLanguageForTabType`.
