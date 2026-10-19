@@ -105,3 +105,44 @@ export function connectionStringFor(type: string | undefined): ConnectionStringS
     ? CONNECTION_STRING[type as DatabaseType]
     : UNKNOWN_TYPE_CONNECTION_STRING;
 }
+
+/**
+ * The canonical URI scheme each engine is reachable by, for the engines that HAVE one.
+ * Built from the `scheme` of each engine's row in `CONNECTION_STRING` above, declared beside its provider, so a
+ * scheme is added there. Its key order is `CONNECTION_STRING`'s and carries no meaning: readers look a type up by
+ * key, and the login signature orders by the engine list.
+ *
+ * Deliberately partial, and the gaps are the point: SQLite is a file path, LibreDB is
+ * embedded in the process, and Druid is reached over plain HTTP through the form. Inventing
+ * `sqlite://` or `druid://` to make the map look complete would put a scheme on the login
+ * page that `parseConnectionString` (src/lib/connection-string-parser.ts) rejects - a claim the product does not honour,
+ * which is the class of defect issue #425 exists to remove.
+ *
+ * Cassandra is absent for a different reason again, and a stronger one: its driver needs
+ * a REQUIRED `localDataCenter` alongside the contact points (measured on 4.9.0 - it
+ * refuses to construct a client without one), and no URI convention in use carries that
+ * field. A `cassandra://host:9042/keyspace` form would therefore parse into a connection
+ * that cannot open, which is worse than no paste at all.
+ *
+ * Trino is the sharpest version of that gap, and worth naming because it looks like it
+ * belongs here: it HAS a canonical URL, `jdbc:trino://host:port/catalog/schema`. That is
+ * a JDBC URL and not a URI - `new URL()` reads its scheme as `jdbc:` - and stripping the
+ * prefix to make one would invent a `trino://` form no Trino tool emits. So the id is
+ * absent, its capabilities say `supportsConnectionString: false`, and its form offers no
+ * paste toggle. Pinned by tests/unit/lib/connection-string-parser.test.ts.
+ *
+ * Apache Spark is absent on purpose too, though its `sc://` address is pasted and decomposed (`parseSparkConnectUri`):
+ * the login signature prints every scheme here with the tail `user@db.internal:<port>/app`, and Spark's grammar
+ * refuses both a user part and a path, so the hero would show an address the product refuses.
+ *
+ * Aliases the parser also accepts (`postgresql://`, `mongodb+srv://`, `rediss://`,
+ * `sqlserver://`, `couchbases://`, and ClickHouse's `http(s)://`) are not listed: this map
+ * answers "what is the one scheme to show a reader for this engine", not "what will parse".
+ *
+ * `tests/unit/lib/connection-string-parser.test.ts` pins the entries against the parser
+ * itself - every scheme here must round-trip to its own `DatabaseType` - so the map cannot
+ * drift away from the parser's `startsWith` checks without failing CI.
+ */
+export const ENGINE_URI_SCHEMES: Partial<Record<DatabaseType, string>> = Object.fromEntries(
+  Object.entries(CONNECTION_STRING).flatMap(([type, spec]) => (spec.scheme === null ? [] : [[type, spec.scheme]])),
+);

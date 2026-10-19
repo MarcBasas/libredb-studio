@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { CONNECTION_STRING, connectionStringFor } from "@/lib/db/connection-string";
+import { ENGINE_URI_SCHEMES as PARSER_ENGINE_URI_SCHEMES } from "@/lib/connection-string-parser";
+import { CONNECTION_STRING, connectionStringFor, ENGINE_URI_SCHEMES } from "@/lib/db/connection-string";
 import { NO_CONNECTION_CONNECTION_STRING } from "@/lib/db/connection-string/no-connection";
 import { UNKNOWN_TYPE_CONNECTION_STRING } from "@/lib/db/connection-string/unknown-type";
 import { EXTERNAL_DATABASE_TYPES } from "@/lib/db/compatibility";
@@ -105,5 +106,13 @@ describe("connection string registry census", () => {
       expect(spec).toEqual({ scheme: null, readTls: null, validateSeed: null });
     }
     expect(connectionStringFor("postgres")).toBe(CONNECTION_STRING.postgres);
+  });
+
+  test("the scheme map is derived inside the registry, and the parser re-exports that same object", () => {
+    expect(PARSER_ENGINE_URI_SCHEMES).toBe(ENGINE_URI_SCHEMES);
+    const withScheme = Object.entries(CONNECTION_STRING).filter(([, spec]) => spec.scheme !== null);
+    expect(Object.fromEntries(withScheme.map(([type, spec]) => [type, spec.scheme]))).toEqual(
+      ENGINE_URI_SCHEMES as Record<string, string>,
+    );
   });
 });
