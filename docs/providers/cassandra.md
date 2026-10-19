@@ -492,6 +492,10 @@ catalog the monitoring reads key their degradation on, and `SELECT key FROM syst
 says whether the server is ScyllaDB and so which keyspaces the tree hides (see "A system keyspace is
 excluded by exact NAME, never by a prefix", #1428).
 
+### Connection string
+
+`cassandra` has no connection string scheme, no `readTls` and no seed load check: every field of its row in `CONNECTION_STRING` is `null` ([`connection-string.ts`](../../src/lib/db/providers/sql/cassandra/connection-string.ts)).
+
 ---
 
 ## 5. Query interface

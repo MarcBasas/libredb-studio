@@ -186,6 +186,10 @@ The TLS recipes of InfluxDB 1.x and 2.x are in [influxdb.md](./influxdb.md).
 
 A tunnel is offered; through it, the plaintext rule judges and the TLS identity is the tunnel's far end, never its local forward.
 
+### Connection string
+
+`influxdb3` has no connection string scheme, no `readTls` and no seed load check: every field of its row in `CONNECTION_STRING` is `null` ([`influxdb3-connection-string.ts`](../../src/lib/db/providers/timeseries/influxdb/influxdb3-connection-string.ts)).
+
 ## 5. Query interface
 
 ### 5.1 The statement

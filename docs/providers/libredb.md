@@ -352,6 +352,11 @@ package inside libredb-platform.
 | `LIBREDB_EMBEDDED_SAMPLE` | `true` | Set to `"false"` to disable the sample connection entirely. |
 | `LIBREDB_EMBEDDED_SAMPLE_PATH` | `<data dir>/sample.libredb` | Optional override for the path of the generated sample file. |
 
+### Connection string
+
+`libredb` has no connection string scheme, no `readTls` and no seed load check: every field of its row in `CONNECTION_STRING` is `null` ([`libredb-connection-string.ts`](../../src/lib/db/providers/embedded/libredb-connection-string.ts)).
+LibreDB is embedded in the process, so there is no address to write a scheme for.
+
 ---
 
 ## 5. Query interface

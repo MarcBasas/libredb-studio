@@ -170,6 +170,7 @@ const OUTLINE: readonly string[] = [
   "### 4.7 Pasting an address",
   "### 4.8 Server versions",
   "### 4.9 What is not verified",
+  "### Connection string",
   "## 5. Query interface",
   "### 5.1 The command",
   "### 5.2 Commands and flags",

@@ -282,6 +282,10 @@ There the server opens the tunnel before the provider runs, so an unreachable ba
 The server opens a tunnel for any `sshTunnel.enabled` that JavaScript reads as true, such as the string `"true"`, so an `enabled` that is not a boolean is refused too, naming the field, rather than read as no tunnel.
 An `sshTunnel` that is not an object, such as `true`, is refused the same way, as an `ssl` that is not one is, though the server opens no tunnel for it.
 
+### Connection string
+
+`kafka` has no connection string scheme, no `readTls` and no seed load check: every field of its row in `CONNECTION_STRING` is `null` ([`connection-string.ts`](../../src/lib/db/providers/stream/kafka/connection-string.ts)).
+
 ---
 
 ## 5. Query interface

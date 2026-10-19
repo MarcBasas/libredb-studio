@@ -687,6 +687,15 @@ encrypted: measured over TCP against MySQL with its default self-signed certific
 holds is left alone and the paste banner names the parameter it declined to act on; choose SSL Mode
 yourself in the SSL / TLS panel.
 
+### Connection string
+
+The scheme shown for MySQL is `mysql://`.
+Its row in `CONNECTION_STRING` is declared in [`mysql-connection-string.ts`](../../src/lib/db/providers/sql/mysql-connection-string.ts).
+Its `readTls` reads `ssl-mode` (or `sslmode`) first, mapping `DISABLED`, `REQUIRED`, `VERIFY_CA` and `VERIFY_IDENTITY` onto `disable`, `require`, `verify-ca` and `verify-full`, and leaving `PREFERRED` unmapped for the reason postgres leaves `prefer` unmapped.
+Without a mode it reads the boolean `ssl` or `useSSL`: reading only `ssl-mode` dropped `?ssl=true` and `?useSSL=true` with no mode and no banner, the silent downgrade the TLS read exists to prevent.
+mysql2 also accepts an object there (`ssl={"rejectUnauthorized":true}`), which is not a boolean, so it falls through to the banner rather than being guessed at.
+It runs no seed load check.
+
 ---
 
 ## 5. Query interface

@@ -183,6 +183,7 @@ const OUTLINE: readonly string[] = [
   "### 4.6 A token needs TLS off this machine",
   "### 4.7 Server versions",
   "### 4.8 Pulsar's oxia:// URL",
+  "### Connection string",
   "## 5. Query interface",
   "### 5.1 The command",
   "### 5.2 Commands and flags",

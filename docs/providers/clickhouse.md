@@ -758,6 +758,13 @@ Redirects are not followed. Every request sets `redirect: "manual"`, and a 3xx a
 `ConnectionError` naming the status and only the origin of its `Location`, since a followed
 redirect would take the Basic credential and the statement to wherever the server pointed.
 
+### Connection string
+
+The scheme shown for ClickHouse is `clickhouse://`, and the parser also accepts `http://` and `https://`.
+Its row in `CONNECTION_STRING` is declared in [`connection-string.ts`](../../src/lib/db/providers/sql/clickhouse/connection-string.ts).
+It has no `readTls`: `clickhouse://` names no transport and leaves the form's SSL mode alone, while for `http(s)://` the scheme is the transport and already decided, `disable` for `http://` and `require` for `https://`.
+It runs no seed load check.
+
 ---
 
 ## 5. Query interface

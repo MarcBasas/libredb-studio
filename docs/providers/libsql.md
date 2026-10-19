@@ -415,6 +415,13 @@ A rejected credential answers `401` with this body, read from the same source (`
 A `libsql://` URL never sends Basic.
 Its credential is the token in `?authToken=` or the password in its authority, so a `user` beside the URL is dropped when the URL is resolved, and the URL's own user name is not read.
 
+### Connection string
+
+The scheme shown for libSQL is `libsql://`.
+Its row in `CONNECTION_STRING` is declared in [`connection-string.ts`](../../src/lib/db/providers/sql/libsql/connection-string.ts).
+It has no `readTls`: a `libsql://` URL is TLS always and has no plaintext form, so a paste sets `require`.
+It runs no seed load check.
+
 ---
 
 ## 5. Query interface

@@ -211,6 +211,10 @@ Every request carries `x-goog-request-params` (`project_id`, and `database_id` f
 The API, token and emulator lanes refuse link-local addresses; the metadata lane cannot, because the metadata server is one.
 The shared transport has no HTTPS proxy support, so a Studio whose egress goes through a proxy cannot reach Google.
 
+### Connection string
+
+`firestore` has no connection string scheme, no `readTls` and no seed load check: every field of its row in `CONNECTION_STRING` is `null` ([`connection-string.ts`](../../src/lib/db/providers/document/firestore/connection-string.ts)).
+
 ## 5. Query interface
 
 ### 5.1 The statement

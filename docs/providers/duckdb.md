@@ -652,6 +652,10 @@ Explicitly **not** supported, so that a reader does not go looking:
   `database_name = current_database()` (§3.1, §3.3), so a database attached inside a session is
   queryable but is not enumerated in the tree.
 
+### Connection string
+
+`duckdb` has no connection string scheme, no `readTls` and no seed load check: every field of its row in `CONNECTION_STRING` is `null` ([`connection-string.ts`](../../src/lib/db/providers/sql/duckdb/connection-string.ts)).
+
 ---
 
 ## 5. Query interface

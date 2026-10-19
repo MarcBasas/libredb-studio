@@ -306,6 +306,10 @@ A 0.16 release is named here once one carries #1450.
 Pulsar names its Oxia metadata store as `oxia://host:6648/ns`.
 The URL is not pasted whole: type `host` in Host, `6648` in Port and `ns` in Namespace.
 
+### Connection string
+
+`oxia` has no connection string scheme, no `readTls` and no seed load check: every field of its row in `CONNECTION_STRING` is `null` ([`connection-string.ts`](../../src/lib/db/providers/keyvalue/oxia/connection-string.ts)).
+
 ## 5. Query interface
 
 The editor runs one read command per run, written as `oxia client` writes it.

@@ -495,6 +495,12 @@ or the container has to run as root long enough to create it, which is why the d
 the supported path. A first-class, separately-published Thick-mode image variant is a possible future
 addition.
 
+### Connection string
+
+The scheme shown for Oracle is `oracle://`.
+Its row in `CONNECTION_STRING` is declared in [`oracle-connection-string.ts`](../../src/lib/db/providers/sql/oracle-connection-string.ts).
+It has no `readTls`, so a pasted `oracle://` URL carries no SSL mode into the form, and it runs no seed load check.
+
 ---
 
 ## 5. Query interface

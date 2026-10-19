@@ -341,7 +341,8 @@ These partial records deliberately have none:
 | `database` | No | No Database box renders: a Prometheus server is one TSDB, so there is nothing to select |
 | TLS panel | Yes | [§4.4](#44-tls) |
 
-The two dialog strings are declared on the `prometheus` entry of `DB_UI_CONFIG` (`fieldLabels`, `fieldHints`) rather than chosen by a type test in the dialog; `docs/BACKLOG.md` U36 records moving the older engines onto the same declaration.
+The two dialog strings are declared on the `prometheus` entry of `DB_UI_CONFIG` (`fieldLabels`, `fieldHints`) rather than chosen by a type test in the dialog.
+Every engine's dialog labels, placeholders and hints come from that declaration.
 No new `DatabaseConnection` field exists, so the bearer token rides `password`, which the connection store already classifies as a secret.
 
 ### 4.2 Authentication
@@ -381,6 +382,10 @@ Each case is exercised by a real handshake against a local `node:https` server i
 `showConnectionStringToggle: false`: `http://` and `https://` already parse as ClickHouse in `src/lib/connection-string-parser.ts`, and two engines cannot own one scheme.
 There is no path-prefix field either, so Grafana Mimir (`/prometheus`), Grafana Cloud's hosted Prometheus (its query URL ends in `/api/prom` or `/prometheus`), GreptimeDB (`/v1/prometheus`) and proxies that mount the API under a prefix are not reachable in this version (maintainer decision, 2026-09-23).
 The host field cannot carry the prefix instead: a host holding `/` is refused before any request is sent.
+
+### Connection string
+
+`prometheus` has no connection string scheme, no `readTls` and no seed load check: every field of its row in `CONNECTION_STRING` is `null` ([`connection-string.ts`](../../src/lib/db/providers/timeseries/prometheus/connection-string.ts)).
 
 ---
 

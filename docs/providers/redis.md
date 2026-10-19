@@ -527,6 +527,13 @@ The listener stays attached after the connect settles, and from then on logs eac
 warning, `[Redis] <message>` with `provider: "redis"`, so a dropped socket and the reconnects after
 it stay visible in the server log. The message only, for the same reason as above.
 
+### Connection string
+
+The scheme shown for Redis is `redis://`, and the parser also accepts `rediss://`.
+Its row in `CONNECTION_STRING` is declared in [`redis-connection-string.ts`](../../src/lib/db/providers/keyvalue/redis-connection-string.ts).
+It has no `readTls`: the scheme itself is the TLS, so `rediss://` sets `require` and `redis://` sets `disable`.
+It runs no seed load check.
+
 ---
 
 ## 5. Query interface

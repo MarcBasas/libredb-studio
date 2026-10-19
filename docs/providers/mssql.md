@@ -339,6 +339,17 @@ as it was and the paste banner says the server was not applied.
 `verify-full` already, and since all three verifying modes build the same tedious call, translating it
 to the newer name would change the wording on the form without changing a single option on the wire.
 
+### Connection string
+
+The scheme shown for SQL Server is `mssql://`, and the parser also accepts `sqlserver://` and the ADO.NET `Server=...;` form.
+Its row in `CONNECTION_STRING` is declared in [`mssql-connection-string.ts`](../../src/lib/db/providers/sql/mssql-connection-string.ts).
+Its `readTls` reads the ADO.NET pair `Encrypt` and `TrustServerCertificate` from the URL query, by the same `readADONetTLS` the ADO.NET form is read with.
+`Encrypt` on with `TrustServerCertificate` on is `require`: encrypted, chain unchecked.
+`Encrypt` on with `TrustServerCertificate` off or absent, the documented default, validates the chain and the name, so `verify-full`.
+`Encrypt=Strict` is TDS 8.0, where the driver ignores `TrustServerCertificate` and always validates, so `verify-full` too.
+An absent `Encrypt` says nothing rather than `disable`: System.Data.SqlClient defaults it to false and Microsoft.Data.SqlClient 4.0+ to true, so the string alone does not carry the answer.
+It runs no seed load check.
+
 ---
 
 ## 5. Query interface

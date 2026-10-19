@@ -205,6 +205,10 @@ Lists are filtered by Milvus's grants: a database or collection list reads "visi
 In the console that is the list column's type, and a list with no row says it in a warning, since the grid shows no column for an empty result.
 A search that names no metric and no search parameter runs without the IndexDetail privilege, and its score column says the metric is not readable; a request that names either needs IndexDetail, because its checks read the index.
 
+### Connection string
+
+`milvus` has no connection string scheme, no `readTls` and no seed load check: every field of its row in `CONNECTION_STRING` is `null` ([`connection-string.ts`](../../src/lib/db/providers/vector/milvus/connection-string.ts)).
+
 ## 5. Query interface
 
 ### 5.1 The request
