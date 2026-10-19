@@ -18,27 +18,31 @@ CREATE TABLE "app"."users" (
   "bare" TEXT,
   "y" Int32 DEFAULT MATERIALIZED toYear(d),
   "empty" text DEFAULT 
-,  FOREIGN KEY ("dept_id") REFERENCES "departments"("id")
+,  PRIMARY KEY ("id")
 );
--- undefined: Cannot declare a primary key. undefined
--- function Object() { [native code] }
--- function Object() { [native code] }
+CREATE INDEX "ix_users_note" ON "app"."users" ("note");
+ALTER TABLE "app"."users" ADD CONSTRAINT "fk_users_dept_id" FOREIGN KEY ("dept_id") REFERENCES "departments"("id");
 
 -- Modify existing tables
 -- Alter table: orders
--- undefined: Cannot drop a foreign key. undefined
--- function Object() { [native code] }
--- function Object() { [native code] }
+ALTER TABLE "app"."orders" DROP CONSTRAINT IF EXISTS "fk_orders_customer_id";
+DROP INDEX IF EXISTS "app"."ix_old";
+DROP INDEX IF EXISTS "app"."ix_mod";
 ALTER TABLE "app"."orders" ADD COLUMN "extra" integer;
 ALTER TABLE "app"."orders" ADD COLUMN "bare2" TEXT;
 ALTER TABLE "app"."orders" DROP COLUMN "old";
--- undefined: Cannot alter column "status". undefined
--- undefined: Cannot alter column "amount". undefined
--- undefined: Cannot alter column "calc". undefined
--- undefined: Cannot alter column "line break". undefined
--- function Object() { [native code] }
--- function Object() { [native code] }
--- undefined: Cannot add a foreign key. undefined
+ALTER TABLE "app"."orders" ALTER COLUMN "status" TYPE varchar(20);
+ALTER TABLE "app"."orders" ALTER COLUMN "status" SET NOT NULL;
+ALTER TABLE "app"."orders" ALTER COLUMN "status" SET DEFAULT 'new';
+ALTER TABLE "app"."orders" ALTER COLUMN "amount" DROP NOT NULL;
+ALTER TABLE "app"."orders" ALTER COLUMN "amount" DROP DEFAULT;
+ALTER TABLE "app"."orders" ALTER COLUMN "calc" TYPE Int64;
+ALTER TABLE "app"."orders" ALTER COLUMN "calc" DROP DEFAULT;
+ALTER TABLE "app"."orders" ALTER COLUMN "line
+break" SET DEFAULT x;
+CREATE UNIQUE INDEX "ix_mod" ON "app"."orders" ("status");
+CREATE INDEX "ix_new" ON "app"."orders" ("extra", "status");
+ALTER TABLE "app"."orders" ADD CONSTRAINT "fk_orders_region_id" FOREIGN KEY ("region_id") REFERENCES "regions"("id");
 
 COMMIT;
 -- fixture: none

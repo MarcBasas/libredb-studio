@@ -768,8 +768,8 @@ of the fact, which is why nothing is special-cased. Consequences elsewhere in th
   unimplemented features, so the EDIT toggle and the editable cell are not offered (#269).
 - The schema-diff migration generator emits, in place of a column change:
   *"Elasticsearch SQL reads only; change a field by reindexing into an index whose mapping declares
-  it."* (the `NO_COLUMN_MODIFICATION` table in
-  [`migration-generator.ts`](../../src/lib/schema-diff/migration-generator.ts)). It says *reindex* rather than
+  it."* (the `ELASTICSEARCH_MIGRATION_DDL` refusal in
+  [`elasticsearch-migration-ddl.ts`](../../src/lib/db/providers/sql/search/elasticsearch-migration-ddl.ts)). It says *reindex* rather than
   "use the mapping API" for a reason: an existing field's type cannot be changed in place at all, even
   outside SQL.
 - `schemaRefreshPattern` is `\b(DELETE)\b` (`SEARCH_SCHEMA_REFRESH_PATTERN`, [index.ts](../../src/lib/db/providers/sql/search/index.ts)),

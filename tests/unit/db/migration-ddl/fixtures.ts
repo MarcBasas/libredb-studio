@@ -158,11 +158,11 @@ export const FULL_DIFF: SchemaDiff = {
 const NO_CHANGES: SchemaDiff = { tables: [], summary: { added: 0, removed: 0, modified: 0 }, hasChanges: false };
 
 /**
- * The golden text for one key. `no-connection` renders as postgres, the panel's
- * `connection?.type || "postgres"` mapping today; every other key is passed as the dialect.
+ * The golden text for one key. `no-connection` renders with no dialect at all, which the
+ * generator answers with the no-connection spec; every other key is passed as the dialect.
  */
 export function renderGolden(key: string): string {
-  const dialect = (key === "no-connection" ? "postgres" : key) as DatabaseType;
+  const dialect = key === "no-connection" ? undefined : (key as DatabaseType);
   setSystemTime(new Date(FROZEN_NOW));
   try {
     return (

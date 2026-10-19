@@ -1,14 +1,13 @@
 import { describe, test, expect } from "bun:test";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { ALLOWED_OPERATIONS } from "@/lib/db/providers/network/netconf/requests";
 import { diffSchemas } from "@/lib/schema-diff/diff-engine";
+import { MIGRATION_DDL } from "@/lib/db/migration-ddl";
 import {
   DATABEND_COLUMN_MODIFICATION_REASON,
   DATABEND_INDEX_REFUSAL,
   DATABEND_PRIMARY_KEY_REASON,
-  generateMigrationSQL,
-} from "@/lib/schema-diff/migration-generator";
+} from "@/lib/db/providers/sql/databend/migration-ddl";
+import { generateMigrationSQL } from "@/lib/schema-diff/migration-generator";
 import type { StoredObject } from "@/lib/db/detailed-object";
 import type { ColumnDiff, SchemaDiff } from "@/lib/schema-diff/types";
 import type { DatabaseType } from "@/lib/types";
@@ -1794,27 +1793,18 @@ describe("generateMigrationSQL: transaction wrapper by dialect", () => {
 });
 
 /*
-  `NO_TABLE_DDL` and `NO_TRANSACTION_WRAPPER` agree, which the wrapper set's docblock claims for
-  `prometheus` and `kafka` and which no output can show: `NO_TABLE_DDL` declines the whole diff before
-  a wrapper is written, so an id missing from the wrapper set changes no text. Measured: dropping
-  either id from the wrapper set left every test above green. So the agreement is read from the
-  module's own declarations, the one place it exists.
+  A declined table DDL and an absent transaction wrapper agree, which no output can show: a declined
+  table DDL refuses the whole diff before a wrapper is written, so an id that kept a wrapper would
+  change no text. Measured: dropping either id from the old wrapper set left every test above green.
+  So the agreement is read from the registry rows, the one place it is declared.
 */
 describe("the engines whose table DDL is declined take no wrapper either", () => {
-  const source = readFileSync(join(import.meta.dir, "../../../src/lib/schema-diff/migration-generator.ts"), "utf8");
-  const setMembers = (name: string): string[] => {
-    const declaration = new RegExp(
-      `const ${name}: ReadonlySet<DatabaseType> = new Set<DatabaseType>\\(\\[([^\\]]*)\\]\\);`,
-    );
-    const match = declaration.exec(source);
-    if (match === null) throw new Error(`${name} is not declared as a Set literal in migration-generator.ts`);
-    return [...match[1].matchAll(/"([a-z0-9]+)"/g)].map((member) => member[1]);
-  };
+  const ids = Object.keys(MIGRATION_DDL) as DatabaseType[];
 
-  test("every id NO_TABLE_DDL declines is one NO_TRANSACTION_WRAPPER leaves unwrapped", () => {
-    const declined = setMembers("NO_TABLE_DDL");
-    const unwrapped = setMembers("NO_TRANSACTION_WRAPPER");
-    // The control that both literals were read: each names an id this file classifies above.
+  test("every id whose table DDL is refused is one whose transaction wrapper is null", () => {
+    const declined = ids.filter((id) => MIGRATION_DDL[id].tableDdl === "refused");
+    const unwrapped = ids.filter((id) => MIGRATION_DDL[id].transactionWrapper === null);
+    // The control that both lists were read: each names an id this file classifies above.
     expect(declined).toContain("kafka");
     expect(unwrapped).toContain("oracle");
     expect(declined.filter((id) => !unwrapped.includes(id))).toEqual([]);
