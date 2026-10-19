@@ -22,7 +22,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { EXTERNAL_DATABASE_TYPES } from "@/lib/db/compatibility";
 import { type BranchFinding, findEngineBranches } from "./no-engine-branches/scan";
@@ -434,8 +434,13 @@ function listedFiles(...paths: string[]): string[] {
 
 /** A module a scanned file imports, read so a type alias or constant from it is followed (spec 6.4). */
 const readModule = (path: string): string | undefined => {
-  const absolute = join(ROOT, path);
-  return existsSync(absolute) && statSync(absolute).isFile() ? readFileSync(absolute, "utf8") : undefined;
+  try {
+    return readFileSync(join(ROOT, path), "utf8");
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT" || code === "EISDIR") return undefined;
+    throw error;
+  }
 };
 
 /** Every branch on a type id in the source files outside the provider layer. */
