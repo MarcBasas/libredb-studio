@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
 import { EXTERNAL_DATABASE_TYPES } from "@/lib/db/compatibility";
 import { SQL_WRITING, sqlWritingFor } from "@/lib/db/sql-writing";
 import { NO_CONNECTION_SQL_WRITING } from "@/lib/db/sql-writing/no-connection";
@@ -11,6 +12,7 @@ import {
   binaryUnhex,
   binaryZeroX,
 } from "@/lib/db/sql-writing/export-shared";
+import * as SHARED from "@/lib/db/sql-writing/shared";
 import {
   BARE_TYPE_FAMILY,
   CLICKHOUSE_WRAPPER,
@@ -21,12 +23,14 @@ import {
   INSTANT_TYPE_NAMES,
   NO_BARE_SPELLING,
   NOTHING_STANDS_ALONE,
+  literalBackslash,
   NULL_NON_FINITE,
   STANDARD_DDL_TYPES,
 } from "@/lib/db/sql-writing/shared";
 import { UNKNOWN_TYPE_SQL_WRITING } from "@/lib/db/sql-writing/unknown-type";
 import type { ExportSpec, InferredKind, SqlWritingSpec } from "@/lib/db/sql-writing/types";
 import type { DatabaseType } from "@/lib/types";
+import { TYPED_LITERAL_MODULES } from "./engine-modules";
 import { renderExportGolden } from "./export-fixtures";
 
 /**
@@ -291,6 +295,38 @@ describe("SQL export census", () => {
       else expect(spec.export.nonFinite).toEqual(today);
     });
   }
+
+  // A typed writer names its engine's escape rather than reading its row, so the two are held equal here:
+  // an engine whose escape changed would otherwise keep the old one in its typed cells and binary literals.
+  for (const { ownerId, absPath, repoPath } of TYPED_LITERAL_MODULES) {
+    test(`${repoPath}: quotes with its engine's own escape`, () => {
+      const imported = [
+        ...readFileSync(absPath, "utf8").matchAll(/import \{([^}]*)\} from "@\/lib\/db\/sql-writing\/shared";/g),
+      ].flatMap((match) =>
+        match[1]
+          .split(",")
+          .map((name) => name.trim())
+          .filter((name) => name !== ""),
+      );
+      const spec = SQL_WRITING[ownerId as DatabaseType];
+      for (const name of imported) {
+        const used = (SHARED as Record<string, unknown>)[name];
+        if (name.startsWith("literal"))
+          expect({ name, same: used === spec.escapeLiteral }).toEqual({ name, same: true });
+        if (name.startsWith("identifier")) {
+          expect({ name, same: used === spec.quoteIdentifier }).toEqual({ name, same: true });
+        }
+      }
+    });
+  }
+
+  test("an engine writing binary as backslash-escaped text escapes its literals the same way", () => {
+    const backslashText = rows.filter(([, spec]) => spec.export.binaryLiteral === binaryTextBackslash);
+    expect(backslashText.map(([id]) => id).sort()).toEqual(["bigquery", "couchbase"]);
+    for (const [id, spec] of backslashText) {
+      expect({ id, same: spec.escapeLiteral === literalBackslash }).toEqual({ id, same: true });
+    }
+  });
 
   test("sqlite and libsql each write their own standing-alone list", () => {
     expect(SQL_WRITING.sqlite.export.standsAlone).not.toBe(SQL_WRITING.libsql.export.standsAlone);
