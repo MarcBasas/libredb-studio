@@ -96,7 +96,8 @@ export interface DatabaseUIConfig {
   fieldPlaceholders?: Partial<Record<ConnectionField, string>>;
   /**
    * Where the connection dialog draws a field: `"advanced"` behind the Advanced accordion, `"open"` with the other
-   * fields. Read through `connectionFieldPlacement`; absent means open. The dialog draws the accordion only for an
+   * fields. Read through `connectionFieldPlacement`; absent means open. The `authSource`, `localDataCenter`,
+   * `serviceName` and `instanceName` boxes are drawn where it says, and the dialog draws the accordion only for an
    * engine that places one of its `connectionFields` there.
    */
   fieldPlacement?: Partial<Record<ConnectionField, "open" | "advanced">>;

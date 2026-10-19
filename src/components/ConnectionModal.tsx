@@ -550,6 +550,86 @@ export function ConnectionModal({
   );
 
   /**
+   * Whether the engine takes `field` and its entry places it `where` (`fieldPlacement`): each of the four blocks below
+   * is drawn in the open or inside the Advanced accordion by that fact alone, so the declaration and the drawn place
+   * cannot disagree.
+   */
+  const placedIn = (field: ConnectionField, where: "open" | "advanced"): boolean =>
+    takesConnectionField(type, field) && connectionFieldPlacement(uiConfig, field) === where;
+
+  const authSourceBlock = (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 mb-1">
+        <Key strokeWidth={1.5} className="w-3 h-3 text-fg-muted" />
+        <Label htmlFor="authSource" className="text-xs font-medium text-fg-muted">
+          {connectionFieldLabel(uiConfig, "authSource", "Authentication Database")}
+        </Label>
+      </div>
+      <Input
+        id="authSource"
+        value={authSource}
+        onChange={(e) => setAuthSource(e.target.value)}
+        placeholder="admin"
+        aria-describedby={describedByHint(uiConfig, "authSource")}
+        className="h-10 bg-panel border-hairline focus:border-brand-tint/50 transition-all text-xs font-mono"
+      />
+      <DeclaredFieldHint config={uiConfig} field="authSource" />
+    </div>
+  );
+
+  const localDataCenterBlock = (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 mb-1">
+        <Server strokeWidth={1.5} className="w-3 h-3 text-fg-muted" />
+        <Label htmlFor="localDataCenter" className="text-xs font-medium text-fg-muted">
+          {connectionFieldLabel(uiConfig, "localDataCenter", "Local Data Center")}
+        </Label>
+      </div>
+      <Input
+        id="localDataCenter"
+        value={localDataCenter}
+        onChange={(e) => setLocalDataCenter(e.target.value)}
+        placeholder="datacenter1"
+        aria-describedby={describedByHint(uiConfig, "localDataCenter")}
+        className="h-10 bg-panel border-hairline focus:border-brand-tint/50 transition-all text-xs font-mono"
+      />
+      <DeclaredFieldHint config={uiConfig} field="localDataCenter" />
+    </div>
+  );
+
+  const serviceNameBlock = (
+    <div className="space-y-1.5">
+      <Label className="text-xs font-medium text-fg-muted">
+        {connectionFieldLabel(uiConfig, "serviceName", "Service Name")}
+      </Label>
+      <Input
+        value={serviceName}
+        onChange={(e) => setServiceName(e.target.value)}
+        placeholder="ORCL or XEPDB1"
+        aria-describedby={describedByHint(uiConfig, "serviceName")}
+        className="h-9 bg-panel border-hairline focus:border-hue-orange-tint/50 text-xs"
+      />
+      <DeclaredFieldHint config={uiConfig} field="serviceName" />
+    </div>
+  );
+
+  const instanceNameBlock = (
+    <div className="space-y-1.5">
+      <Label className="text-xs font-medium text-fg-muted">
+        {connectionFieldLabel(uiConfig, "instanceName", "Instance Name")}
+      </Label>
+      <Input
+        value={instanceName}
+        onChange={(e) => setInstanceName(e.target.value)}
+        placeholder="SQLEXPRESS"
+        aria-describedby={describedByHint(uiConfig, "instanceName")}
+        className="h-9 bg-panel border-hairline focus:border-hue-orange-tint/50 text-xs"
+      />
+      <DeclaredFieldHint config={uiConfig} field="instanceName" />
+    </div>
+  );
+
+  /**
    * The Warehouse box, drawn where the engine takes the field: after Database for Databend, before it where the engine
    * lists it first (`warehouseBeforeDatabase`). The provider checks the text and names the field when it refuses it.
    */
@@ -1524,25 +1604,7 @@ export function ConnectionModal({
                     </div>
                   )}
 
-                  {takesConnectionField(type, "authSource") && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Key strokeWidth={1.5} className="w-3 h-3 text-fg-muted" />
-                        <Label htmlFor="authSource" className="text-xs font-medium text-fg-muted">
-                          {connectionFieldLabel(uiConfig, "authSource", "Authentication Database")}
-                        </Label>
-                      </div>
-                      <Input
-                        id="authSource"
-                        value={authSource}
-                        onChange={(e) => setAuthSource(e.target.value)}
-                        placeholder="admin"
-                        aria-describedby={describedByHint(uiConfig, "authSource")}
-                        className="h-10 bg-panel border-hairline focus:border-brand-tint/50 transition-all text-xs font-mono"
-                      />
-                      <DeclaredFieldHint config={uiConfig} field="authSource" />
-                    </div>
-                  )}
+                  {placedIn("authSource", "open") && authSourceBlock}
 
                   {/*
                     In the open for the same reason as MongoDB's field above: this is the
@@ -1603,25 +1665,9 @@ export function ConnectionModal({
                     </div>
                   )}
 
-                  {takesConnectionField(type, "localDataCenter") && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Server strokeWidth={1.5} className="w-3 h-3 text-fg-muted" />
-                        <Label htmlFor="localDataCenter" className="text-xs font-medium text-fg-muted">
-                          {connectionFieldLabel(uiConfig, "localDataCenter", "Local Data Center")}
-                        </Label>
-                      </div>
-                      <Input
-                        id="localDataCenter"
-                        value={localDataCenter}
-                        onChange={(e) => setLocalDataCenter(e.target.value)}
-                        placeholder="datacenter1"
-                        aria-describedby={describedByHint(uiConfig, "localDataCenter")}
-                        className="h-10 bg-panel border-hairline focus:border-brand-tint/50 transition-all text-xs font-mono"
-                      />
-                      <DeclaredFieldHint config={uiConfig} field="localDataCenter" />
-                    </div>
-                  )}
+                  {placedIn("localDataCenter", "open") && localDataCenterBlock}
+                  {placedIn("serviceName", "open") && serviceNameBlock}
+                  {placedIn("instanceName", "open") && instanceNameBlock}
                 </>
               )}
             </>
@@ -1653,36 +1699,10 @@ export function ConnectionModal({
                     className="overflow-hidden"
                   >
                     <div className="p-3 rounded-lg border border-hue-orange-tint/10 bg-hue-orange-tint/5 space-y-3">
-                      {takesConnectionField(type, "serviceName") && (
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-medium text-fg-muted">
-                            {connectionFieldLabel(uiConfig, "serviceName", "Service Name")}
-                          </Label>
-                          <Input
-                            value={serviceName}
-                            onChange={(e) => setServiceName(e.target.value)}
-                            placeholder="ORCL or XEPDB1"
-                            aria-describedby={describedByHint(uiConfig, "serviceName")}
-                            className="h-9 bg-panel border-hairline focus:border-hue-orange-tint/50 text-xs"
-                          />
-                          <DeclaredFieldHint config={uiConfig} field="serviceName" />
-                        </div>
-                      )}
-                      {takesConnectionField(type, "instanceName") && (
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-medium text-fg-muted">
-                            {connectionFieldLabel(uiConfig, "instanceName", "Instance Name")}
-                          </Label>
-                          <Input
-                            value={instanceName}
-                            onChange={(e) => setInstanceName(e.target.value)}
-                            placeholder="SQLEXPRESS"
-                            aria-describedby={describedByHint(uiConfig, "instanceName")}
-                            className="h-9 bg-panel border-hairline focus:border-hue-orange-tint/50 text-xs"
-                          />
-                          <DeclaredFieldHint config={uiConfig} field="instanceName" />
-                        </div>
-                      )}
+                      {placedIn("serviceName", "advanced") && serviceNameBlock}
+                      {placedIn("instanceName", "advanced") && instanceNameBlock}
+                      {placedIn("authSource", "advanced") && authSourceBlock}
+                      {placedIn("localDataCenter", "advanced") && localDataCenterBlock}
                     </div>
                   </motion.div>
                 )}

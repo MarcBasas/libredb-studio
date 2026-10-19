@@ -2893,3 +2893,44 @@ describe("ConnectionModal: the Snowflake fields, the account-only host row and t
     });
   });
 });
+
+describe("ConnectionModal: a field is drawn where its declared placement says", () => {
+  afterEach(() => {
+    cleanup();
+    mockFormOverrides = {};
+    mockDeclaredCopy = {};
+  });
+
+  const FIELDS = [
+    ["mongodb", "authSource", "#authSource"],
+    ["cassandra", "localDataCenter", "#localDataCenter"],
+    ["oracle", "serviceName", 'input[placeholder="ORCL or XEPDB1"]'],
+    ["mssql", "instanceName", 'input[placeholder="SQLEXPRESS"]'],
+  ] as const;
+
+  test.each(FIELDS)("%s's %s declared open is drawn in the open, with no Advanced button", (type, field, selector) => {
+    mockFormOverrides = { type, showAdvanced: false };
+    mockDeclaredCopy = { fieldPlacement: { [field]: "open" } };
+    const { container, queryByRole } = render(React.createElement(ConnectionModal, createDefaultProps()));
+
+    expect(container.querySelector(selector)).not.toBeNull();
+    expect(queryByRole("button", { name: /Advanced/ })).toBeNull();
+  });
+
+  test.each(FIELDS)(
+    "%s's %s declared advanced is drawn inside the Advanced accordion only",
+    (type, field, selector) => {
+      mockFormOverrides = { type, showAdvanced: false };
+      mockDeclaredCopy = { fieldPlacement: { [field]: "advanced" } };
+      const { container, getByRole, rerender } = render(React.createElement(ConnectionModal, createDefaultProps()));
+
+      expect(container.querySelector(selector)).toBeNull();
+
+      mockFormOverrides = { type, showAdvanced: true };
+      rerender(React.createElement(ConnectionModal, createDefaultProps()));
+      const accordion = getByRole("button", { name: /Advanced/ }).parentElement;
+      expect(container.querySelectorAll(selector)).toHaveLength(1);
+      expect(accordion?.contains(container.querySelector(selector))).toBe(true);
+    },
+  );
+});
