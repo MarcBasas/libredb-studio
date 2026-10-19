@@ -114,7 +114,7 @@ can correct it.
 | `src/lib/db/factory.ts` | `case "cassandra"`, dynamic `import("./providers/sql/cassandra/index")` |
 | `src/lib/db-ui-config.ts` | Icon, `text-sky-300`, "Apache Cassandra", port 9042, the `localDataCenter` field |
 | `src/lib/sql/grammar.ts` | `CASSANDRA_GRAMMAR` — all four facts probed ([§5.4](#54-dialect-traps-a-user-will-hit)) |
-| `src/lib/sql/values.ts` | `standard` literal escaping — doubling, backslash is data (measured) |
+| `src/lib/db/providers/sql/cassandra/sql-writing.ts` | `literalStandard` literal escaping: doubling, backslash is data (measured) |
 | `src/lib/db/compatibility.ts` | `SHIPPED.cassandra` |
 | `src/lib/seed/types.ts` | The seed enum and `localDataCenter` |
 | `next.config.ts`, `tsup.config.ts` | `cassandra-driver` external ([§3.1](#31-a-driver-that-costs-no-distribution-channel-anything)) |
@@ -505,7 +505,7 @@ for nothing.
 **Positional parameters are refused.** CQL binds `?` and this driver binds an array against it —
 through a prepared statement the transport deliberately does not send. Splicing values into the text
 instead would be the one place this provider could inject CQL. `positionalPlaceholder()` returns
-`null` for this dialect for the same reason (see `lib/sql/values.ts`).
+`null` for this dialect for the same reason (see `lib/db/providers/sql/cassandra/sql-writing.ts`).
 
 A write answers **no column declaration and no rows** (measured on `INSERT`, `DELETE`, `ALTER TABLE`
 and `USE`), and the protocol reports no affected-row count, so `rowCount` is the rows returned and

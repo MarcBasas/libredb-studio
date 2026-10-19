@@ -1043,7 +1043,7 @@ expression arrive bare. Measured 2026-09-21 on DuckDB v1.5.5 through `@duckdb/no
 | no default | none | SQL NULL |
 
 Each column carries both readings. `defaultValue` is the value, decoded by `unquoteLiteral()`
-(`src/lib/sql/values.ts`) with this dialect's `"standard"` escaping, so `'it''s'` reads as
+(`src/lib/sql/values.ts`) with the `unquoteStandard` reader this engine's SQL writing module names, so `'it''s'` reads as
 `it's` and a backslash stays ordinary data. Text that is not exactly one complete literal,
 a number or an expression such as a generated column's `CAST((id * 2) AS INTEGER)`, passes through unchanged. `defaultExpression` is the
 catalog text itself, which is always valid SQL here and is what the schema-diff migration

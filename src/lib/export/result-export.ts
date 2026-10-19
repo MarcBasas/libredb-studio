@@ -770,8 +770,8 @@ function sqlTypeOf(column: string, rows: readonly Record<string, unknown>[], sou
  *   byte type; the least-wrong option is the same `\x…` text every other surface
  *   shows, quoted as a string, so a reader can at least decode it by hand.
  *
- * The map is total for the same reason `LITERAL_ESCAPE` is
- * (`src/lib/sql/values.ts`): a new provider must not inherit a silently wrong answer.
+ * The map is total for the same reason `SQL_WRITING` is
+ * (`src/lib/db/sql-writing/index.ts`): a new provider must not inherit a silently wrong answer.
  */
 type BinaryLiteral = "standard-hex" | "zero-x" | "binary-hex" | "pg-bytea" | "hextoraw" | "unhex" | "text";
 

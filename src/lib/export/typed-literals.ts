@@ -805,7 +805,7 @@ const snowflakeLiteral: TypedWriter = (value, declared, scalar) =>
  * Spark's typed literals for the texts the Spark provider's decoder writes: a date, a timestamp with
  * its `+00:00`, a timestamp without a zone and a time, each checked against that text before it is quoted, so a cell
  * in another form is refused rather than left to Spark's string casts. Strings, booleans, plain numbers and bytes
- * are the generic writer's (`LITERAL_ESCAPE.spark`, `BINARY_LITERAL.spark`).
+ * are the generic writer's (`SPARK_SQL_WRITING.escapeLiteral`, `BINARY_LITERAL.spark`).
  */
 const SPARK_TEMPORAL: ReadonlyArray<{ readonly declared: RegExp; readonly keyword: string; readonly shape: RegExp }> = [
   { declared: /^date$/, keyword: "DATE", shape: /^[+-]?\d{4,}-\d{2}-\d{2}$/ },
