@@ -2,6 +2,7 @@ import { z } from "zod";
 import { CONNECTION_STRING_ACCEPTED, MCP_EXPOSABLE, READ_ONLY_ENFORCED } from "@/lib/db/compatibility";
 import type { DatabaseConnection, DatabaseType } from "@/lib/types";
 import { readOnlySeedRefusal } from "@/lib/db/credential-warnings";
+import { SEED_ONLY_FIELDS, type SeedOnlyFields } from "@/lib/db/connection-fields";
 import { isCredentialReference } from "./credential-resolver";
 import { checkSnowflakeAccount, SNOWFLAKE_FIELD_SENTENCES } from "@/lib/db/providers/sql/snowflake/account-host";
 
@@ -24,6 +25,30 @@ const ConnectionEnvironmentSchema = z.enum(["production", "staging", "developmen
 
 // Allowed roles in current iteration (matches JWT role: 'admin' | 'user' + wildcard)
 const AllowedRoleSchema = z.enum(["*", "admin", "user"]);
+
+/**
+ * One issue per present field of every "each" row, then one issue per "set" row with any field present, at the first
+ * present field. The "each" pass runs first so the OPC UA issues keep their place before the API-key issue.
+ */
+function refuseSeedOnlyFields(conn: { readonly type: DatabaseType }, ctx: z.RefinementCtx): void {
+  const rows = Object.entries(SEED_ONLY_FIELDS).filter(
+    (entry): entry is [string, SeedOnlyFields] => entry[1] !== null && entry[0] !== conn.type,
+  );
+  const fields = conn as Readonly<Record<string, unknown>>;
+  for (const [, row] of rows) {
+    if (row.kind !== "each") continue;
+    for (const field of row.fields) {
+      if (fields[field] === undefined) continue;
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: row.refusal(field), path: [field] });
+    }
+  }
+  for (const [, row] of rows) {
+    if (row.kind !== "set") continue;
+    const present = row.fields.find((field) => fields[field] !== undefined);
+    if (present === undefined) continue;
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: row.refusal(present), path: [present] });
+  }
+}
 
 /**
  * The load's refusal of an MCP opt-in on an engine MCP is not offered for (#1089). Read from the record
@@ -305,35 +330,9 @@ export const SeedConnectionSchema = z
     clientCertificatePath: z.string().optional(),
     clientPrivateKeyPath: z.string().optional(),
   })
-  // The OPC UA fields on any other type, refused at load by name: why, at SEED_ONLY_FIELDS.opcua in
-  // src/lib/db/connection-fields.ts.
-  .superRefine((conn, ctx) => {
-    if (conn.type === "opcua") return;
-    for (const field of [
-      "securityMode",
-      "serverCertificateThumbprint",
-      "securityPolicyUri",
-      "clientCertificatePath",
-      "clientPrivateKeyPath",
-    ] as const) {
-      if (conn[field] === undefined) continue;
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `${field} is OPC UA only: no other engine's provider reads it, so this connection would be listed as carrying it and would not. Remove ${field} from this connection.`,
-        path: [field],
-      });
-    }
-  })
-  .superRefine((conn, ctx) => {
-    if (conn.type === "elasticsearch") return;
-    if (conn.apiKeyId === undefined && conn.apiKeySecret === undefined) return;
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message:
-        "apiKeyId and apiKeySecret are Elasticsearch-only. OpenSearch (and every other engine) refuses the pair: nothing here has measured whether OpenSearch's security plugin accepts Authorization: ApiKey, so a seed that carries it is rejected rather than listed as a connection that silently falls back to user/password.",
-      path: conn.apiKeyId !== undefined ? ["apiKeyId"] : ["apiKeySecret"],
-    });
-  })
+  // A field only one engine's provider reads, refused at load on every other type: why, at that engine's row of
+  // SEED_ONLY_FIELDS in src/lib/db/connection-fields.ts.
+  .superRefine(refuseSeedOnlyFields)
   // The type's own checks before any socket (SF-038), from SEED_LOAD_CHECKS. The message names the connection and the
   // field, never the value, since a refused account URL may carry a token.
   .superRefine((conn, ctx) => {

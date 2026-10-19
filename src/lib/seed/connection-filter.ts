@@ -1,3 +1,4 @@
+import { SEED_ONLY_FIELDS } from "@/lib/db/connection-fields";
 import type { DatabaseConnection, SSLConfig } from "@/lib/types";
 import type { SeedConnection, SeedDefaults, ManagedConnection } from "./types";
 
@@ -16,13 +17,14 @@ function rolesMatch(connectionRoles: string[], userRoles: string[]): boolean {
   return connectionRoles.some((r) => userRoles.includes(r));
 }
 
-/** The mapper's own gate on the Elasticsearch API key pair: why, at SEED_ONLY_FIELDS.elasticsearch in src/lib/db/connection-fields.ts. */
-function assertApiKeyPairIsElasticsearch(conn: SeedConnection): void {
-  if (conn.type === "elasticsearch") return;
-  if (!conn.apiKeyId && !conn.apiKeySecret) return;
-  throw new Error(
-    `Seed connection "${conn.id}" of type "${conn.type}" carries an Elasticsearch API key pair. The pair is Elasticsearch-only; OpenSearch's security plugin has not been measured to accept Authorization: ApiKey, so the seed is refused rather than projected as a connection that silently falls back to user/password.`,
-  );
+/** The mapper's own gate on a field only one engine reads: why, at that engine's row of SEED_ONLY_FIELDS in src/lib/db/connection-fields.ts. */
+function assertSeedOnlyFieldsBelong(conn: SeedConnection): void {
+  const fields = conn as Readonly<Record<string, unknown>>;
+  for (const [owner, row] of Object.entries(SEED_ONLY_FIELDS)) {
+    if (!row?.projectionRefusal || owner === conn.type) continue;
+    if (!row.fields.some((field) => fields[field])) continue;
+    throw new Error(row.projectionRefusal(conn.id, conn.type));
+  }
 }
 
 /**
@@ -43,7 +45,7 @@ export function filterByRoles(connections: SeedConnection[], userRoles: string[]
   return connections
     .filter((conn) => rolesMatch(conn.roles, userRoles))
     .map((conn) => {
-      assertApiKeyPairIsElasticsearch(conn);
+      assertSeedOnlyFieldsBelong(conn);
       assertReadOnlySeedIsManaged(conn);
       return {
         id: `seed:${conn.id}`,
