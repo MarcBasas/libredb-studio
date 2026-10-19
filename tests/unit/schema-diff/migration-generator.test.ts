@@ -2,11 +2,6 @@ import { describe, test, expect } from "bun:test";
 import { ALLOWED_OPERATIONS } from "@/lib/db/providers/network/netconf/requests";
 import { diffSchemas } from "@/lib/schema-diff/diff-engine";
 import { MIGRATION_DDL } from "@/lib/db/migration-ddl";
-import {
-  DATABEND_COLUMN_MODIFICATION_REASON,
-  DATABEND_INDEX_REFUSAL,
-  DATABEND_PRIMARY_KEY_REASON,
-} from "@/lib/db/providers/sql/databend/migration-ddl";
 import { generateMigrationSQL } from "@/lib/schema-diff/migration-generator";
 import type { StoredObject } from "@/lib/db/detailed-object";
 import type { ColumnDiff, SchemaDiff } from "@/lib/schema-diff/types";
@@ -15,6 +10,17 @@ import type { DatabaseType } from "@/lib/types";
 // ============================================================================
 // Helpers
 // ============================================================================
+
+/** The one Databend refusal reason that starts with `opening`, read from the spec's `reasons` as the docs test reads them. */
+function databendReason(opening: string): string {
+  const matches = MIGRATION_DDL.databend.reasons.filter((reason) => reason.startsWith(opening));
+  if (matches.length !== 1) throw new Error(`${matches.length} Databend reasons start with "${opening}"`);
+  return matches[0];
+}
+
+const DATABEND_COLUMN_MODIFICATION_REASON = databendReason("Databend has ALTER TABLE ... MODIFY COLUMN");
+const DATABEND_INDEX_REFUSAL = databendReason("Databend: Cannot generate index DDL.");
+const DATABEND_PRIMARY_KEY_REASON = databendReason("Databend's CREATE TABLE has no primary-key constraint.");
 
 const noChangesDiff: SchemaDiff = {
   tables: [],

@@ -33,7 +33,7 @@ import type { MigrationDdlSpec } from "@/lib/db/migration-ddl/types";
  * the generator with the connection's type and never consults capabilities, so the refusal has to be
  * repeated here or the two contradict each other.
  */
-export const CASSANDRA_NO_CREATE_TABLE =
+const CASSANDRA_NO_CREATE_TABLE =
   "A CQL primary key splits into a partition key and clustering columns, and a schema diff records neither role, so the partitioning cannot be derived; write the CREATE TABLE by hand.";
 
 // Measured on Cassandra 5.0.9: `ALTER TABLE probe.customers ALTER name TYPE blob`

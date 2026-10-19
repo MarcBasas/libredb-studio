@@ -21,17 +21,17 @@ import type { MigrationDdlSpec } from "@/lib/db/migration-ddl/types";
  * and a change that does not restate the default drops it; the PostgreSQL branch's `ALTER COLUMN` is a parse error
  * (1005).
  */
-export const DATABEND_COLUMN_MODIFICATION_REASON =
+const DATABEND_COLUMN_MODIFICATION_REASON =
   "Databend has ALTER TABLE ... MODIFY COLUMN, but the MySQL spelling this generator writes fails NOT NULL on an empty table and silently drops an existing default it does not restate; write the change by hand.";
 
 /** Why an added Databend table declines its key in a comment: probe L11, every `PRIMARY KEY` form is 1005. */
-export const DATABEND_PRIMARY_KEY_REASON = "Databend's CREATE TABLE has no primary-key constraint.";
+const DATABEND_PRIMARY_KEY_REASON = "Databend's CREATE TABLE has no primary-key constraint.";
 
 /**
  * Databend's index refusal. Its CREATE INDEX always names a kind (INVERTED, NGRAM, VECTOR or SPATIAL search
  * indexes), with no plain or UNIQUE index to carry the diff's column list and uniqueness.
  */
-export const DATABEND_INDEX_REFUSAL =
+const DATABEND_INDEX_REFUSAL =
   "Databend: Cannot generate index DDL. Its indexes are inverted, ngram, vector and spatial search indexes, which the diff does not record; write the index change by hand.";
 
 export const DATABEND_MIGRATION_DDL: MigrationDdlSpec = {

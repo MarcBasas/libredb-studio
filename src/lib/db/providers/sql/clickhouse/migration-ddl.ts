@@ -29,10 +29,10 @@ import type { ColumnDiff, MigrationDdlSpec } from "@/lib/db/migration-ddl/types"
  * `REMOVE DEFAULT` against a column that has none is an error too (code 36), which is why `modifyColumn`
  * below only emits it for a default that existed.
  */
-export const CLICKHOUSE_DEFAULT_KINDS = ["MATERIALIZED", "ALIAS", "EPHEMERAL"];
-export const CLICKHOUSE_REMOVABLE_KINDS = ["DEFAULT", "MATERIALIZED", "ALIAS"];
+const CLICKHOUSE_DEFAULT_KINDS = ["MATERIALIZED", "ALIAS", "EPHEMERAL"];
+const CLICKHOUSE_REMOVABLE_KINDS = ["DEFAULT", "MATERIALIZED", "ALIAS"];
 
-export function clickhouseDefaultKind(value: string): string {
+function clickhouseDefaultKind(value: string): string {
   return CLICKHOUSE_DEFAULT_KINDS.find((kind) => value.startsWith(`${kind} `)) ?? "DEFAULT";
 }
 
