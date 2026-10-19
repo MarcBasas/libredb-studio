@@ -117,11 +117,16 @@ describe("the plan-draft reader stays reachable from a browser", () => {
       "./operative-keyword",
       "./spans",
       "./words",
+      "@/lib/db/sql-grammar/shared",
       "@/lib/types",
     ]);
-    // The one non-relative member, and it is erased at build time: a VALUE import of the shared
-    // type module would pull the whole type barrel into the browser bundle.
+    // The non-relative members. The type module is erased at build time: a VALUE import of it
+    // would pull the whole type barrel into the browser bundle. The shared grammar constants are
+    // a leaf whose only import is that same kind of erased, type-only one.
     expect(read("./grammar")).toContain('import type { DatabaseType } from "@/lib/types"');
+    const shared = fs.readFileSync(path.join(ROOT, "src/lib/db/sql-grammar/shared.ts"), "utf8");
+    expect(specifiers(shared)).toEqual(["./types"]);
+    expect(shared).toContain('import type { SqlGrammar } from "./types"');
   });
 
   test("it does not reach the statement guard, which is where zod enters", () => {

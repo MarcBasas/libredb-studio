@@ -29,6 +29,7 @@
  *    implied. Never read one dialect's rule off another's behaviour.
  */
 
+import { DEFAULT_SQL_GRAMMAR, SQLITE_GRAMMAR } from "@/lib/db/sql-grammar/shared";
 import type { DatabaseType } from "@/lib/types";
 
 /**
@@ -391,27 +392,7 @@ export type ConfirmCodeForm =
   | { readonly computedCall: string }
   | { readonly dollarQuoted: true };
 
-/**
- * What a call that names no dialect gets.
- *
- * Deliberately today's reading rather than a stricter "report undeterminable
- * wherever the dialects disagree". The strict default is the more honest one in
- * the abstract, but every fixture written for #275, #280, #287, #291 and #294
- * calls these readers without a dialect, and rewriting the meaning of that whole
- * suite in the same change that introduces the channel would leave nothing
- * pinning the old behaviour. Pinned by its own tests instead, so it is a decision
- * rather than an accident.
- */
-export const DEFAULT_SQL_GRAMMAR: SqlGrammar = {
-  hash: "comment-unless-operator",
-  bracket: "quoted-identifier",
-  blockComment: "flat",
-  alternateQuoting: false,
-  doubleSlashComment: false,
-  backslashAlwaysEscapes: false,
-  script: { blocks: "none", separatorLine: null, unit: "statement" },
-  trailingLimitClauses: [],
-};
+export { DEFAULT_SQL_GRAMMAR } from "@/lib/db/sql-grammar/shared";
 
 /**
  * One constant per dialect, and a fact spelled `DEFAULT_SQL_GRAMMAR.<fact>` is one
@@ -578,22 +559,6 @@ const MSSQL_GRAMMAR: SqlGrammar = {
   // `Must declare the scalar variable "@x"`, and as one batch answers 10.
   // A MERGE keeps its `;`: the server refuses one without it (Msg 10713, SF-046).
   script: { blocks: "none", separatorLine: "GO", unit: "batch", terminatedStatements: ["MERGE"] },
-  trailingLimitClauses: DEFAULT_SQL_GRAMMAR.trailingLimitClauses,
-};
-const SQLITE_GRAMMAR: SqlGrammar = {
-  hash: "code",
-  bracket: "quoted-identifier",
-  blockComment: "flat",
-  alternateQuoting: false,
-  // Probed 2026-08-25 through the bundled driver: `SELECT 1 AS a // note` and
-  // `SELECT 1 // 2` are both 'near "/": syntax error'. The amalgamation's tokenizer
-  // agrees - `case CC_SLASH` opens a run only on `/*`.
-  doubleSlashComment: false,
-  backslashAlwaysEscapes: false,
-  // `CREATE TRIGGER … BEGIN … END` is the one statement with a body. Measured through
-  // node:sqlite 3.50.4 before the fact existed: the trigger cut at its inner `;` was
-  // `incomplete input`.
-  script: { blocks: "trigger-body", separatorLine: null, unit: "statement" },
   trailingLimitClauses: DEFAULT_SQL_GRAMMAR.trailingLimitClauses,
 };
 
