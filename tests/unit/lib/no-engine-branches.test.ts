@@ -394,9 +394,6 @@ export const DEBT: readonly Debt[] = [
     reason: MOVES_IN[6],
   },
   { path: "src/components/SchemaDiff.tsx", declaration: "dialect", count: 1, pr: 6, reason: MOVES_IN[6] },
-  { path: "src/hooks/use-query-execution.ts", declaration: "keepKeyword", count: 1, pr: 8, reason: MOVES_IN[8] },
-  { path: "src/components/agent/ConsentCard.tsx", declaration: "isSqlite", count: 1, pr: 8, reason: MOVES_IN[8] },
-  { path: "src/components/VisualExplain.tsx", declaration: "response", count: 1, pr: 8, reason: MOVES_IN[8] },
 ];
 
 /** Every file git lists under `paths`: tracked, or untracked and not ignored. */
