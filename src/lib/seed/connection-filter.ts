@@ -16,12 +16,7 @@ function rolesMatch(connectionRoles: string[], userRoles: string[]): boolean {
   return connectionRoles.some((r) => userRoles.includes(r));
 }
 
-/**
- * The pair is Elasticsearch-only. Seed schema already refuses it on any other
- * type-id; this is the mapper's own gate so a SeedConnection constructed in
- * memory (bypassing zod) cannot be projected as a managed OpenSearch connection
- * whose transport would then drop the pair with no error (#708).
- */
+/** The mapper's own gate on the Elasticsearch API key pair: why, at SEED_ONLY_FIELDS.elasticsearch in src/lib/db/connection-fields.ts. */
 function assertApiKeyPairIsElasticsearch(conn: SeedConnection): void {
   if (conn.type === "elasticsearch") return;
   if (!conn.apiKeyId && !conn.apiKeySecret) return;

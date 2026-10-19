@@ -47,6 +47,7 @@ import type { HostUriScheme } from "@/lib/connection-host-uri";
 import type { ConnectionImportDeclaration } from "@/lib/connection-import";
 import { MODBUS_READ_ONLY_HINT } from "@/lib/db/providers/industrial/modbus/constants";
 import { CREDENTIAL_WARNINGS, type CredentialWarning } from "@/lib/db/credential-warnings";
+import { CONNECTION_FIELDS, type ConnectionField } from "@/lib/db/connection-fields";
 import {
   SNOWFLAKE_FIELD_SENTENCES,
   snowflakeAccountRefusal,
@@ -69,71 +70,12 @@ export interface DatabaseUIConfig {
    */
   defaultHost?: string;
   showConnectionStringToggle: boolean;
-  connectionFields: (
-    | "host"
-    | "port"
-    | "user"
-    | "password"
-    | "database"
-    | "schema"
-    | "connectionString"
-    | "serviceName"
-    | "instanceName"
-    // Cassandra only, and it is REQUIRED rather than advanced: `cassandra-driver`
-    // refuses to construct a load-balancing policy without a local data centre, so a
-    // connection with this empty cannot open at all.
-    | "localDataCenter"
-    // MongoDB only: the database its credentials live in, which the driver otherwise
-    // assumes is the one being opened.
-    | "authSource"
-    // Elasticsearch only (#708): an API key pair, sent in preference to user/password.
-    | "apiKeyId"
-    | "apiKeySecret"
-    // Kafka only (#1088): which SASL mechanism checks the user and password, drawn as the select
-    // `fieldOptions` below declares.
-    | "saslMechanism"
-    // Db2 (#786), both InfluxDB types (InfluxDB spec I7), Oxia for its token, Databend for its password, and
-    // S3-compatible object storage for the connection itself, and MQTT and RabbitMQ for their passwords: the consent
-    // to connect without TLS, drawn as a checkbox while SSL Mode is disable, under the sentence the type declares in
-    // `fieldHints`. The provider refuses a connection with no TLS unless it is set.
-    | "allowInsecureAuth"
-    // Oxia only (O6): a cluster's data-server addresses, one text box.
-    | "dataServers"
-    // Databend and Snowflake: the warehouse statements run on, one text box. Databend sends it as the
-    // X-DATABEND-WAREHOUSE header, which Databend Cloud requires; Snowflake as the warehouse field of every request
-    // body, optional, the user's default warehouse when empty.
-    | "warehouse"
-    // BigQuery only: the job location, one text box; empty means detected.
-    | "location"
-    // S3-compatible object storage only: the signing region, one text box.
-    | "region"
-    // Kubernetes: the server path prefix (Rancher's /k8s/clusters/<id>), which RabbitMQ also takes as its Path prefix,
-    // and, Kubernetes only, the namespaces the tree lists and the TLS server name, three text boxes.
-    | "apiPath"
-    | "namespaces"
-    | "tlsServerName"
-    // An AMQP 0-9-1 port, one text box of digits; no engine declares it yet.
-    | "amqpPort"
-    // Snowflake only: the sign-in method (a select), the pasted private key and its passphrase for a key pair, and
-    // the role every statement runs as.
-    | "authMethod"
-    | "privateKey"
-    | "privateKeyPassphrase"
-    | "role"
-    // OPC UA only: the security mode the server is asked for, and the server certificate pinned per
-    // connection, two text boxes. The mode is OPC UA's own name rather than a translation of
-    // Studio's SSL modes, which have no meaning to a server offering None, Sign and SignAndEncrypt.
-    | "securityMode"
-    | "serverCertificateThumbprint"
-    // Modbus only: the register map, a JSON document rather than a word, drawn as a text area. The
-    // protocol answers no discovery request, so this is the only thing that can name a point.
-    | "registerMap"
-    // NETCONF only: the device's SSH host key fingerprint, pasted from `ssh-keygen -lf`. A field of
-    // its own rather than `serverCertificateThumbprint`: a host key is not a certificate, the two
-    // are checked by different code, and one box for both would carry a label that is wrong half
-    // the time.
-    | "hostKeyFingerprint"
-  )[];
+  /**
+   * The fields the dialog draws and `buildConnection` saves, taken by reference from `CONNECTION_FIELDS` in
+   * src/lib/db/connection-fields.ts, which holds the lists because this module imports React icons, which the seed
+   * loader must not.
+   */
+  connectionFields: readonly ConnectionField[];
   /**
    * The connection dialog's label for a field, where this engine names the field differently from
    * the dialog's own word (#1085). Read through `connectionFieldLabel`, so an engine relabels a
@@ -228,8 +170,7 @@ export interface DatabaseUIConfig {
   connectionImport?: ConnectionImportDeclaration;
 }
 
-/** One addressing field, named by the same list that decides whether a save writes it. */
-export type ConnectionField = DatabaseUIConfig["connectionFields"][number];
+export type { ConnectionField } from "@/lib/db/connection-fields";
 
 /** A check the connection dialog runs on one field before Test Connection and Save (`fieldRules`). */
 export interface ConnectionFieldRule {
@@ -491,7 +432,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     label: "PostgreSQL",
     defaultPort: "5432",
     showConnectionStringToggle: false,
-    connectionFields: ["host", "port", "user", "password", "database"],
+    connectionFields: CONNECTION_FIELDS.postgres,
   },
   mysql: {
     icon: MySQLIcon,
@@ -499,7 +440,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     label: "MySQL",
     defaultPort: "3306",
     showConnectionStringToggle: false,
-    connectionFields: ["host", "port", "user", "password", "database"],
+    connectionFields: CONNECTION_FIELDS.mysql,
   },
   sqlite: {
     icon: SQLiteIcon,
@@ -507,7 +448,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     label: "SQLite",
     defaultPort: "",
     showConnectionStringToggle: false,
-    connectionFields: ["database"],
+    connectionFields: CONNECTION_FIELDS.sqlite,
   },
   duckdb: {
     icon: DuckDBIcon,
@@ -526,7 +467,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     // is what makes ConnectionModal render "Database File Path" instead of a
     // host/user/password section. One extra field here would silently take the file
     // input away.
-    connectionFields: ["database"],
+    connectionFields: CONNECTION_FIELDS.duckdb,
   },
   libsql: {
     icon: LibSQLIcon,
@@ -552,7 +493,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     // a JWT-checking server take, and the hint below says when that box is a password.
     // No `database`: the database IS the host on Turso Cloud, and a self-hosted server
     // serves one per namespace hostname.
-    connectionFields: ["host", "port", "user", "password", "connectionString"],
+    connectionFields: CONNECTION_FIELDS.libsql,
     fieldHints: {
       user: "Only for a self-hosted libSQL server started with SQLD_HTTP_AUTH, which checks a user name and password as HTTP Basic: the Auth Token box then takes the password. Leave it empty for Turso Cloud and for a server that checks tokens.",
     },
@@ -563,7 +504,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     label: "MongoDB",
     defaultPort: "27017",
     showConnectionStringToggle: true,
-    connectionFields: ["host", "port", "user", "password", "database", "connectionString", "authSource"],
+    connectionFields: CONNECTION_FIELDS.mongodb,
   },
   redis: {
     icon: RedisIcon,
@@ -576,7 +517,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     // documented it as a connection field all along - this list was the one place that
     // disagreed, and since it decides what a save WRITES, the value never reached the
     // driver that #502 taught to send it.
-    connectionFields: ["host", "port", "user", "password", "database"],
+    connectionFields: CONNECTION_FIELDS.redis,
   },
   oracle: {
     icon: OracleIcon,
@@ -584,7 +525,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     label: "Oracle",
     defaultPort: "1521",
     showConnectionStringToggle: false,
-    connectionFields: ["host", "port", "user", "password", "database", "serviceName"],
+    connectionFields: CONNECTION_FIELDS.oracle,
   },
   // IBM Db2 LUW (#786). No connection-string toggle: a `db2://` paste fills the fields, the Oracle
   // precedent. No password hint: a declared hint is drawn whatever SSL Mode says, and the cleartext
@@ -596,7 +537,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     label: "Db2 LUW",
     defaultPort: "50000",
     showConnectionStringToggle: false,
-    connectionFields: ["host", "port", "user", "password", "database", "allowInsecureAuth"],
+    connectionFields: CONNECTION_FIELDS.db2,
     fieldHints: {
       allowInsecureAuth:
         "With no SSL mode this driver sends the password in cleartext, so the connection is refused unless this is ticked. Choose an SSL mode under SSL / TLS instead wherever the server offers one.",
@@ -608,7 +549,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     label: "SQL Server",
     defaultPort: "1433",
     showConnectionStringToggle: false,
-    connectionFields: ["host", "port", "user", "password", "database", "instanceName"],
+    connectionFields: CONNECTION_FIELDS.mssql,
   },
   couchbase: {
     icon: CouchbaseIcon,
@@ -618,7 +559,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     // time (issue #262, decision 3), so only this one is ever stored.
     defaultPort: "8091",
     showConnectionStringToggle: true,
-    connectionFields: ["host", "port", "user", "password", "database", "connectionString"],
+    connectionFields: CONNECTION_FIELDS.couchbase,
   },
   clickhouse: {
     icon: ClickHouseIcon,
@@ -628,7 +569,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     // protocol port 9000 is never a valid value here (issue #264).
     defaultPort: "8123",
     showConnectionStringToggle: true,
-    connectionFields: ["host", "port", "user", "password", "database", "connectionString"],
+    connectionFields: CONNECTION_FIELDS.clickhouse,
   },
   druid: {
     icon: DruidIcon,
@@ -649,7 +590,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     // catalog, always named `druid`, so a database selector would be a control with no
     // effect. Credentials stay offered because a cluster running druid-basic-security
     // needs them; a default install ignores the Authorization header entirely.
-    connectionFields: ["host", "port", "user", "password"],
+    connectionFields: CONNECTION_FIELDS.druid,
   },
   elasticsearch: {
     icon: ElasticsearchIcon,
@@ -678,7 +619,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     // sends them only when its dialect spec says the product accepts the ApiKey wire
     // scheme, which nothing has measured for OpenSearch. Offering the fields there
     // would let an operator fill in a pair the transport refuses rather than sends.
-    connectionFields: ["host", "port", "user", "password", "apiKeyId", "apiKeySecret"],
+    connectionFields: CONNECTION_FIELDS.elasticsearch,
   },
   opensearch: {
     icon: OpenSearchIcon,
@@ -689,7 +630,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     // Same 9200 floor, same reason - the fork kept the port.
     defaultPort: "9200",
     showConnectionStringToggle: false,
-    connectionFields: ["host", "port", "user", "password"],
+    connectionFields: CONNECTION_FIELDS.opensearch,
   },
   trino: {
     icon: TrinoIcon,
@@ -714,7 +655,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     // `SHOW CATALOGS` answers jmx, memory, system, tpcds, tpch) and a connection pins
     // one, the way a PostgreSQL connection pins a database. The form labels it
     // "Catalog" rather than "Database" - see ConnectionModal.tsx.
-    connectionFields: ["host", "port", "user", "password", "database", "schema"],
+    connectionFields: CONNECTION_FIELDS.trino,
   },
   cassandra: {
     icon: CassandraIcon,
@@ -739,7 +680,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     // explicitly specify keyspace.tablename", and a keyspace that does not exist
     // fails the CONNECT rather than the first statement. The form labels it
     // "Keyspace" - see ConnectionModal.tsx.
-    connectionFields: ["host", "port", "user", "password", "database", "localDataCenter"],
+    connectionFields: CONNECTION_FIELDS.cassandra,
   },
   prometheus: {
     icon: PrometheusIcon,
@@ -760,7 +701,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     // Deliberately no "database": the server holds one TSDB and every API read is addressed to
     // it, so a selector would be a control with no effect (#1085 6.1), the Druid shape. `user` and
     // `password` are HTTP Basic; a password with no user is sent as a bearer token.
-    connectionFields: ["host", "port", "user", "password"],
+    connectionFields: CONNECTION_FIELDS.prometheus,
     // Declared here rather than as one more boolean in ConnectionModal.tsx (#1085 3.3): the
     // password box is the one field whose meaning depends on another field being empty. The user
     // box is "User" because the hint and the provider's credential refusal both name it so.
@@ -787,7 +728,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     showSshTunnel: false,
     // No database field: one connection is one cluster (docs/providers/kafka.md). The SASL
     // mechanism is a select declared here, not an isKafka branch in the dialog.
-    connectionFields: ["host", "port", "saslMechanism", "user", "password"],
+    connectionFields: CONNECTION_FIELDS.kafka,
     fieldLabels: { saslMechanism: "SASL mechanism" },
     fieldHints: { saslMechanism: "PLAIN and SCRAM require TLS" },
     fieldOptions: {
@@ -812,7 +753,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     // No database field: one connection is one cluster. User and Password are etcd's password sign-in; with
     // both empty, a client certificate under SSL / TLS signs in as its Common Name. The hints below say which
     // field decides which, since a refusal of E1 or E2 is otherwise the first the user hears of it.
-    connectionFields: ["host", "port", "user", "password"],
+    connectionFields: CONNECTION_FIELDS.etcd,
     fieldHints: {
       host: "A name or address only. For etcdctl's --endpoints=https://10.0.0.5:2379, type 10.0.0.5 here, 2379 in Port, and choose an SSL mode under SSL / TLS.",
       user: "Leave User and Password empty to sign in with the client certificate under SSL / TLS (shown in verify-ca and verify-full): etcd uses its Common Name as the user when the server runs with --client-cert-auth. When both are set, etcd uses the password.",
@@ -835,7 +776,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     showConnectionStringToggle: false,
     // The SSL panel and the SSH tunnel stay offered: a bolt:// URI dials the one server it names, unlike a
     // routing neo4j:// URI, which this provider never builds. An empty database is the server's home database.
-    connectionFields: ["host", "port", "user", "password", "database"],
+    connectionFields: CONNECTION_FIELDS.neo4j,
     fieldHints: { database: "Leave empty to use the server's home database." },
     // The dialog's own sentence says the mode can be turned off, which is false here (spec A7).
     readOnlyHint:
@@ -856,7 +797,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     showConnectionStringToggle: false,
     // The database is optional and sent with every call; the provider reads `config.user` and `config.database`,
     // which the write-list test of tests/unit/lib/db-ui-config.test.ts holds.
-    connectionFields: ["host", "port", "user", "password", "database"],
+    connectionFields: CONNECTION_FIELDS.milvus,
     // The Prometheus precedent: one password box also carries a token when User is empty (vector-family spec 5.2).
     fieldLabels: { password: "Password or token" },
     fieldHints: {
@@ -883,7 +824,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     showConnectionStringToggle: false,
     // No Database box: Qdrant has no container level. No User field: Qdrant has no user name, and the provider
     // refuses a non-empty one from a seed or the API naming the field (vector-family spec 4.4). The key or JWT is the password.
-    connectionFields: ["host", "port", "password"],
+    connectionFields: CONNECTION_FIELDS.qdrant,
     fieldLabels: { password: "API key or JWT" },
     fieldHints: {
       host: "A name or address, or a pasted http:// or https:// address such as http://localhost:6333, which is split into Host and Port. Studio dials this REST port only, never Qdrant's gRPC port 6334 or its cluster port 6335.",
@@ -906,7 +847,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     showConnectionStringToggle: false,
     // The Prometheus precedent: one password box carries a 1.x password or, with User empty, a 2.x or 3.x token. The
     // last field is the consent to send it without TLS, drawn while SSL Mode is disable (InfluxDB spec I7).
-    connectionFields: ["host", "port", "user", "password", "database", "allowInsecureAuth"],
+    connectionFields: CONNECTION_FIELDS.influxdb,
     fieldLabels: { password: "Password or token" },
     fieldHints: {
       host: "A name or address, or a pasted http:// or https:// address, which is split into Host and Port. InfluxDB Cloud endpoints are https on port 443.",
@@ -932,7 +873,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     showConnectionStringToggle: false,
     // No User field: InfluxDB 3 has no user name, its token is the password, and the connection layer refuses a user
     // from a seed or the API naming the field.
-    connectionFields: ["host", "port", "password", "database", "allowInsecureAuth"],
+    connectionFields: CONNECTION_FIELDS.influxdb3,
     fieldLabels: { password: "Token" },
     fieldHints: {
       host: "A name or address, or a pasted http:// or https:// address, which is split into Host and Port. InfluxDB Cloud endpoints are https on port 443.",
@@ -957,7 +898,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     defaultPort: "6648",
     // No URI convention: the CLI takes `-a host:port`, which Host and Port hold (DECISIONS O5).
     showConnectionStringToggle: false,
-    connectionFields: ["host", "port", "password", "database", "dataServers", "allowInsecureAuth"],
+    connectionFields: CONNECTION_FIELDS.oxia,
     fieldLabels: { password: "Token", database: "Namespace", dataServers: "Data servers" },
     // The namespace an empty Namespace means, where the dialog would show "db" (ruling R34).
     fieldPlaceholders: { database: "default" },
@@ -991,7 +932,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     showConnectionStringToggle: false,
     // The SSL panel and the SSH tunnel stay offered. The last field is the consent to send the password without TLS,
     // drawn while SSL Mode is disable.
-    connectionFields: ["host", "port", "user", "password", "database", "warehouse", "allowInsecureAuth"],
+    connectionFields: CONNECTION_FIELDS.databend,
     fieldLabels: { warehouse: "Warehouse" },
     // No User example: `root` contradicted the dialog's own warning against signing in as root with no password, and
     // the hint under the box names the users to choose (SF-039), so the box shows the dialog's own `user`.
@@ -1006,7 +947,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     label: "BigQuery",
     defaultPort: "",
     showConnectionStringToggle: false,
-    connectionFields: ["database", "schema", "password", "location"],
+    connectionFields: CONNECTION_FIELDS.bigquery,
     fieldLabels: {
       database: "Project ID",
       schema: "Default dataset",
@@ -1042,18 +983,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     defaultHost: "",
     // A pasted Snowflake address is decomposed into fields; no connection string is stored.
     showConnectionStringToggle: false,
-    connectionFields: [
-      "host",
-      "user",
-      "authMethod",
-      "privateKey",
-      "privateKeyPassphrase",
-      "password",
-      "warehouse",
-      "database",
-      "schema",
-      "role",
-    ],
+    connectionFields: CONNECTION_FIELDS.snowflake,
     fieldLabels: {
       host: "Account",
       user: "User",
@@ -1112,7 +1042,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     showConnectionStringToggle: false,
     // No User box: every request uses one fixed Spark Connect user id, and Token is the credential. Both the SSH
     // tunnel and the SSL / TLS panel stay offered: TLS reaches Spark through an operator's TLS-terminating proxy.
-    connectionFields: ["host", "port", "password", "database", "schema"],
+    connectionFields: CONNECTION_FIELDS.spark,
     fieldLabels: { host: "Host", port: "Port", password: "Token", database: "Catalog", schema: "Namespace" },
     fieldPlaceholders: { database: "server default (spark_catalog)", schema: "catalog default" },
     fieldHints: SPARK_FIELD_HINTS,
@@ -1134,7 +1064,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     showConnectionStringToggle: false,
     // The SSL panel and the SSH tunnel stay offered. The last field is the consent to plain HTTP, drawn while SSL Mode
     // is disable.
-    connectionFields: ["host", "port", "user", "password", "database", "region", "allowInsecureAuth"],
+    connectionFields: CONNECTION_FIELDS.s3,
     fieldLabels: {
       host: "Endpoint host",
       user: "Access key ID",
@@ -1165,7 +1095,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     showConnectionStringToggle: false,
     // No User field: basic authentication is refused, and the provider refuses a user from a seed or the API naming
     // the field. The SSL panel carries the CA and a client certificate; the SSH tunnel stays offered.
-    connectionFields: ["host", "port", "password", "database", "namespaces", "apiPath", "tlsServerName"],
+    connectionFields: CONNECTION_FIELDS.kubernetes,
     fieldLabels: {
       host: "API server",
       password: "Token",
@@ -1201,7 +1131,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     defaultPort: "1883",
     // Host and Port hold the broker. A `mqtt://` URI adds nothing the two fields do not say.
     showConnectionStringToggle: false,
-    connectionFields: ["host", "port", "user", "password", "database", "allowInsecureAuth"],
+    connectionFields: CONNECTION_FIELDS.mqtt,
     // `database` carries the discovery filter, as Oxia's carries a namespace: one connection reads one filter.
     fieldLabels: { database: "Topic filter" },
     fieldPlaceholders: { database: "#" },
@@ -1229,7 +1159,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     // No host or port: every request goes to firestore.googleapis.com, or to the emulator the server names.
     defaultPort: "",
     showConnectionStringToggle: false,
-    connectionFields: ["database", "schema", "password"],
+    connectionFields: CONNECTION_FIELDS.firestore,
     fieldLabels: {
       database: "Project ID",
       schema: "Database ID",
@@ -1267,7 +1197,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     // One tunnel carries one port, and the management API and AMQP use two, so the provider refuses a tunnel.
     showSshTunnel: false,
     hostAcceptsUri: ["http", "https"],
-    connectionFields: ["host", "port", "user", "password", "amqpPort", "apiPath", "allowInsecureAuth"],
+    connectionFields: CONNECTION_FIELDS.rabbitmq,
     fieldLabels: {
       host: "Host",
       port: "Management port",
@@ -1305,7 +1235,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     // offers, and a reader who chose `require` there was refused with a word this engine does not
     // know. The second engine to declare this, after BigQuery.
     showSslPanel: false,
-    connectionFields: ["host", "user", "password", "securityMode", "serverCertificateThumbprint"],
+    connectionFields: CONNECTION_FIELDS.opcua,
     fieldLabels: {
       host: "Endpoint URL",
       user: "Username",
@@ -1359,7 +1289,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     // Host, Port and the proxy's path prefix, and nothing else: the standard defines no authentication, so the
     // form offers no credential to fill in. A proxy that asks for one answers with its own page, which the
     // provider reports as what it is rather than as an agent's refusal.
-    connectionFields: ["host", "port", "apiPath"],
+    connectionFields: CONNECTION_FIELDS.mtconnect,
     // `host` for RabbitMQ's reason, the dialog's default being "Host & Instance", and NO `port` label:
     // declaring "Port" would change nothing a reader sees and would put this engine in the census of
     // engines that declare one (tests/unit/lib/db-ui-config.test.ts), which is RabbitMQ's alone.
@@ -1397,7 +1327,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     // `keyof DatabaseConnection` is what a user may fill in, send and have stored, and this is a document
     // the user writes. It is not `password`, because it is not a secret and a masked document cannot be
     // corrected; BigQuery's key file sits in `password` because that one IS a credential.
-    connectionFields: ["host", "port", "registerMap"],
+    connectionFields: CONNECTION_FIELDS.modbus,
     fieldLabels: { registerMap: "Register map" },
     fieldHints: {
       registerMap:
@@ -1454,7 +1384,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     // the dial refuse an unknown device rather than trust whatever answers on the port. The
     // fingerprint has a field of its own rather than borrowing `serverCertificateThumbprint`: a
     // host key is not a certificate, and the two are checked by different code.
-    connectionFields: ["host", "port", "user", "password", "privateKey", "privateKeyPassphrase", "hostKeyFingerprint"],
+    connectionFields: CONNECTION_FIELDS.netconf,
   },
   snmp: {
     // A mark drawn for Studio: a trunk with three numbered stops descending from it, because an
@@ -1506,7 +1436,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     // The v3 half is still missing and this list does not pretend otherwise: v3 needs a security
     // level, a privacy passphrase, a context name and an engine id pin, and none of those exist on
     // the shared connection record. A field collected and dropped is worse than one that is absent.
-    connectionFields: ["host", "port", "password", "allowInsecureAuth"],
+    connectionFields: CONNECTION_FIELDS.snmp,
     // The community is one shared secret with no user beside it, which is why it sits in the
     // password field and is labelled for what it is.
     // Both labels are declared because the dialog's own fallbacks are wrong here twice over: the
@@ -1570,7 +1500,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     // declaring a user or a password here would put a box on the form that the read ignores. The session
     // can carry credentials and the encoder sets their flags, but nothing passes them from a connection
     // yet, and a field that is collected and dropped is worse than one that is absent.
-    connectionFields: ["host", "port", "database"],
+    connectionFields: CONNECTION_FIELDS.sparkplug,
     // `database` carries the group, as MQTT's carries a topic filter: one connection reads one group.
     fieldLabels: { database: "Group" },
     fieldPlaceholders: { database: "" },
@@ -1588,7 +1518,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     label: "LibreDB",
     defaultPort: "",
     showConnectionStringToggle: false,
-    connectionFields: ["database"],
+    connectionFields: CONNECTION_FIELDS.libredb,
   },
 };
 

@@ -300,20 +300,13 @@ export const SeedConnectionSchema = z
      */
     securityMode: z.enum(["None", "Sign", "SignAndEncrypt"]).optional(),
     serverCertificateThumbprint: z.string().optional(),
-    /*
-     * And the three OPC UA fields the dialog has no box for, because they are deployment facts: the
-     * policy to insist on, and the client certificate and key to present. A server with a trust
-     * list of its own has to be given a STABLE client certificate before it will accept a secured
-     * channel, and a file path is how a deployment names one - which is this file's job and not a
-     * text box's. Supplied together or not at all; the provider refuses one without the other.
-     */
+    // And the three OPC UA fields the dialog has no box for: why, at SEED_ONLY_FIELDS.opcua in src/lib/db/connection-fields.ts.
     securityPolicyUri: z.string().optional(),
     clientCertificatePath: z.string().optional(),
     clientPrivateKeyPath: z.string().optional(),
   })
-  // Every OPC UA field here is OPC UA's own: on any other engine the provider never reads them, so
-  // a seed that carries one would be listed as pinned or as encrypted and be neither. Refused at
-  // load by name, as the Elasticsearch API-key pair is.
+  // The OPC UA fields on any other type, refused at load by name: why, at SEED_ONLY_FIELDS.opcua in
+  // src/lib/db/connection-fields.ts.
   .superRefine((conn, ctx) => {
     if (conn.type === "opcua") return;
     for (const field of [

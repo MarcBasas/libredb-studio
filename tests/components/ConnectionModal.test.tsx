@@ -1863,9 +1863,11 @@ describe("ConnectionModal", () => {
      * by the first case below, which fails if it stops matching.
      */
     const EVERY_FIELD: readonly string[] = (() => {
-      const table = readFileSync(join(import.meta.dir, "../../src/lib/db-ui-config.ts"), "utf8");
+      const source = readFileSync(join(import.meta.dir, "../../src/lib/db/connection-fields.ts"), "utf8");
+      const start = source.indexOf("export const CONNECTION_FIELDS");
+      const table = source.slice(start, source.indexOf("\n});", start));
       const seen: string[] = [];
-      for (const declaration of table.matchAll(/connectionFields: \[([^\]]*)\]/g)) {
+      for (const declaration of table.matchAll(/^\s+\w+: \[([^\]]*)\]/gm)) {
         for (const [, field] of (declaration[1] ?? "").matchAll(/"(\w+)"/g)) {
           if (field !== undefined && !seen.includes(field)) seen.push(field);
         }
