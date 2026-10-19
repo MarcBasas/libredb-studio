@@ -27,6 +27,7 @@ import {
 import { UNKNOWN_TYPE_SQL_WRITING } from "@/lib/db/sql-writing/unknown-type";
 import type { ExportSpec, InferredKind, SqlWritingSpec } from "@/lib/db/sql-writing/types";
 import type { DatabaseType } from "@/lib/types";
+import { renderExportGolden } from "./export-fixtures";
 
 /**
  * The SQL writing registry is one row per type id, and each row is the object the engine's
@@ -328,6 +329,20 @@ describe("SQL export census", () => {
     for (const hook of Object.keys(HOOKS)) {
       expect((spec.export as unknown as Record<string, unknown>)[hook]).toBeUndefined();
     }
+  });
+
+  // Spec 5.3 [T14]: the export reaches the named specs through `sqlWritingFor`, so a key
+  // the registry does not own writes what the committed `not-an-engine` golden pins. Before
+  // the registry each of these threw or wrote `[object Object]` instead.
+  test.each(["__proto__", "toString", "valueOf", "hasOwnProperty", "constructor", "POSTGRES", " postgres"])(
+    "%s: the export writes what an unknown type writes",
+    (type) => {
+      expect(renderExportGolden(type)).toBe(renderExportGolden("not-an-engine"));
+    },
+  );
+
+  test("null: the export writes what no connection writes", () => {
+    expect(renderExportGolden(null as unknown as undefined)).toBe(renderExportGolden(undefined));
   });
 
   // The hooks nothing reads until the export path does: each answers what today's code in
