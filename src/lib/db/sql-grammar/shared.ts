@@ -24,8 +24,7 @@ export const DEFAULT_SQL_GRAMMAR: SqlGrammar = {
 
 /**
  * The one grammar two engines share: `sqlite` and `libsql`, since libSQL reads
- * SQLite's grammar. The measurements behind its rows, from the `SQL_GRAMMARS`
- * docblock in `src/lib/sql/grammar.ts`:
+ * SQLite's grammar. The measurements behind its rows:
  * - HASH and BRACKET: the SQLite amalgamation bundled with `better-sqlite3` classifies
  *   `#` as `CC_VARALPHA`, an alphabetic bind-variable prefix, and opens comments
  *   on `--` and `/*` only. The same tokenizer is where its BRACKET row comes from:

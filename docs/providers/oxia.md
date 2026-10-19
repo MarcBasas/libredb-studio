@@ -79,6 +79,7 @@ The console's modules are pure and shipped to the browser, because the editor, t
 | `monitoring-reads.ts` | Health and the overview | server |
 | `labels.ts` | The labels, the statement language and the key order in words | browser |
 | `generators.ts` | The commands Generate Command writes | browser |
+| `sql-grammar.ts` | The SQL grammar facts the editor and the query log read: not SQL text, nothing kept when redacted | browser |
 | `index.ts` | The composition root: the session, the declarations, the snapshot cache, the order verdict's lifetime, the run registry and the one failure path | server |
 
 ### 2.3 Registration & lifecycle
