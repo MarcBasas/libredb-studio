@@ -696,6 +696,11 @@ Without a mode it reads the boolean `ssl` or `useSSL`: reading only `ssl-mode` d
 mysql2 also accepts an object there (`ssl={"rejectUnauthorized":true}`), which is not a boolean, so it falls through to the banner rather than being guessed at.
 It runs no seed load check.
 
+### Execution UI
+
+The rolled-back notice names `COMMIT` as the keyword that keeps an open transaction, and `mysql` has no consent deadline, so the agent's consent card shows no deadline chip or sentence for it.
+Its row in `EXECUTION_UI` is declared in [`mysql-execution-ui.ts`](../../src/lib/db/providers/sql/mysql-execution-ui.ts).
+
 ---
 
 ## 5. Query interface

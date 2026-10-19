@@ -274,6 +274,11 @@ section 8.
 
 `mqtt` has no connection string scheme, no `readTls` and no seed load check: every field of its row in `CONNECTION_STRING` is `null` ([`connection-string.ts`](../../src/lib/db/providers/keyvalue/mqtt/connection-string.ts)).
 
+### Execution UI
+
+The rolled-back notice names `COMMIT` as the keyword that keeps an open transaction, and `mqtt` has no consent deadline, so the agent's consent card shows no deadline chip or sentence for it.
+Its row in `EXECUTION_UI` is declared in [`execution-ui.ts`](../../src/lib/db/providers/keyvalue/mqtt/execution-ui.ts).
+
 ## 5. The read
 
 A read ends on one of Studio's own budgets: elapsed time (3 seconds), message count (50,000) or bytes (32 MiB).

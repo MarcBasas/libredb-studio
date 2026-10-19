@@ -582,6 +582,11 @@ redirect would take the Basic or `ApiKey` credential and the statement to wherev
 `apiKeyId` and `apiKeySecret` are its seed-only fields, declared in `SEED_ONLY_FIELDS` in `src/lib/db/connection-fields.ts`: a seed of any other engine that carries the pair is refused.
 OpenSearch refuses the pair too: nothing here has measured whether OpenSearch's security plugin accepts `Authorization: ApiKey`, so a seed that carries it is rejected rather than listed as a connection that silently falls back to user/password.
 
+### Execution UI
+
+The rolled-back notice names `COMMIT` as the keyword that keeps an open transaction, and `elasticsearch` has no consent deadline, so the agent's consent card shows no deadline chip or sentence for it.
+Its row in `EXECUTION_UI` is declared in [`elasticsearch-execution-ui.ts`](../../src/lib/db/providers/sql/search/elasticsearch-execution-ui.ts).
+
 ---
 
 ## 5. Query interface

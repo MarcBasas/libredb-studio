@@ -501,6 +501,11 @@ The scheme shown for Oracle is `oracle://`.
 Its row in `CONNECTION_STRING` is declared in [`oracle-connection-string.ts`](../../src/lib/db/providers/sql/oracle-connection-string.ts).
 It has no `readTls`, so a pasted `oracle://` URL carries no SSL mode into the form, and it runs no seed load check.
 
+### Execution UI
+
+The rolled-back notice names `COMMIT` as the keyword that keeps an open transaction, and `oracle` has no consent deadline, so the agent's consent card shows no deadline chip or sentence for it.
+Its row in `EXECUTION_UI` is declared in [`oracle-execution-ui.ts`](../../src/lib/db/providers/sql/oracle-execution-ui.ts).
+
 ---
 
 ## 5. Query interface

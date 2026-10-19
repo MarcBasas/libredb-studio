@@ -411,6 +411,11 @@ Its row in `CONNECTION_STRING` is declared in [`connection-string.ts`](../../src
 It has no `readTls`: the URI's `tls`, `ssl`, `tlsInsecure`, `tlsAllowInvalidCertificates` and `tlsCAFile` options are read by `readMongoTLS` in `src/lib/connection-string-parser.ts` instead, as described under `tls=true` in a pasted URI (D26).
 It runs no seed load check.
 
+### Execution UI
+
+The rolled-back notice names `COMMIT` as the keyword that keeps an open transaction, and `mongodb` has no consent deadline, so the agent's consent card shows no deadline chip or sentence for it.
+Its row in `EXECUTION_UI` is declared in [`execution-ui.ts`](../../src/lib/db/providers/document/mongodb/execution-ui.ts).
+
 ---
 
 ## 5. Query interface

@@ -422,6 +422,11 @@ Its row in `CONNECTION_STRING` is declared in [`connection-string.ts`](../../src
 It has no `readTls`: a `libsql://` URL is TLS always and has no plaintext form, so a paste sets `require`.
 It runs no seed load check.
 
+### Execution UI
+
+The rolled-back notice names `COMMIT` as the keyword that keeps an open transaction, and `libsql` has no consent deadline, so the agent's consent card shows no deadline chip or sentence for it.
+Its row in `EXECUTION_UI` is declared in [`execution-ui.ts`](../../src/lib/db/providers/sql/libsql/execution-ui.ts).
+
 ---
 
 ## 5. Query interface

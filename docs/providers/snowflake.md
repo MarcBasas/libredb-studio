@@ -252,6 +252,11 @@ Snowflake has no connection string scheme and no `readTls` ([`connection-string.
 Its `validateSeed` runs at seed load the checks its provider makes in `connect()` before any socket, each skipped for a field that holds a `${...}` reference, and every refusal is the provider's own sentence.
 The checks are, in order: `host`, the account, by `checkSnowflakeAccount`; `user`, which may not be empty; `authMethod`, which must be `keypair` (the default) or `pat`; `privateKey`, which a key pair needs; `password`, which holds the token `pat` needs; and `role`, which may not be empty.
 
+### Execution UI
+
+The rolled-back notice names `COMMIT` as the keyword that keeps an open transaction, and `snowflake` has no consent deadline, so the agent's consent card shows no deadline chip or sentence for it.
+Its row in `EXECUTION_UI` is declared in [`execution-ui.ts`](../../src/lib/db/providers/sql/snowflake/execution-ui.ts).
+
 ## 3. The recommended Snowflake setup
 
 Studio runs every statement as Role and stops nothing a role may do.

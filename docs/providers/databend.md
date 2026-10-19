@@ -449,6 +449,11 @@ Its row in `CONNECTION_STRING` is declared in [`connection-string.ts`](../../src
 It has no `readTls`: `parseDatabendDSN` in `src/lib/connection-string-parser.ts` reads a DSN's `sslmode` itself, by BendSQL's own rules.
 It runs no seed load check.
 
+### Execution UI
+
+The rolled-back notice names `COMMIT` as the keyword that keeps an open transaction, and `databend` has no consent deadline, so the agent's consent card shows no deadline chip or sentence for it.
+Its row in `EXECUTION_UI` is declared in [`execution-ui.ts`](../../src/lib/db/providers/sql/databend/execution-ui.ts).
+
 ## 5. Query interface
 
 ### 5.1 The request

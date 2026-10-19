@@ -783,6 +783,11 @@ Its row in `CONNECTION_STRING` is declared in [`connection-string.ts`](../../src
 It has no `readTls`: `clickhouse://` names no transport and leaves the form's SSL mode alone, while for `http(s)://` the scheme is the transport and already decided, `disable` for `http://` and `require` for `https://`.
 It runs no seed load check.
 
+### Execution UI
+
+The rolled-back notice names `COMMIT` as the keyword that keeps an open transaction, and `clickhouse` has no consent deadline, so the agent's consent card shows no deadline chip or sentence for it.
+Its row in `EXECUTION_UI` is declared in [`execution-ui.ts`](../../src/lib/db/providers/sql/clickhouse/execution-ui.ts).
+
 ---
 
 ## 5. Query interface

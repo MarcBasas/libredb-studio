@@ -184,6 +184,7 @@ const OUTLINE: readonly string[] = [
   "### 4.7 Server versions",
   "### 4.8 Pulsar's oxia:// URL",
   "### Connection string",
+  "### Execution UI",
   "## 5. Query interface",
   "### 5.1 The command",
   "### 5.2 Commands and flags",

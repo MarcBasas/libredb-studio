@@ -158,6 +158,11 @@ worse still: it would carry a password in cleartext, and half an authentication 
 
 `sparkplug` has no connection string scheme, no `readTls` and no seed load check: every field of its row in `CONNECTION_STRING` is `null` ([`connection-string.ts`](../../src/lib/db/providers/industrial/sparkplug/connection-string.ts)).
 
+### Execution UI
+
+The rolled-back notice names `COMMIT` as the keyword that keeps an open transaction, and `sparkplug` has no consent deadline, so the agent's consent card shows no deadline chip or sentence for it.
+Its row in `EXECUTION_UI` is declared in [`execution-ui.ts`](../../src/lib/db/providers/industrial/sparkplug/execution-ui.ts).
+
 ## 5. Query interface
 
 A read request is a JSON object and every field in it is optional: the window in seconds and the row

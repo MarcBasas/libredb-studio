@@ -584,6 +584,11 @@ Trino has no connection string scheme, no `readTls` and no seed load check ([`co
 Trino is the sharpest version of the scheme gap: it has a canonical URL, `jdbc:trino://host:port/catalog/schema`, but that is a JDBC URL and not a URI, since `new URL()` reads its scheme as `jdbc:`.
 Stripping the prefix would invent a `trino://` form no Trino tool emits, so the scheme is `null`, its capabilities say `supportsConnectionString: false`, and its form offers no paste toggle.
 
+### Execution UI
+
+The rolled-back notice names `COMMIT` as the keyword that keeps an open transaction, and `trino` has no consent deadline, so the agent's consent card shows no deadline chip or sentence for it.
+Its row in `EXECUTION_UI` is declared in [`execution-ui.ts`](../../src/lib/db/providers/sql/trino/execution-ui.ts).
+
 ---
 
 ## 5. Query interface

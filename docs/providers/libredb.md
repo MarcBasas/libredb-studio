@@ -357,6 +357,11 @@ package inside libredb-platform.
 `libredb` has no connection string scheme, no `readTls` and no seed load check: every field of its row in `CONNECTION_STRING` is `null` ([`libredb-connection-string.ts`](../../src/lib/db/providers/embedded/libredb-connection-string.ts)).
 LibreDB is embedded in the process, so there is no address to write a scheme for.
 
+### Execution UI
+
+The rolled-back notice names `COMMIT` as the keyword that keeps an open transaction, and `libredb` has no consent deadline, so the agent's consent card shows no deadline chip or sentence for it.
+Its row in `EXECUTION_UI` is declared in [`libredb-execution-ui.ts`](../../src/lib/db/providers/embedded/libredb-execution-ui.ts).
+
 ---
 
 ## 5. Query interface

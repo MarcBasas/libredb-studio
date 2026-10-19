@@ -152,6 +152,11 @@ Its `readTls` reads `security` first and the boolean `ssl` only without it (#786
 `ssl` maps `true` and `1` onto that same mode, and `false` and `0` onto `disable`.
 It runs no seed load check.
 
+### Execution UI
+
+The rolled-back notice names `COMMIT` as the keyword that keeps an open transaction, and `db2` has no consent deadline, so the agent's consent card shows no deadline chip or sentence for it.
+Its row in `EXECUTION_UI` is declared in [`execution-ui.ts`](../../src/lib/db/providers/sql/db2/execution-ui.ts).
+
 ## 4. Known issues (db2-node 1.0.25)
 
 The live script `tests/live/db2-known-issues.ts` probes the row below and every row fixed in 1.0.24 and 1.0.25 against a running Db2 and prints `PRESENT` or `GONE`, so a driver bump starts by running it.

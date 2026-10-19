@@ -1455,6 +1455,11 @@ Its `readTls` reads `sslmode` first, and the boolean `ssl` only when no `sslmode
 `sslrootcert`, `sslcert` and `sslkey` are read by nobody on purpose: they name files on the machine that wrote the string, and the server that opens the connection cannot read that path.
 It runs no seed load check.
 
+### Execution UI
+
+The rolled-back notice names `COMMIT` as the keyword that keeps an open transaction, and `postgres` has no consent deadline, so the agent's consent card shows no deadline chip or sentence for it.
+Its row in `EXECUTION_UI` is declared in [`postgres-execution-ui.ts`](../../src/lib/db/providers/sql/postgres-execution-ui.ts).
+
 ---
 
 ## 5. Query interface

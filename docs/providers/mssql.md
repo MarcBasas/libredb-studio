@@ -350,6 +350,11 @@ Its `readTls` reads the ADO.NET pair `Encrypt` and `TrustServerCertificate` from
 An absent `Encrypt` says nothing rather than `disable`: System.Data.SqlClient defaults it to false and Microsoft.Data.SqlClient 4.0+ to true, so the string alone does not carry the answer.
 It runs no seed load check.
 
+### Execution UI
+
+The rolled-back notice names `COMMIT` as the keyword that keeps an open transaction, and `mssql` has no consent deadline, so the agent's consent card shows no deadline chip or sentence for it.
+Its row in `EXECUTION_UI` is declared in [`mssql-execution-ui.ts`](../../src/lib/db/providers/sql/mssql-execution-ui.ts).
+
 ---
 
 ## 5. Query interface
