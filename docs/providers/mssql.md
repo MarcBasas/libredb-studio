@@ -379,7 +379,7 @@ did, and carries every set in `resultSets` (#1312). `POST /api/db/query` and `PO
 multi-statement route reads it to show a batch's last result with rows.
 
 **The editor sends a T-SQL batch whole.** The grammar's `script` fact for this dialect makes the unit
-of one request the batch between `GO` lines (`src/lib/sql/grammar.ts`), so `DECLARE @x INT = 5;
+of one request the batch between `GO` lines (`src/lib/db/providers/sql/mssql-sql-grammar.ts`), so `DECLARE @x INT = 5;
 SELECT @x * 2` reaches the server as one request and answers 10, a `#temp` table created in a batch is
 there for the batch's next statement, and `CREATE PROCEDURE … AS BEGIN …; …; END` is created as written.
 A line holding only `GO` (any case, optionally followed by a `--` comment) separates batches and is
@@ -536,6 +536,18 @@ Measured 2026-10-04 on SQL Server 2025 (17.0.5005.3): a table of `bit`, the five
 Two cells read back differently, both lost by the driver before the export sees them: a `datetimeoffset` keeps its instant but not its offset or its digits past the millisecond, and a `decimal` past 15 significant digits arrives as a rounded JS number.
 
 ---
+
+### 5.6 SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/sql/mssql-sql-grammar.ts`](../../src/lib/db/providers/sql/mssql-sql-grammar.ts), the `mssql` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+Its grammar is `MSSQL_GRAMMAR`, the one reading the statement splitter, the row limiter, the confirmation gate and query-event redaction share, so they cannot disagree about where a literal or a comment ends.
+`#name` and `##name` are temp tables, ordinary T-SQL, so `#` is code; `[name]` is a delimited identifier with a doubled `]` inside, which this repository's own quoter emits for the dialect.
+Block comments nest, per "Slash Star (Block Comment) (Transact-SQL)" on learn.microsoft.com (checked 2026-08-05), the row the report on #300 got wrong.
+`//` is code, probed 2026-08-25 on 2022 through sqlcmd: `SELECT 1 AS a // note` is Msg 102, "Incorrect syntax near '/'".
+The batch is the unit, cut at `GO` lines: measured on 2025 RTM-CU9, `DECLARE @x INT = 5; SELECT @x * 2` sent as two requests is `Must declare the scalar variable "@x"`, and as one batch answers 10, and a `MERGE` keeps its `;` because the server refuses one without it (Msg 10713).
+`readsSqlText` is `true`: the editor text is SQL, and the provider extends `SQLBaseProvider`.
+Redaction is `sql` with `[` as its name quote: a redacted statement keeps its words and every name in that quote, and every literal becomes `?`.
+A double quote is a string while `QUOTED_IDENTIFIER` is off, so it is masked like any literal.
 
 ## 6. Transactions
 
@@ -2002,6 +2014,17 @@ Over the API: `POST /api/db/query`, `POST /api/db/transaction`, `POST /api/db/ca
   `getPerformanceMetrics()` reports only the cache-hit ratio (no QPS, deadlocks, or buffer-pool
   usage), and **omits even that** when `dm_os_performance_counters` is unreadable rather than
   substituting a figure — [§8.1](#81-when-the-cache-hit-ratio-is-not-measurable).
+
+---
+
+## Migration DDL
+
+[`MSSQL_MIGRATION_DDL`](../../src/lib/db/providers/sql/mssql-migration-ddl.ts) is what the schema-diff migration generator writes for `mssql`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+SQL Server wraps the migration in `BEGIN TRANSACTION;` and `COMMIT;`, adds a column with a bare `ADD`, and drops an index with `ON <table>`.
+A modified column restates its type and nullability in one `ALTER COLUMN`, falling back to `NVARCHAR(MAX)`, and a changed default is a separate `ADD DEFAULT ... FOR <column>`.
+The fields it takes unchanged from `src/lib/db/migration-ddl/shared.ts` are `standardAddForeignKey`, `standardColumnDef`, `standardCreateIndex`, `standardCreateTableForeignKey`, `standardDropColumn`, `standardDropForeignKey`, `standardDropTable` and `standardPrimaryKey`.
+
+It prints no refusal reason.
 
 ---
 

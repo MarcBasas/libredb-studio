@@ -772,6 +772,19 @@ Two facts decide that text, and the modal's sequence code carries them too:
 
 The type list changes from the shared list only where the engine disagrees (`JSON`, not `JSONB`); a row that reads like the old shared list is the engine agreeing with it, not a row nobody looked at.
 
+### SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/sql/duckdb/sql-grammar.ts`](../../src/lib/db/providers/sql/duckdb/sql-grammar.ts), the `duckdb` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+Its grammar is `DUCKDB_GRAMMAR`, the one reading the statement splitter, the row limiter, the confirmation gate and query-event redaction share, so they cannot disagree about where a literal or a comment ends.
+Every fact was measured on v1.5.5 through `@duckdb/node-api` 1.5.5-r.4, and the object is separate from `POSTGRES_GRAMMAR` although the values coincide: DuckDB's dialect is Postgres-shaped rather than PostgreSQL's, and a divergence should be a value changing here rather than a split.
+`#` is code: `SELECT 1 # x` is `Parser Error: syntax error at or near "#"`.
+`[` is a subscript, not a name quote: `SELECT [1,2][1]` answers 1, a list literal followed by a 1-based index.
+Block comments nest: `/* a /* b */ still */ SELECT 1` runs.
+`SELECT q'[x]' AS a` is `Catalog Error: Type with name q does not exist!`, and `SELECT 1 AS a // note` is `Parser Error: syntax error at or near "//"`.
+The update-target reader takes `PIVOT`, `UNPIVOT`, `UNNEST`, `SUMMARIZE`, `DESCRIBE` and `SHOW` as words that open a query here alone: on DuckDB 1.5.5 `(PIVOT orders ON k USING max(note))` is a scalar subquery that answers with another table's value, and asking about them on every engine cost PostgreSQL a refusal for `coalesce(show, '')`.
+`readsSqlText` is `true`: the editor text is SQL, and the provider extends `SQLBaseProvider`.
+Redaction is `sql` with no name quote: a redacted statement keeps its words, and every literal and quoted run becomes `?`.
+
 ## 6. Schema introspection
 
 Every reading of this engine's objects goes through the object surface below. The flat reading that
@@ -1674,6 +1687,22 @@ The reach described in this section is an admin editor's on an inline connection
 | A listed object carries no row count | `estimated_size` is an estimate, and `count(*)` per object is an N+1 | Ours, §6 and §3.5 |
 | A macro's Source pane shows a BODY, not a `CREATE MACRO` statement | `duckdb_functions().macro_definition` is the only text the engine publishes, and there is no `duckdb_macros()` | The engine's; ours to assemble in a later phase, and the pane says `form: partial` meanwhile (§6, Object source) |
 | Every definition text is a regeneration, never the author's bytes | The catalog stores a parsed object, not the submitted statement | The engine's (§6, Object source) |
+
+---
+
+## Migration DDL
+
+[`DUCKDB_MIGRATION_DDL`](../../src/lib/db/providers/sql/duckdb/migration-ddl.ts) is what the schema-diff migration generator writes for `duckdb`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+DuckDB writes the shared statements wrapped in `BEGIN;` and `COMMIT;`, except for foreign keys, which it declares only as a `CREATE TABLE` table constraint.
+Measured on DuckDB v1.5.5: `CREATE TABLE "users" (..., PRIMARY KEY ("id"), FOREIGN KEY ("dept_id") REFERENCES "departments"("id"))` lands and `duckdb_constraints()` reports the key, so an added table takes the key inside the statement.
+`ALTER TABLE t ADD CONSTRAINT fk FOREIGN KEY (a) REFERENCES u(id)` parses and then answers "Not implemented Error: No support for that ALTER TABLE option yet!" on v1.5.5, as does the `UNIQUE` form, so an added foreign key on an existing table is a comment.
+`ALTER TABLE t DROP CONSTRAINT IF EXISTS fk_x` answers the same "Not implemented" error, which is not an `IF EXISTS` no-op, so a dropped foreign key is a comment too.
+The fields it takes unchanged from `src/lib/db/migration-ddl/shared.ts` are `BEGIN_COMMIT`, `standardAddColumn`, `standardColumnDef`, `standardCreateIndex`, `standardDropColumn`, `standardDropIndex`, `standardDropTable`, `standardModifyColumn` and `standardPrimaryKey`.
+
+Every refusal reason it can print, verbatim:
+
+- "ALTER TABLE cannot add one yet; recreate the table and copy the rows."
+- "Requires table recreation."
 
 ---
 

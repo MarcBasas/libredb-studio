@@ -413,6 +413,14 @@ None: `supportsExplain` is `false`, and the plan view is not offered.
 
 ---
 
+### 5.7 SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/stream/kafka/sql-grammar.ts`](../../src/lib/db/providers/stream/kafka/sql-grammar.ts), the `kafka` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+`readsSqlText` is `false`: `kafka` takes a JSON read request (#1088), one object naming a topic and where to read it from, whose strings escape with a backslash as a MongoDB document's do; the provider extends `BaseDatabaseProvider` and parses the text itself.
+The confirmation gate therefore answers from this engine's row of `NON_SQL_DESTRUCTIVE_VOCABULARY` in `src/lib/db/destructive-commands.ts` instead of a SQL reading.
+Its grammar is `DEFAULT_SQL_GRAMMAR`, the compatibility default, since no SQL grammar of its own applies to this text.
+Redaction is `none`: a redacted statement is stored as `?`, because a reader guessing where a literal ends in a language it does not read can store the literal.
+
 ## 6. Schema introspection
 
 ### 6.1 The object surface (#789)
@@ -746,6 +754,18 @@ See [`docs/API_DOCS.md`](../API_DOCS.md) for the full request and response contr
 - **No agent execute mode for read requests**, out of scope for the whole #424 epic; plan mode grounds through the object surface and drafts a read request for the user to run.
 - **A client certificate the broker refuses reads as a lost connection** ([§4.3](#43-tls)).
 - **A broker with a failed log directory fails the overview, health and storage panels** with `KAFKA_STORAGE_ERROR`, where the rest of the object surface keeps working ([§11.4](#114-the-live-read-only-check), `docs/BACKLOG.md` D125).
+
+---
+
+## Migration DDL
+
+[`KAFKA_MIGRATION_DDL`](../../src/lib/db/providers/stream/kafka/migration-ddl.ts) is what the schema-diff migration generator writes for `kafka`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+It declines the whole diff: `refusal` is the one line the migration prints after its header, in place of any DDL, and `transactionWrapper` is `null`.
+`kafka` text is a JSON read request, not SQL, so there is no table DDL to wrap (#284, #1088).
+
+The refusal reason it prints, verbatim:
+
+- "A topic holds messages, not rows with declared columns, so there is no column definition to change."
 
 ---
 

@@ -169,7 +169,7 @@ In a project with datasets in several regions, set `location` to the region you 
 
 ### 5.4 SQL grammar
 
-The statement reader that decides where a statement ends, whether a keyword is real and whether a run needs a confirmation prompt has a BigQuery grammar (`BIGQUERY_GRAMMAR` in `src/lib/sql/grammar.ts`), every fact of it measured with `jobs.query` dry runs:
+The statement reader that decides where a statement ends, whether a keyword is real and whether a run needs a confirmation prompt has a BigQuery grammar (`BIGQUERY_GRAMMAR` in [`src/lib/db/providers/sql/bigquery/sql-grammar.ts`](../../src/lib/db/providers/sql/bigquery/sql-grammar.ts), the `bigquery` row of the SQL grammar registry in `src/lib/db/sql-grammar/`), every fact of it measured with `jobs.query` dry runs on 2026-10-11:
 
 - `#` and `--` start a line comment, `//` does not, and `/* … */` does not nest.
 - A backslash escapes the next character in `'…'` and `"…"`; a doubled quote is not an escape (BigQuery answers "concatenated string literals must be separated by whitespace or comments").
@@ -178,6 +178,9 @@ The statement reader that decides where a statement ends, whether a keyword is r
 - `[…]` is an array literal or a subscript, never a name.
 
 A script (`BEGIN … END`) is not split: the shared splitter does not model it.
+
+`readsSqlText` is `true`: the editor text is GoogleSQL, and the provider extends `SQLBaseProvider`.
+Redaction is `sql` with no name quote: a redacted statement keeps its words, and every literal and quoted run becomes `?`.
 
 ### 5.5 SQL writing
 
@@ -289,3 +292,19 @@ It covers connect, `datasets.list`, `tables.list` and `tables.get` (tables, view
 The emulator's `jobs.query` answers every row and no `pageToken` (it ignores `maxResults`, `server/handler.go` at v0.8.1), so for the paging check the script puts a pass-through proxy in front of it that cuts the first answer at `maxResults` as BigQuery does; every later page is the emulator's own `getQueryResults` answer.
 
 It does not cover, so these stay covered by the replayed captures only: dry runs and bytes processed (the emulator runs a `dryRun` query and reports no bytes), region-level `INFORMATION_SCHEMA` (refused, so the catalog comes from the REST fallback there), monitoring, job cancel, locations, and authentication (the emulator checks none, so none is sent).
+
+## Migration DDL
+
+[`BIGQUERY_MIGRATION_DDL`](../../src/lib/db/providers/sql/bigquery/migration-ddl.ts) is what the schema-diff migration generator writes for `bigquery`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+BigQuery runs each statement as its own job, and `BEGIN TRANSACTION` exists only inside a multi-statement script, so `transactionWrapper` is `null` (#284).
+It has no foreign-key constraint this generator could write, so an added or dropped foreign key is a comment.
+An added table declines its primary key in a comment after the `CREATE TABLE`, and a modified column is a comment naming the column.
+Index changes are a comment too, because BigQuery's only indexes are search and vector indexes.
+The fields it takes unchanged from `src/lib/db/migration-ddl/shared.ts` are `standardAddColumn`, `standardColumnDef`, `standardDropColumn` and `standardDropTable`.
+
+Every refusal reason it can print, verbatim:
+
+- "BigQuery widens a column with ALTER COLUMN ... SET DATA TYPE only along its coercion rules, and nothing else; write the change by hand."
+- "BigQuery: Cannot generate index DDL. BigQuery has search and vector indexes only; write the index change by hand."
+- "The engine has no foreign-key constraint."
+- "BigQuery accepts a primary key only as PRIMARY KEY (...) NOT ENFORCED."

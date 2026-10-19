@@ -215,7 +215,15 @@ answer than the `unknown` that is there now.
 What is still absent is MODBUS/TCP Security on a real device: the TLS dial exists and has never
 been run against one (§12a item 3 of the specification).
 
-### 5.2 SQL writing
+### 5.2 SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/industrial/modbus/sql-grammar.ts`](../../src/lib/db/providers/industrial/modbus/sql-grammar.ts), the `modbus` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+`readsSqlText` is `false`: the console takes one JSON read request against a register map, so no span of it is SQL (#1723).
+The confirmation gate therefore answers from this engine's row of `NON_SQL_DESTRUCTIVE_VOCABULARY` in `src/lib/db/destructive-commands.ts` instead of a SQL reading.
+Its grammar is `DEFAULT_SQL_GRAMMAR`, the compatibility default, since no SQL grammar of its own applies to this text.
+Redaction is `none`: a redacted statement is stored as `?`, because a reader guessing where a literal ends in a language it does not read can store the literal.
+
+### 5.3 SQL writing
 
 [`modbus/sql-writing.ts`](../../src/lib/db/providers/industrial/modbus/sql-writing.ts) declares how a generated statement spells a literal, a name and a bind for this engine, and it is this engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../../src/lib/db/sql-writing/index.ts)), which the readers in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) and [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) look up.
 A literal is written by `literalStandard` and read back by `unquoteStandard`: the quote is doubled and a backslash is data.
@@ -245,3 +253,13 @@ The requirements are in `docs/SECURITY.md` under MB-S1 to MB-S13. The short form
 - The identification walk is bounded (MB-S6).
 - A value is data, never markup (MB-S13).
 - `mbaps` checks the chain and the host name, and not revocation, and says so.
+
+## Migration DDL
+
+[`MODBUS_MIGRATION_DDL`](../../src/lib/db/providers/industrial/modbus/migration-ddl.ts) is what the schema-diff migration generator writes for `modbus`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+It declines the whole diff: `refusal` is the one line the migration prints after its header, in place of any DDL, and `transactionWrapper` is `null`.
+What a register means is the device vendor's, written down in the user's register map, so there is no table DDL to wrap either (#1723).
+
+The refusal reason it prints, verbatim:
+
+- "A Modbus register has no column definition anywhere: the device holds 16-bit words and single bits with no name, no type and no unit, and what gives them meaning is the register map the user wrote, so there is nothing a client could change here."

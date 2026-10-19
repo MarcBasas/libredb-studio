@@ -987,6 +987,13 @@ Druid's planner publishes none.
 
 ---
 
+### 5.7 SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/sql/druid/sql-grammar.ts`](../../src/lib/db/providers/sql/druid/sql-grammar.ts), the `druid` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+Its grammar is `DEFAULT_SQL_GRAMMAR`, the compatibility default, because no rule was established for Druid SQL, not because Druid SQL agrees with the default.
+`readsSqlText` is `true`: the editor text is SQL, and the provider extends `SQLBaseProvider`.
+Redaction is `none`, since the engine has no grammar of its own: a redacted statement is stored as `?`, because a reader guessing where a literal ends can store the literal.
+
 ## 6. Schema introspection
 
 The object surface ([`objects.ts`](../../src/lib/db/providers/sql/druid/objects.ts)) reads
@@ -1996,6 +2003,18 @@ cancellation as unsupported because the provider exposes no `cancelQuery`
   the MSQ task endpoint on purpose: `REPLACE INTO` through the interactive endpoint this provider uses
   is rejected ([§5.5](#55-druid-sql-cannot-write-and-the-server-says-so-clearly)), so a
   generated migration is run through Druid's own task API rather than pasted into the editor.
+
+---
+
+## Migration DDL
+
+[`DRUID_MIGRATION_DDL`](../../src/lib/db/providers/sql/druid/migration-ddl.ts) is what the schema-diff migration generator writes for `druid`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+It declines the whole diff: `refusal` is the one line the migration prints after its header, in place of any DDL, and `transactionWrapper` is `null`.
+Druid has no transaction concept to translate the wrapper into: a datasource is rewritten by an MSQ task, not by a bracketed statement list (#284).
+
+The refusal reason it prints, verbatim:
+
+- "Druid SQL has no ALTER TABLE; rewrite the datasource with REPLACE INTO through an MSQ task."
 
 ---
 

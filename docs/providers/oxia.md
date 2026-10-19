@@ -74,12 +74,14 @@ The console's modules are pure and shipped to the browser, because the editor, t
 | `values.ts` | A value's encoding, the hex forms, shown keys and timestamps | server |
 | `results.ts` | The result grid's columns, cells and notices | server |
 | `execute.ts` | One command's run over the walks | server |
+| `migration-ddl.ts` | `OXIA_MIGRATION_DDL`, the schema-diff migration's one refusal line | browser |
 | `objects.ts` | The object surface: the `shard` and `key` kinds and their Source tabs | server |
 | `key-scan.ts` | The Keys panel's pages | server |
 | `monitoring-reads.ts` | Health and the overview | server |
 | `labels.ts` | The labels, the statement language and the key order in words | browser |
 | `generators.ts` | The commands Generate Command writes | browser |
 | `sql-writing.ts` | The SQL writing row, the inert standard answer no generator calls | browser |
+| `sql-grammar.ts` | The SQL grammar facts the editor and the query log read: not SQL text, nothing kept when redacted | browser |
 | `index.ts` | The composition root: the session, the declarations, the snapshot cache, the order verdict's lifetime, the run registry and the one failure path | server |
 
 ### 2.3 Registration & lifecycle
@@ -494,6 +496,14 @@ No command writes, so the confirmation gate never asks; a command it refuses by 
 Pulsar reads a folder's children with `list -s P/ -e P//`, which bounds them only under hierarchical order.
 On a namespace that sorts keys naturally, a list or scan with those bounds carries a notice that points to `--prefix P/`, which reads everything under `P/` under either order; on a hierarchical namespace, a range whose lower bound ends in `//` carries the matching notice.
 
+### 5.9 SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/keyvalue/oxia/sql-grammar.ts`](../../src/lib/db/providers/keyvalue/oxia/sql-grammar.ts), the `oxia` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+`readsSqlText` is `false`: `oxia` takes one `oxia client` read command, words split by POSIX shell rules, and a SQL span reader would report its quoting as unreadable and prompt on every run.
+The confirmation gate therefore answers from this engine's row of `NON_SQL_DESTRUCTIVE_VOCABULARY` in `src/lib/db/destructive-commands.ts` instead of a SQL reading.
+Its grammar is `DEFAULT_SQL_GRAMMAR`, the compatibility default, since no SQL grammar of its own applies to this text.
+Redaction is `none`: a redacted statement is stored as `?`, because a reader guessing where a literal ends in a language it does not read can store the literal.
+
 ## 6. Schema introspection
 
 The tree shows shards; keys are listed in the Keys panel and opened in the Source tab.
@@ -786,6 +796,16 @@ For TLS, start each data server with `--tls-cert-file` and `--tls-key-file`; for
 - Without `--index`, a key stored on several shards under different partition keys is one key in every walk and `range-scan` shows one record for it, read on the lowest shard id that listed it (read the others with `get -p`), while an `--index` walk shows each shard's copy ([D224](../BACKLOG.md#d224-an-oxia-key-on-several-shards-shows-one-record-in-a-record-walk)).
 - No agent execution and no MCP surface ([B100](../BACKLOG.md#b100-oxia-has-no-agent-execution-and-no-mcp-surface)).
 - `client_identity` is what the writing client reported, which the server does not check.
+
+## Migration DDL
+
+[`OXIA_MIGRATION_DDL`](../../src/lib/db/providers/keyvalue/oxia/migration-ddl.ts) is what the schema-diff migration generator writes for `oxia`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+It declines the whole diff: `refusal` is the one line the migration prints after its header, in place of any DDL, and `transactionWrapper` is `null`.
+`oxia` text is one `oxia client` read command, not SQL, so there is no table DDL to wrap (#284).
+
+The refusal reason it prints, verbatim:
+
+- "Oxia stores opaque values under string keys and has no schema, so there is no column definition to change."
 
 ## 14. References
 

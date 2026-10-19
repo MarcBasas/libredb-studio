@@ -461,7 +461,7 @@ favour not rewriting: rewriting wrongly turns a working statement into a syntax 
 it alone at worst returns more rows than the page size.
 
 Both the detection and the inherited limiter read the statement under **ClickHouse's** grammar, which
-this provider passes down from its own `type` ([`grammar.ts`](../../src/lib/sql/grammar.ts)).
+this provider passes down from its own `type` ([`sql-grammar.ts`](../../src/lib/db/providers/sql/clickhouse/sql-grammar.ts)).
 ClickHouse's syntax reference lists `#` and `#!` beside `--` as single-line comment forms, and the
 shared reader used to guess PostgreSQL's rule instead — a hash followed by `>`, `-` or `#` is an
 operator — so a comment written that way was read as SQL, and an ordinary one at the end of a
@@ -859,6 +859,18 @@ An id this provider is not running is refused before anything is sent, so the ca
 used to kill another session's statement by guessing its id.
 
 ---
+
+### 5.5 SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/sql/clickhouse/sql-grammar.ts`](../../src/lib/db/providers/sql/clickhouse/sql-grammar.ts), the `clickhouse` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+Its grammar is `CLICKHOUSE_GRAMMAR`, the one reading the statement splitter, the row limiter, the confirmation gate and query-event redaction share, so they cannot disagree about where a literal or a comment ends.
+`#` and `#!` open a line comment beside `--`, and `[...]` is an array literal or a subscript that nests, both from the ClickHouse SQL syntax reference (checked 2026-08-05), since ClickHouse is reached over HTTP and has no driver artifact to check them against.
+That `[...]` is not a name quote is corroborated inside this repository: `identifier.ts` quotes this dialect's names with `"..."`.
+Block comments nest, as the same reference states with a nested example.
+`//` is a line comment, the one fact established by probe, on 26.7.1 over HTTP: `SELECT 1 AS a // note; SELECT 999` answers 1 with no error, while two statements are otherwise refused as multi-statements, so the `;` was hidden, and `SELECT 1 AS a // note` followed by `, 2 AS b` on the next line answers two columns, so the run ends at the newline.
+Read as code, `SELECT number FROM numbers(1000) // note` was bounded as `... // note LIMIT 5` and returned 1000 rows while reporting `wasLimited: true`; with the fact carried it is `... LIMIT 5 // note` and returns 5 (both measured).
+`readsSqlText` is `true`: the editor text is SQL, and the provider extends `SQLBaseProvider`.
+Redaction is `sql` with no name quote: a redacted statement keeps its words, and every literal and quoted run becomes `?`.
 
 ## 6. Schema introspection
 
@@ -1788,6 +1800,25 @@ under a `queryId` ([§5.4](#54-cancellation)); the transaction routes do not app
   `postgres.ts` carries for schema-qualified names; removing it means giving the object shape structured
   segments instead of one string, which is a cross-provider change rather than a ClickHouse one.
   Dotted database names are vanishingly rare in practice.
+
+---
+
+## Migration DDL
+
+[`CLICKHOUSE_MIGRATION_DDL`](../../src/lib/db/providers/sql/clickhouse/migration-ddl.ts) is what the schema-diff migration generator writes for `clickhouse`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+ClickHouse's transaction support is experimental and setting-gated, so `transactionWrapper` is `null` (#284).
+It has no foreign-key constraint, and its index changes are a comment, because the diff records column names and uniqueness, not the index kind, expression or granularity.
+A default whose value starts with `MATERIALIZED`, `ALIAS` or `EPHEMERAL` (`CLICKHOUSE_DEFAULT_KINDS`) already names its own clause and is written without `DEFAULT` in front of it.
+Live-probed on `clickhouse-server:26.7.1.1315`: `MODIFY COLUMN "y" Int32 DEFAULT MATERIALIZED toYear(d)` is a syntax error (code 62), while `MODIFY COLUMN "y" Int32 MATERIALIZED toYear(d)` is accepted.
+A dropped default is written as `REMOVE <kind>`, because omitting the clause leaves the old default in place; `REMOVE` takes `DEFAULT`, `MATERIALIZED` or `ALIAS` only (`CLICKHOUSE_REMOVABLE_KINDS`), `REMOVE EPHEMERAL` is code 62, and `REMOVE DEFAULT` on a column with no default is code 36.
+Nullability is part of the type (`Nullable(T)`), so a modified column restates its declared type and there is no `SET NOT NULL`.
+The fields it takes unchanged from `src/lib/db/migration-ddl/shared.ts` are `standardAddColumn`, `standardDropColumn`, `standardDropTable` and `standardPrimaryKey`.
+
+Every refusal reason it can print, verbatim:
+
+- "ClickHouse: Cannot generate index DDL. The diff does not record the index kind, expression or granularity; write the index change by hand."
+- "The engine has no foreign-key constraint."
+- "REMOVE accepts DEFAULT, MATERIALIZED or ALIAS only; recreate the column."
 
 ---
 

@@ -268,6 +268,14 @@ one child name, and that name is a container rather than a keyed list, so it kee
 A keyless list (RFC 8040 section 3.5.3) is left alone rather than handled, because no measurement
 of this fixture reaches one.
 
+### 5.6 SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/network/netconf/sql-grammar.ts`](../../src/lib/db/providers/network/netconf/sql-grammar.ts), the `netconf` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+`readsSqlText` is `false`: the console takes one JSON read request naming a datastore and a path, so no span of it is SQL (#1724).
+The confirmation gate therefore answers from this engine's row of `NON_SQL_DESTRUCTIVE_VOCABULARY` in `src/lib/db/destructive-commands.ts` instead of a SQL reading.
+Its grammar is `DEFAULT_SQL_GRAMMAR`, the compatibility default, since no SQL grammar of its own applies to this text.
+Redaction is `none`: a redacted statement is stored as `?`, because a reader guessing where a literal ends in a language it does not read can store the literal.
+
 ## 6. Schema introspection
 
 ### 6.1 Two container levels
@@ -455,6 +463,16 @@ measured: neither captured reply carries one. A device that does send one gets a
 instead of silence.
 
 **Phase 2, `gnmi`, is not started.**
+
+## Migration DDL
+
+[`NETCONF_MIGRATION_DDL`](../../src/lib/db/providers/network/netconf/migration-ddl.ts) is what the schema-diff migration generator writes for `netconf`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+It declines the whole diff: `refusal` is the one line the migration prints after its header, in place of any DDL, and `transactionWrapper` is `null`.
+A node's shape is the device's YANG module, and this provider builds four read operations and a close, so there is no table DDL to wrap either (#1724).
+
+The refusal reason it prints, verbatim:
+
+- "A NETCONF node's shape is declared in the device's YANG module, which the device serves and a client reads, and this provider builds four read operations and a close, and nothing else, so there is no column definition here for anything to change."
 
 ## 13. References
 

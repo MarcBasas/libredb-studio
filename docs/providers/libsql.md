@@ -460,6 +460,16 @@ SEARCH probe_customers USING INDEX idx_customers_country (country=?)
 
 ---
 
+### SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/sql/libsql/sql-grammar.ts`](../../src/lib/db/providers/sql/libsql/sql-grammar.ts), the `libsql` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+Its grammar is `SQLITE_GRAMMAR`, the one reading the statement splitter, the row limiter, the confirmation gate and query-event redaction share, so they cannot disagree about where a literal or a comment ends.
+It is the same grammar object as `sqlite`'s, and every one of its facts was re-measured over Hrana on sqld 0.24.33 rather than inherited: `SELECT 1 # x` is refused ("bad variable name"), `SELECT [id] FROM probe_customers` parses, `/* outer /* inner */ SELECT 1` runs, and `q'[x]'` is a syntax error.
+The trigger-body fact was measured on the same sqld: a trigger cut at its inner `;` is "SQL string could not be parsed: unexpected end of input", and sent whole it is created.
+Sharing the object is deliberate: a divergence would have to be written down as its own grammar, which is the change a reader should see.
+`readsSqlText` is `true`: the editor text is SQL, and the provider extends `SQLBaseProvider`.
+Redaction is `sql` with no name quote: a redacted statement keeps its words, and every literal and quoted run becomes `?`.
+
 ## 6. Schema introspection
 
 | Surface | Statement |
@@ -1093,6 +1103,24 @@ await provider.disconnect();
 | No `function` object kind | `CREATE FUNCTION ... LANGUAGE wasm` is refused by the server's parser and `libsql_wasm_func_table` does not exist (§6.1) | The engine's. Declare the kind if a build ever accepts it |
 | A no-affinity column holding these digits as TEXT cannot be keyed on | The bind is a value with no column attached, so the transport cannot read the affinity that would settle it (§3.4) | Ours, and accepted: the integer reading is the one the digits exist for |
 | The object surface reads `main` only | `ATTACH` is refused outright and a declaration is read off a provider that never connects | Ours, and Phase 1's scope |
+
+---
+
+## Migration DDL
+
+[`LIBSQL_MIGRATION_DDL`](../../src/lib/db/providers/sql/libsql/migration-ddl.ts) is what the schema-diff migration generator writes for `libsql`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+libSQL is SQLite, so `transactionWrapper` is `null` for SQLite's reason (#284), and this provider also closes its Hrana stream in the same request as each statement, so a `BEGIN` it emitted could not be continued.
+A foreign key is declared only as a `CREATE TABLE` table constraint, so an added table takes the key inside the statement, and an added or dropped foreign key on an existing table is a comment (#515).
+Measured over Hrana on sqld 0.24.33: `ALTER TABLE "users" ADD CONSTRAINT "fk_users_dept_id" FOREIGN KEY ("dept_id") REFERENCES "departments"("id")` and `ALTER TABLE t DROP CONSTRAINT fk_x` are both "near CONSTRAINT ... syntax error".
+A modified column is a comment: on sqld 0.24.33 `ALTER TABLE t ALTER COLUMN c TYPE integer` is "unexpected end of input" and `MODIFY COLUMN` is "syntax error around `MODIFY`", while `DROP COLUMN` and `RENAME COLUMN` are accepted.
+SQLite gained `ALTER COLUMN ... SET/DROP NOT NULL` in 3.53.0 (measured 2026-08-27), but sqld 0.24.33 ships 3.47.0, so declining every modification is still right here.
+The fields it takes unchanged from `src/lib/db/migration-ddl/shared.ts` are `standardAddColumn`, `standardColumnDef`, `standardCreateIndex`, `standardDropColumn`, `standardDropIndex`, `standardDropTable` and `standardPrimaryKey`.
+
+Every refusal reason it can print, verbatim:
+
+- "SQLite cannot retype a column; recreate the table and copy the rows."
+- "SQLite declares one only in CREATE TABLE; recreate the table and copy the rows."
+- "Requires table recreation."
 
 ---
 

@@ -686,7 +686,7 @@ double-quote default — the exact opposite of `opensearch`, which shares that b
 
 **`#` opens nothing.** `SELECT 1 # x` is a `parsing_exception` ("mismatched input '#'"), so the rest of
 the line is *not* hidden. `ELASTICSEARCH_GRAMMAR.hash` is therefore `"code"`
-([`grammar.ts`](../../src/lib/sql/grammar.ts)), which matters beyond cosmetics: reading `#` as a
+([`elasticsearch-sql-grammar.ts`](../../src/lib/db/providers/sql/search/elasticsearch-sql-grammar.ts)), which matters beyond cosmetics: reading `#` as a
 comment would leave every `#` run ambiguous, and since #297 an unreadable span is a confirmation
 **prompt** rather than silence — a prompt on a statement this engine simply refuses.
 
@@ -768,8 +768,8 @@ of the fact, which is why nothing is special-cased. Consequences elsewhere in th
   unimplemented features, so the EDIT toggle and the editable cell are not offered (#269).
 - The schema-diff migration generator emits, in place of a column change:
   *"Elasticsearch SQL reads only; change a field by reindexing into an index whose mapping declares
-  it."* (the `NO_COLUMN_MODIFICATION` table in
-  [`migration-generator.ts`](../../src/lib/schema-diff/migration-generator.ts)). It says *reindex* rather than
+  it."* (the `ELASTICSEARCH_MIGRATION_DDL` refusal in
+  [`elasticsearch-migration-ddl.ts`](../../src/lib/db/providers/sql/search/elasticsearch-migration-ddl.ts)). It says *reindex* rather than
   "use the mapping API" for a reason: an existing field's type cannot be changed in place at all, even
   outside SQL.
 - `schemaRefreshPattern` is `\b(DELETE)\b` (`SEARCH_SCHEMA_REFRESH_PATTERN`, [index.ts](../../src/lib/db/providers/sql/search/index.ts)),
@@ -801,6 +801,19 @@ So there is nothing for the route to end, and the absence is a declared boundary
 fallback: the caller shape-checks for the method and this provider does not answer it.
 
 ---
+
+### 5.8 SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/sql/search/elasticsearch-sql-grammar.ts`](../../src/lib/db/providers/sql/search/elasticsearch-sql-grammar.ts), the `elasticsearch` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+Its grammar is `ELASTICSEARCH_GRAMMAR`, the one reading the statement splitter, the row limiter, the confirmation gate and query-event redaction share, so they cannot disagree about where a literal or a comment ends.
+Every fact was established by live probe on 2026-08-19 against Elasticsearch 9.1.4, since the SQL surface is an HTTP endpoint the grammar can be asked through; it disagrees with OpenSearch about `#` and about `[...]`.
+`#` opens nothing: `SELECT 1 # x` and `SELECT # x` followed by `1` are each a `parsing_exception`, "mismatched input '#'".
+`[` is not established and stays at the default: `SELECT [1, 2]` and `SELECT [customer] FROM probe_orders` are both "extraneous input '['", so it is neither a name quote nor a subscript.
+Block comments are flat: `SELECT /* a /* b */ 1 AS a` answers 200 with the column.
+There is no alternate quoting: `SELECT q'{it's}'` is a `parsing_exception`.
+`//` is not established: the engine was not reachable from the 2026-08-25 run that probed the other eight, so it keeps the default, and if `//` does open a comment here the splitter over-splits as `cassandra`'s once did.
+`readsSqlText` is `true`, deliberately: both search engines answer `POST`ed statements with columns and rows, and both providers extend `SQLBaseProvider` and call `prepareQuery`, so reading the text as not SQL would switch the SQL checks off for text that is SQL.
+Redaction is `sql` with no name quote: a redacted statement keeps its words, and every literal and quoted run becomes `?`.
 
 ## 6. Schema introspection
 
@@ -1739,6 +1752,20 @@ because the provider exposes no `cancelQuery` ([§3.8](#38-the-deadline-is-the-c
 
 ---
 
+## Migration DDL
+
+[`ELASTICSEARCH_MIGRATION_DDL`](../../src/lib/db/providers/sql/search/elasticsearch-migration-ddl.ts) is what the schema-diff migration generator writes for `elasticsearch`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+It declines the whole diff: `refusal` is the one line the migration prints after its header, in place of any DDL, and `transactionWrapper` is `null`.
+Measured 2026-08-19 on Elasticsearch 9.1.4: `ALTER TABLE probe_orders ADD COLUMN x INT` and `... MODIFY COLUMN customer TEXT` are refused with `parsing_exception`, "mismatched input 'ALTER' expecting {'(', 'DEBUG', 'DESC', 'DESCRIBE', 'EXPLAIN', 'SELECT', 'SHOW', 'SYS', 'WITH'}".
+That list is every statement Elasticsearch SQL accepts, so it has no DDL and no `BEGIN` either (#284).
+An existing field's type cannot be changed in a mapping at all, which is why the reason says reindex rather than "use the mapping API".
+
+The refusal reason it prints, verbatim:
+
+- "Elasticsearch SQL reads only; change a field by reindexing into an index whose mapping declares it."
+
+---
+
 ## 14. References
 
 - Source: [`src/lib/db/providers/sql/search/`](../../src/lib/db/providers/sql/search/)
@@ -1748,7 +1775,7 @@ because the provider exposes no `cancelQuery` ([§3.8](#38-the-deadline-is-the-c
 - Interface & DTOs: [`src/lib/db/types.ts`](../../src/lib/db/types.ts)
 - Errors: [`src/lib/db/errors.ts`](../../src/lib/db/errors.ts)
 - Connection form config: [`src/lib/db-ui-config.ts`](../../src/lib/db-ui-config.ts)
-- Dialect facts elsewhere in the codebase: `ELASTICSEARCH_GRAMMAR` in [`src/lib/sql/grammar.ts`](../../src/lib/sql/grammar.ts) (`#`, `[`, block comments) · `quoteIdentifier()` in [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) (double quotes) · `ELASTICSEARCH_SQL_WRITING` in [`elasticsearch-sql-writing.ts`](../../src/lib/db/providers/sql/search/elasticsearch-sql-writing.ts) (literal escaping) · [`src/lib/sql/fence-tags.ts`](../../src/lib/sql/fence-tags.ts) (the fence tag)
+- Dialect facts elsewhere in the codebase: `ELASTICSEARCH_GRAMMAR` in [`src/lib/db/providers/sql/search/elasticsearch-sql-grammar.ts`](../../src/lib/db/providers/sql/search/elasticsearch-sql-grammar.ts) (`#`, `[`, block comments) · `quoteIdentifier()` in [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) (double quotes) · `ELASTICSEARCH_SQL_WRITING` in [`elasticsearch-sql-writing.ts`](../../src/lib/db/providers/sql/search/elasticsearch-sql-writing.ts) (literal escaping) · [`src/lib/sql/fence-tags.ts`](../../src/lib/sql/fence-tags.ts) (the fence tag)
 - Local cluster: [`database-compose.yml`](../../database-compose.yml) (`elasticsearch` service, 9200)
 - Tests: [`tests/integration/db/elasticsearch-provider.test.ts`](../../tests/integration/db/elasticsearch-provider.test.ts) · [`tests/unit/db/search/`](../../tests/unit/db/search/)
 - API contract: [`docs/API_DOCS.md`](../API_DOCS.md)

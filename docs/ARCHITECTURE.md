@@ -220,6 +220,14 @@ Each row is declared in a module beside its provider, which imports only the con
 `buildResultExport` (`src/lib/export/result-export.ts`) and `typedLiteral` (`src/lib/export/typed-literals.ts`) read the row's `export` field the same way: the CREATE TABLE types, the type vocabulary that classifies a declared type, and the literals an exported INSERT writes.
 The golden files under `tests/unit/db/sql-writing/golden/` pin every engine's output.
 
+The schema-diff migration text follows it too, through `MIGRATION_DDL` in `src/lib/db/migration-ddl/`, a `Record<DatabaseType, MigrationDdlSpec>` the compiler holds complete beside `QUERY_DIALECTS`.
+Each row is a module beside its provider (`<family>/<id>-migration-ddl.ts`, or `migration-ddl.ts` inside a provider directory) that either refuses the whole diff with one line or writes every statement kind through its own function, sharing PostgreSQL's spelling by importing a named building block from `shared.ts`.
+`generateMigrationSQL` reads a connection's row through `migrationDdlFor`, which answers a spec of its own for no connection and for a type outside the union, and names no type id itself.
+
+How each engine's statement text is read sits in a registry of the same kind beside `QUERY_DIALECTS`: `SQL_GRAMMAR` in `src/lib/db/sql-grammar/`, a `Record<DatabaseType, SqlGrammarSpec>` the compiler holds total.
+Each row is a module beside its engine's provider that states the grammar facts the statement splitter, the row limiter and the confirmation gate read, whether the text is SQL at all (`readsSqlText`), what a redacted query event keeps, the words the update-target reader adds, and how completion quotes a name.
+`sqlGrammarFor()` answers a missing type with `NO_CONNECTION_SQL_GRAMMAR` and an unknown one with `UNKNOWN_TYPE_SQL_GRAMMAR`, so no reader of these facts names a type id.
+
 ### 4.2. Authentication Flow
 
 ```mermaid

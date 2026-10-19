@@ -113,7 +113,7 @@ can correct it.
 | `src/lib/types.ts` | `"cassandra"` in `DatabaseType`, plus the `localDataCenter` field |
 | `src/lib/db/factory.ts` | `case "cassandra"`, dynamic `import("./providers/sql/cassandra/index")` |
 | `src/lib/db-ui-config.ts` | Icon, `text-sky-300`, "Apache Cassandra", port 9042, the `localDataCenter` field |
-| `src/lib/sql/grammar.ts` | `CASSANDRA_GRAMMAR` — all four facts probed ([§5.4](#54-dialect-traps-a-user-will-hit)) |
+| `src/lib/db/providers/sql/cassandra/sql-grammar.ts` | `CASSANDRA_GRAMMAR`: all four facts probed ([§5.4](#54-dialect-traps-a-user-will-hit)) |
 | `src/lib/db/providers/sql/cassandra/sql-writing.ts` | `literalStandard` literal escaping: doubling, backslash is data (measured) |
 | `src/lib/db/compatibility.ts` | `SHIPPED.cassandra` |
 | `src/lib/seed/types.ts` | The seed enum and `localDataCenter` |
@@ -558,7 +558,7 @@ SELECT * FROM probe.customers LIMIT 3 // note\n    -> 3 rows
 ```
 
 `//` is a line comment in CQL, and that half **is** a shared grammar fact — `doubleSlashComment` in
-[`src/lib/sql/grammar.ts`](../../src/lib/sql/grammar.ts), measured over the native protocol on
+[`src/lib/db/providers/sql/cassandra/sql-grammar.ts`](../../src/lib/db/providers/sql/cassandra/sql-grammar.ts), measured over the native protocol on
 Cassandra 5.0.9 and ScyllaDB 2026.2.4. It used to be a private scan inside this provider, and while
 it was, the shared readers were blind to it: the statement splitter cut
 `SELECT id FROM probe.customers // note; DROP TABLE probe.customers` — **one** statement to this
@@ -615,7 +615,7 @@ whatever the protocol declared rather than the DDL word. The schema tree reads
 | `SELECT … WHERE 1=1 LIMIT 100;` | `line 24:6 no viable alternative at input '1'`: a predicate names a column |
 | `INSERT INTO t (id, v) VALUES (10, 'a'), (11, 'b');` | `line 3:17 mismatched input ',' expecting EOF`: an INSERT carries one row |
 
-The four grammar facts in `src/lib/sql/grammar.ts` were all probed on this engine rather than read
+The four grammar facts in `src/lib/db/providers/sql/cassandra/sql-grammar.ts` were all probed on this engine rather than read
 off a neighbour:
 
 | Fact | CQL | Probe |
@@ -625,7 +625,7 @@ off a neighbour:
 | block comments | **flat** | `SELECT /* a /* b */ id …` returns the row |
 | `q'…'` | **not a literal** | `q'{it''s}'` is `no viable alternative at input '{it's}'` |
 
-`cassandra` is deliberately **absent** from `NON_SQL_DIALECTS`. That set asks whether the text is
+`cassandra` deliberately declares `readsSqlText: true` in `src/lib/db/providers/sql/cassandra/sql-grammar.ts`. That fact asks whether the text is
 SQL-*shaped* so that a span reader can find where a literal ends and where a comment hides a write —
 and CQL is written with the same statement keywords, the same `'…'` literals with doubled quotes, the
 same `"…"` quoted names and the same `--` / `/* */` comments. The keywords it *lacks* are a smaller
@@ -676,7 +676,7 @@ performance`. `system_schema.columns` separates the two roles by `kind` (`partit
 `targetIsPrimary`, so both tables reduce to the same three key columns and the shared `PRIMARY KEY
 (a, b, c)` serializer would silently pick the flat layout. `src/components/SchemaDiff.tsx` calls
 `generateMigrationSQL` with the connection's type and never consults capabilities, so
-`migration-generator.ts` declines there itself and emits `-- Apache Cassandra: Cannot generate
+`CASSANDRA_MIGRATION_DDL` declines there itself, its `createTable` refused, and emits `-- Apache Cassandra: Cannot generate
 CREATE TABLE for "<table>". …` in place of DDL that would run and quietly repartition the data.
 Two more shapes are left out of a Cassandra migration for the same reason. The **transaction
 wrapper** is not emitted: `BEGIN;` is `line 1:5 mismatched input ';' expecting K_BATCH` and
@@ -724,6 +724,21 @@ A collection or tuple that does not have its declared shape is skipped with a `-
 The driver reports a nested collection without its `frozen<...>` (`list<frozen<list<int>>>` is declared `list<list<int>>`), which CQL refuses as `Non-frozen collections are not allowed inside collections`, so the DDL writes every collection, tuple or UDT nested inside a collection as `frozen<...>`.
 
 Measured 2026-10-04 on Cassandra 5.0.9: a table of every scalar type, `list<int>`, `set<text>`, `map<text, int>`, `map<int, frozen<set<text>>>`, `list<frozen<list<int>>>`, `tuple<int, text>`, a `frozen<address>` UDT whose fields are `text` and `int`, and a `duration` was exported through the provider and replayed with `cqlsh` into a copy created with the source's own definition and into the exported DDL's own table, and `cqlsh` printed the same rows for both. So did a second table of `duration` (`1y6mo`, `0s`, `-1mo2d3h4m5s6ms7us8ns`), `double` and `float` NaN and infinities, and a `list<double>` holding them.
+
+### 5.8 SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/sql/cassandra/sql-grammar.ts`](../../src/lib/db/providers/sql/cassandra/sql-grammar.ts), the `cassandra` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+Its grammar is `CASSANDRA_GRAMMAR`, the one reading the statement splitter, the row limiter, the confirmation gate and query-event redaction share, so they cannot disagree about where a literal or a comment ends.
+Every fact was a statement Apache Cassandra 5.0.9 answered over the native protocol on 2026-08-20, probed before any provider code existed.
+`#` opens nothing and is no identifier character: `... WHERE id = 1 # trailing`, `SELECT # x` and `SELECT id#a` are each "no viable alternative at character '#'".
+`[` is a subscript that nests: `SELECT [id] ...` answers a `list` column holding `[1]`, `SELECT [[id]] ...` answers `[[1]]`, and `SELECT ['a]b'] ...` shows a `]` inside a string does not close the run.
+Block comments are flat: `SELECT /* a /* b */ id FROM probe.customers WHERE id = 1` returns the row.
+There is no alternate quoting: `q'{it''s}'` is "no viable alternative at input '{it's}'".
+`//` is a line comment, probed 2026-08-25 on 5.0.9 and on ScyllaDB 2026.2.4, which shares this type id: `SELECT release_version FROM system.local // note; DROP KEYSPACE nope` with a trailing newline returns the row and the `DROP` does not run, and the same text with the `DROP` on the next line is "line 2:0 mismatched input 'DROP' expecting EOF".
+A line comment of either form must end at a newline: `SELECT * FROM probe.customers LIMIT 3 -- note` with nothing after it is "mismatched character '<EOF>'", which is why the provider's `prepareQuery` declines to rewrite a statement that would end inside one.
+The row bound goes before `ALLOW FILTERING`, and before ScyllaDB's `BYPASS CACHE` and `USING TIMEOUT`, measured on ScyllaDB 2026.3.2 in the E2E pass of 2026-10-03/04 (#1398): each clause with the bound appended after it is a syntax error, and with the bound before it returns rows.
+`readsSqlText` is `true`, the closest call of all the engines: CQL lacks JOIN, OFFSET, EXPLAIN and subqueries (each a syntax error on 5.0.9), but it writes the same statement keywords, `'...'` literals with doubled quotes, `"..."` names and `--` and block comments, so a SQL span reader finds its literals and comments correctly.
+Redaction is `sql` with no name quote: a redacted statement keeps its words, and every literal and quoted run becomes `?`.
 
 ## 6. Schema introspection
 
@@ -1789,3 +1804,23 @@ This engine is a REFUSAL because it was NOT PROBED, and this section says so rat
 Neither wave of #789 ran the two questions an editable Cassandra kind turns on: how a replace behaves across a function's SIGNATURE, and what happens to an aggregate when the function it names is replaced under it.
 Nothing here claims that no strategy exists; it records that nobody measured one, and this phase declares a kind editable only where a failure cannot lose the object and a success destroys nothing the user was not shown, neither of which an unprobed engine can be shown to satisfy.
 No kind here declares `acceptsSourceEdits`, and `tests/isolated/object-edit-declarations.test.ts` is what holds that absence and this section together.
+
+## Migration DDL
+
+[`CASSANDRA_MIGRATION_DDL`](../../src/lib/db/providers/sql/cassandra/migration-ddl.ts) is what the schema-diff migration generator writes for `cassandra`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+Apache Cassandra has no transaction, so `transactionWrapper` is `null` (#284): measured on 5.0.9, `BEGIN;` is "line 1:5 mismatched input ';' expecting K_BATCH" and `COMMIT;` is "no viable alternative at input 'COMMIT'".
+CQL's only grouping, `BEGIN BATCH ... APPLY BATCH`, is not a transaction and takes no DDL, so there is nothing to translate the wrapper into.
+`createTable` is refused whole, indexes and foreign keys included, and names `CASSANDRA_NO_CREATE_TABLE`: a CQL primary key splits into a partition key and clustering columns, and a `ColumnDiff` keeps only `targetIsPrimary`.
+Measured on 5.0.9, `probe.composite_pk` (`PRIMARY KEY ((tenant, day), ts)`) and `probe.pk_flat` (`PRIMARY KEY (tenant, day, ts)`) differ by one pair of brackets, and `WHERE tenant = 'a'` is served on the flat table while the composite one answers code 2200.
+A column definition is a name and a type and nothing else: `name TEXT NOT NULL`, `name TEXT UNIQUE` and `name TEXT DEFAULT 'x'` are each "no viable alternative at input" on 5.0.9.
+A column is added with `ADD` and dropped with `DROP`, without the `COLUMN` keyword, which 5.0.9 refuses in both directions ("mismatched input 'TEXT' expecting EOF" and "mismatched input 'extra' expecting EOF").
+A foreign key is a comment: `ADD CONSTRAINT ... FOREIGN KEY` is "mismatched input 'FOREIGN' expecting EOF" and `DROP CONSTRAINT IF EXISTS` is "mismatched input 'IF' expecting EOF", both measured.
+A modified column is a comment, because `ALTER TABLE probe.customers ALTER name TYPE blob` answers 8704, "Altering column types is no longer supported", on 5.0.9.
+The fields it takes unchanged from `src/lib/db/migration-ddl/shared.ts` are `standardCreateIndex`, `standardDropIndex` and `standardDropTable`.
+
+Every refusal reason it can print, verbatim:
+
+- "A CQL primary key splits into a partition key and clustering columns, and a schema diff records neither role, so the partitioning cannot be derived; write the CREATE TABLE by hand."
+- "Cassandra no longer supports altering a column's type; add a new column and migrate the values, or recreate the table."
+- "The clause is not in CQL's grammar; enforce the relationship in the application."
+- "CQL never declared one."

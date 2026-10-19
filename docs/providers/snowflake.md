@@ -340,6 +340,21 @@ The editor splits a script with Snowflake's grammar, `//` comments included, and
 In that grammar `$` is a name character and only `$$` opens a string, as Snowflake's reference gives it, so a `$t$` run is code and `a$b$c` is one name, as the trial capture measured.
 A backslash inside `"..."` is part of the name, so `"a\b"` names the column `a\b`.
 
+### 4.1 SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/sql/snowflake/sql-grammar.ts`](../../src/lib/db/providers/sql/snowflake/sql-grammar.ts), the `snowflake` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+Its grammar is `SNOWFLAKE_GRAMMAR`, the one reading the statement splitter, the row limiter, the confirmation gate and query-event redaction share, so they cannot disagree about where a literal or a comment ends.
+The lexical facts were measured on the trial capture of 2026-10-12 (Snowflake 10.37.100), each recorded in `tests/fixtures/snowflake/trial-2026-10-12-v10.37.100/`; the rest are read off Snowflake's SQL reference.
+`#` is code: the trial refused `SELECT 3 # 2` at the `#`.
+`[` is a subscript into a semi-structured value, and names are quoted with `"` only.
+Block comments are flat: the trial ran `SELECT /* a /* b */ 1` and refused the same text with a second `*/`.
+`//` is a line comment: the trial ran `SELECT 1 AS c // a comment`.
+A backslash escapes inside `'...'` but not inside `"..."` (a column named from `"a\b"` is `a\b`), and a `$` that would open a tagged run is code (`SELECT 1 AS a$b$c` ran as the name `A$B$C`).
+The trial also ran `'a\<line feed>b'` as a three-character string, which the shared reader leaves unterminated, the fail-safe direction.
+`NULL`, `''` and `$$$$` are unlimited row bounds, each measured on the trial on 2026-10-14 to return every row with a `LIMIT` appended after one a syntax error, and the bound goes before `FOR UPDATE [NOWAIT | WAIT <n>]`.
+`readsSqlText` is `true`: the editor text is SQL, and the provider extends `SQLBaseProvider`.
+Redaction is `sql` with no name quote: a redacted statement keeps its words, and every literal and quoted run becomes `?`.
+
 ## 5. What runs on a warehouse
 
 Every `SHOW`, every `DESCRIBE`, every `EXPLAIN`, `GET_DDL`, the role check, a status poll and a cancel need no running warehouse; Snowflake bills such cloud-services work only above 10 percent of the day's warehouse use.
@@ -716,3 +731,16 @@ What the capture could not ask, such as a 403 from an address a network policy r
 - Programmatic access tokens: https://docs.snowflake.com/en/user-guide/programmatic-access-tokens
 - Account identifiers: https://docs.snowflake.com/en/user-guide/admin-account-identifier
 - Warehouse billing: https://docs.snowflake.com/en/user-guide/cost-understanding-compute
+
+## Migration DDL
+
+[`SNOWFLAKE_MIGRATION_DDL`](../../src/lib/db/providers/sql/snowflake/migration-ddl.ts) is what the schema-diff migration generator writes for `snowflake`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+A Snowflake DDL statement commits the open transaction, and each SQL API statement runs in its own session, so `transactionWrapper` is `null` (#284).
+A type change is spelled `SET DATA TYPE`, and `ALTER COLUMN` sets a default only to a sequence's `NEXTVAL`, so any other default change is a comment while dropping one is plain.
+Index changes are a comment, because Snowflake has indexes only on hybrid tables.
+The fields it takes unchanged from `src/lib/db/migration-ddl/shared.ts` are `standardAddColumn`, `standardAddForeignKey`, `standardColumnDef`, `standardCreateTableForeignKey`, `standardDropColumn`, `standardDropForeignKey`, `standardDropTable` and `standardPrimaryKey`.
+
+Every refusal reason it can print, verbatim:
+
+- "Snowflake: Cannot generate index DDL. Snowflake has indexes only on hybrid tables; write the index change by hand."
+- "ALTER COLUMN sets a default only to a sequence's NEXTVAL; recreate the column with its default."

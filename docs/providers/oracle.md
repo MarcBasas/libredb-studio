@@ -558,7 +558,7 @@ the pool. Bind parameters use Oracle's `:1`-style placeholders.
 Native errors are normalised through `mapDatabaseError()` (see [§11](#11-error-handling)).
 
 **PL/SQL from the editor (#1312).** The grammar's `script` fact for this dialect
-(`src/lib/sql/grammar.ts`) makes the editor's statement reader treat a PL/SQL unit as ONE statement:
+(`src/lib/db/providers/sql/oracle-sql-grammar.ts`) makes the editor's statement reader treat a PL/SQL unit as ONE statement:
 an anonymous block that starts with `DECLARE` or `BEGIN`, and `CREATE [OR REPLACE]
 [EDITIONABLE | NONEDITIONABLE] PROCEDURE | FUNCTION | PACKAGE [BODY] | TRIGGER | TYPE BODY`. The unit
 is read to the `END` that closes its outermost block, and the `;` after that `END` is kept, because
@@ -1048,6 +1048,20 @@ microseconds the driver dropped (`TO_CHAR(s."TS" - r."TS")` → `+000000000 00:0
 survive an export, because it did not survive the driver.**
 
 ---
+
+### 5.6 SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/sql/oracle-sql-grammar.ts`](../../src/lib/db/providers/sql/oracle-sql-grammar.ts), the `oracle` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+Its grammar is `ORACLE_GRAMMAR`, the one reading the statement splitter, the row limiter, the confirmation gate and query-event redaction share, so they cannot disagree about where a literal or a comment ends.
+`#` is an identifier character and comments open on `--` and `/*` only, from node-oracledb's own SQL tokenizer (`lib/thin/statement.js`).
+Alternate quoting is on, and Oracle is the only row with it: the same tokenizer's `_parseQstring` opens a q-string at a `'` after `q` or `Q`, `nq'...'` included, with `[ ] { } ( ) < >` as paired delimiters, as Oracle's SQL Language Reference (checked 2026-08-05) gives it.
+Block comments are flat: the tokenizer stops at the first `*/`, and the PL/SQL Language Reference says one multiline comment cannot contain another.
+`//` is code, probed 2026-08-25 on Oracle Free through sqlplus: `SELECT 1 AS a // note FROM dual` is ORA-00923.
+A PL/SQL unit is one statement, ended by SQL*Plus's `/` line: measured on 26ai Free 23.26.3, a procedure cut at its inner `;` was stored INVALID with PLS-00103, and the unit is refused without the `;` after its `END`, so the splitter keeps that one.
+`[...]` is not established and stays at the fail-safe default.
+The update-target reader takes `MINUS` as a set operator here alone, since it is an ordinary column name on every other engine.
+`readsSqlText` is `true`: the editor text is SQL, and the provider extends `SQLBaseProvider`.
+Redaction is `sql` with `"` as its name quote: a redacted statement keeps its words and every name in that quote, and every literal becomes `?`.
 
 ## 6. Transactions
 
@@ -2597,6 +2611,20 @@ the object tree's own routes under `POST /api/db/objects/*`
 - **A package's members are not browsable.** The `package` kind declares
   `childKinds: ['procedure', 'function']`, which is true of the engine, but Phase 1's provider
   surface is container-scoped end to end and nothing lists an object's children. Phase 2 owns it.
+
+---
+
+## Migration DDL
+
+[`ORACLE_MIGRATION_DDL`](../../src/lib/db/providers/sql/oracle-migration-ddl.ts) is what the schema-diff migration generator writes for `oracle`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+Oracle DDL commits implicitly and `BEGIN` opens a PL/SQL block, not a transaction, so `transactionWrapper` is `null`.
+Oracle has no `IF EXISTS` on `DROP CONSTRAINT` or `DROP INDEX`, so a dropped foreign key, index or table is written bare.
+A column definition puts `DEFAULT` before `NOT NULL`, falls back to `VARCHAR2(255)`, and is added with `ADD (...)`.
+A modified column writes its nullability only when it changes, because restating ` NULL` on a nullable column is ORA-01451 and the column keeps its old type (#1240).
+The live regression probe is `tests/live/schema-diff-dialects.ts`.
+The fields it takes unchanged from `src/lib/db/migration-ddl/shared.ts` are `standardAddForeignKey`, `standardCreateIndex`, `standardCreateTableForeignKey`, `standardDropColumn` and `standardPrimaryKey`.
+
+It prints no refusal reason.
 
 ---
 

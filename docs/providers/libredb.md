@@ -495,6 +495,14 @@ fallback: the caller shape-checks for the method and this provider does not answ
 
 ---
 
+### 5.5 SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/embedded/libredb-sql-grammar.ts`](../../src/lib/db/providers/embedded/libredb-sql-grammar.ts), the `libredb` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+Its grammar is `DEFAULT_SQL_GRAMMAR`, the compatibility default, because no rule was established for the command grammar, not because it agrees with the default.
+`readsSqlText` is `true` although the provider declares `queryLanguage: "json"`: the store was never listed as an engine whose text is not SQL, so its text reaches the SQL readers under that default.
+This is the one exception `tests/isolated/sql-grammar-reads-sql-text.test.ts` records between the two facts, and the test fails if a second engine splits them.
+Redaction is `none`, since the engine has no grammar of its own: a redacted statement is stored as `?`, because a reader guessing where a literal ends can store the literal.
+
 ## 6. Schema introspection
 
 the object surface answers one object per namespace, made catalog-aware:
@@ -1351,6 +1359,18 @@ await provider.disconnect();
   answers a modified column per dialect; this engine speaks a JSON command grammar rather than SQL DDL,
   so it emits `-- LibreDB: Cannot alter column "<name>". ...` where it previously emitted PostgreSQL
   `ALTER TABLE ... ALTER COLUMN` DDL the command parser would reject.
+
+---
+
+## Migration DDL
+
+[`LIBREDB_MIGRATION_DDL`](../../src/lib/db/providers/embedded/libredb-migration-ddl.ts) is what the schema-diff migration generator writes for `libredb`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+It declines the whole diff: `refusal` is the one line the migration prints after its header, in place of any DDL, and `transactionWrapper` is `null`.
+The embedded engine speaks a JSON command grammar, so there is no table DDL to wrap (#284).
+
+The refusal reason it prints, verbatim:
+
+- "The embedded engine speaks a JSON command grammar, not SQL DDL."
 
 ---
 

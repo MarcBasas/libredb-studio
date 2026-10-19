@@ -336,6 +336,14 @@ On the eight routes that take `timeout`, Studio sends the remaining deadline in 
 Stop cancels the request in Studio and on the socket; the server stops a scroll, a facet, a query and a grouped query within a fifth of a second of its timeout, but an exact count keeps working after its timeout, and after a cancel, until it completes, so add `"exact": false` to a slow count.
 The confirmation gate asks about nothing, because every request reads, and it never sends a Qdrant request for an AI analysis.
 
+### 5.9 SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/vector/qdrant/sql-grammar.ts`](../../src/lib/db/providers/vector/qdrant/sql-grammar.ts), the `qdrant` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+`readsSqlText` is `false`: `qdrant` takes one Qdrant console request, a `METHOD /path` line and one JSON body, whose strings escape with a backslash and where `//` opens a comment outside a string; the provider parses it with the shared console parser.
+The confirmation gate therefore answers from this engine's row of `NON_SQL_DESTRUCTIVE_VOCABULARY` in `src/lib/db/destructive-commands.ts` instead of a SQL reading.
+Its grammar is `DEFAULT_SQL_GRAMMAR`, the compatibility default, since no SQL grammar of its own applies to this text.
+Redaction is `none`: a redacted statement is stored as `?`, because a reader guessing where a literal ends in a language it does not read can store the literal.
+
 ## 6. Schema introspection
 
 ### 6.1 The object surface
@@ -467,6 +475,16 @@ Set `telemetry_disabled` if the server should not report to the vendor, and note
 - An empty tree is what a scoped token, an alias-only token and an empty server all produce.
 - A vendor address pasted into the connection-string box instead of the Host box still selects ClickHouse.
 - A hostile or impersonated endpoint holds the key it receives and can return it in an encoding Studio does not list, so Studio withholds only the forms it sends.
+
+## Migration DDL
+
+[`QDRANT_MIGRATION_DDL`](../../src/lib/db/providers/vector/qdrant/migration-ddl.ts) is what the schema-diff migration generator writes for `qdrant`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+It declines the whole diff: `refusal` is the one line the migration prints after its header, in place of any DDL, and `transactionWrapper` is `null`.
+`qdrant` text is a Qdrant console request, not SQL, so there is no table DDL to wrap (#284).
+
+The refusal reason it prints, verbatim:
+
+- "A collection's payloads are schemaless and its vectors are declared through Qdrant's own collection API, not SQL DDL, so there is no column definition to change."
 
 ## 14. References
 
