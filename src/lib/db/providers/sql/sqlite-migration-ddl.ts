@@ -27,6 +27,8 @@ import type { MigrationDdlSpec } from "@/lib/db/migration-ddl/types";
 const FOREIGN_KEY_ONLY_IN_CREATE_TABLE =
   "A foreign key is declarable only as a CREATE TABLE constraint; recreate the table and copy the rows.";
 
+const REQUIRES_TABLE_RECREATION = "Requires table recreation.";
+
 export const SQLITE_MIGRATION_DDL: MigrationDdlSpec = {
   tableDdl: "written",
   transactionWrapper: null,
@@ -54,18 +56,18 @@ export const SQLITE_MIGRATION_DDL: MigrationDdlSpec = {
   // not write the recreation.
   addForeignKey: (fk) =>
     `-- SQLite: Cannot add a foreign key on ${commentName(fk.column)}. ${FOREIGN_KEY_ONLY_IN_CREATE_TABLE}`,
-  dropForeignKey: () => `-- SQLite: Cannot drop foreign key directly. Requires table recreation.`,
+  dropForeignKey: () => `-- SQLite: Cannot drop foreign key directly. ${REQUIRES_TABLE_RECREATION}`,
   addColumn: standardAddColumn,
   dropColumn: (col) =>
-    `-- SQLite: Cannot drop column "${commentName(col.columnName)}" directly. Requires table recreation.`,
+    `-- SQLite: Cannot drop column "${commentName(col.columnName)}" directly. ${REQUIRES_TABLE_RECREATION}`,
   // Declined, and deliberately, though SQLite gained `ALTER COLUMN ... SET/DROP NOT NULL` in 3.53.0: this provider
   // runs on whichever SQLite its runtime bundles - `bun:sqlite` or `node:sqlite`, chosen at runtime with
   // `LIBREDB_SQLITE_DRIVER` as an override - so emitting the statement would write a migration file that succeeds on
   // one deployment and fails on another. A file handed to a human to run elsewhere makes that guess worse than the
   // decline.
   modifyColumn: (col) => [
-    `-- SQLite: Cannot alter column "${commentName(col.columnName)}" type directly. Requires table recreation.`,
+    `-- SQLite: Cannot alter column "${commentName(col.columnName)}" type directly. ${REQUIRES_TABLE_RECREATION}`,
   ],
   dropTable: standardDropTable,
-  reasons: [FOREIGN_KEY_ONLY_IN_CREATE_TABLE],
+  reasons: [FOREIGN_KEY_ONLY_IN_CREATE_TABLE, REQUIRES_TABLE_RECREATION],
 };

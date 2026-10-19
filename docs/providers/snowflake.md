@@ -707,6 +707,7 @@ A type change is spelled `SET DATA TYPE`, and `ALTER COLUMN` sets a default only
 Index changes are a comment, because Snowflake has indexes only on hybrid tables.
 The fields it takes unchanged from `src/lib/db/migration-ddl/shared.ts` are `standardAddColumn`, `standardAddForeignKey`, `standardColumnDef`, `standardCreateTableForeignKey`, `standardDropColumn`, `standardDropForeignKey`, `standardDropTable` and `standardPrimaryKey`.
 
-The refusal reason it prints, verbatim:
+Every refusal reason it can print, verbatim:
 
 - "Snowflake: Cannot generate index DDL. Snowflake has indexes only on hybrid tables; write the index change by hand."
+- "ALTER COLUMN sets a default only to a sequence's NEXTVAL; recreate the column with its default."

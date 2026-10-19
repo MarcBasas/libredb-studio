@@ -1766,6 +1766,7 @@ Every refusal reason it can print, verbatim:
 
 - "ClickHouse: Cannot generate index DDL. The diff does not record the index kind, expression or granularity; write the index change by hand."
 - "The engine has no foreign-key constraint."
+- "REMOVE accepts DEFAULT, MATERIALIZED or ALIAS only; recreate the column."
 
 ---
 

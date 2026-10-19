@@ -36,6 +36,8 @@ const NO_COLUMN_MODIFICATION = "SQLite cannot retype a column; recreate the tabl
 const FOREIGN_KEY_ONLY_IN_CREATE_TABLE =
   "SQLite declares one only in CREATE TABLE; recreate the table and copy the rows.";
 
+const REQUIRES_TABLE_RECREATION = "Requires table recreation.";
+
 export const LIBSQL_MIGRATION_DDL: MigrationDdlSpec = {
   tableDdl: "written",
   transactionWrapper: null,
@@ -53,10 +55,10 @@ export const LIBSQL_MIGRATION_DDL: MigrationDdlSpec = {
   // sqld 0.24.33: `ALTER TABLE t DROP CONSTRAINT fk_x` is "near CONSTRAINT …
   // syntax error". Same limit as SQLite, named separately so the comment names
   // the engine the reader connected to.
-  dropForeignKey: () => `-- libSQL: Cannot drop a foreign key directly. Requires table recreation.`,
+  dropForeignKey: () => `-- libSQL: Cannot drop a foreign key directly. ${REQUIRES_TABLE_RECREATION}`,
   addColumn: standardAddColumn,
   dropColumn: standardDropColumn,
   modifyColumn: (col) => [`-- libSQL: Cannot alter column "${commentName(col.columnName)}". ${NO_COLUMN_MODIFICATION}`],
   dropTable: standardDropTable,
-  reasons: [NO_COLUMN_MODIFICATION, FOREIGN_KEY_ONLY_IN_CREATE_TABLE],
+  reasons: [NO_COLUMN_MODIFICATION, FOREIGN_KEY_ONLY_IN_CREATE_TABLE, REQUIRES_TABLE_RECREATION],
 };

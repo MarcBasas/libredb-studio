@@ -46,6 +46,8 @@ function defaultClause(col: ColumnDiff): string {
 const NO_PORTABLE_INDEX_DDL =
   "ClickHouse: Cannot generate index DDL. The diff does not record the index kind, expression or granularity; write the index change by hand.";
 
+const ONLY_REMOVABLE_KINDS = "REMOVE accepts DEFAULT, MATERIALIZED or ALIAS only; recreate the column.";
+
 export const CLICKHOUSE_MIGRATION_DDL: MigrationDdlSpec = {
   tableDdl: "written",
   transactionWrapper: null,
@@ -80,12 +82,12 @@ export const CLICKHOUSE_MIGRATION_DDL: MigrationDdlSpec = {
         lines.push(`ALTER TABLE ${table} MODIFY COLUMN ${column} REMOVE ${kind};`);
       } else {
         lines.push(
-          `-- ClickHouse: Cannot remove the ${kind} property of column "${commentName(col.columnName)}". REMOVE accepts DEFAULT, MATERIALIZED or ALIAS only; recreate the column.`,
+          `-- ClickHouse: Cannot remove the ${kind} property of column "${commentName(col.columnName)}". ${ONLY_REMOVABLE_KINDS}`,
         );
       }
     }
     return lines;
   },
   dropTable: standardDropTable,
-  reasons: [NO_PORTABLE_INDEX_DDL, NO_FOREIGN_KEY_CONSTRAINT],
+  reasons: [NO_PORTABLE_INDEX_DDL, NO_FOREIGN_KEY_CONSTRAINT, ONLY_REMOVABLE_KINDS],
 };

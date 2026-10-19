@@ -3,7 +3,8 @@
  * heading, and the subsection under it names the module's export and links the module, quotes every refusal reason
  * the module can print, and names each shared building block the module uses as one of its fields. A refused row's
  * reason is the part of `refusal` after "Cannot generate table DDL. ", read from `refusal` itself so the check does
- * not trust `reasons` to hold it.
+ * not trust `reasons` to hold it. A written module's `reasons` is held to its golden text: every refusal line the
+ * fixture makes it print ends in one of them, so a refusal the docs must quote cannot be left out of `reasons`.
  *
  * The subsection may wrap its prose, so text is compared with every whitespace run collapsed to one space. It cites
  * no line number: a line moves with every edit above it, and the anchor is the export name.
@@ -15,6 +16,7 @@ import { MIGRATION_DDL } from "@/lib/db/migration-ddl";
 import * as shared from "@/lib/db/migration-ddl/shared";
 import type { MigrationDdlSpec } from "@/lib/db/migration-ddl/types";
 import type { DatabaseType } from "@/lib/types";
+import { renderGolden } from "./fixtures";
 import { type EngineModule, engineModules, ROOT } from "./modules";
 
 const HEADING = /^(#{2,4}) (?:[0-9.]+ )?Migration DDL$/;
@@ -88,6 +90,33 @@ describe("every provider document names its migration DDL", () => {
       expect(sectionViolations(module, MIGRATION_DDL[id as DatabaseType], docOf(id))).toEqual([]);
     },
   );
+});
+
+/** Each `-- <engine>: Cannot ...` line of a key's golden text; the header lines name no refusal. */
+function refusalLines(key: string): string[] {
+  return renderGolden(key)
+    .split("\n")
+    .filter((line) => line.startsWith("-- ") && line.includes(": Cannot "));
+}
+
+/** The refusal lines that end in none of `reasons`, each once. */
+function unlistedRefusals(key: string, reasons: readonly string[]): string[] {
+  return [...new Set(refusalLines(key))].filter((line) => !reasons.some((reason) => line.endsWith(reason)));
+}
+
+describe("a written module lists every refusal it prints", () => {
+  const written = MODULES.filter(({ id }) => MIGRATION_DDL[id as DatabaseType].tableDdl === "written");
+
+  test.each(written.map(({ id }) => [id] as const))("%s", (id) => {
+    expect(unlistedRefusals(id, MIGRATION_DDL[id as DatabaseType].reasons)).toEqual([]);
+  });
+
+  test("a printed refusal missing from reasons is named, and a module that refuses nothing prints none", () => {
+    expect(refusalLines("postgres")).toEqual([]);
+    expect(unlistedRefusals("clickhouse", [])).toContain(
+      "-- ClickHouse: Cannot add a foreign key. The engine has no foreign-key constraint.",
+    );
+  });
 });
 
 describe("the check fails a planted document by name", () => {

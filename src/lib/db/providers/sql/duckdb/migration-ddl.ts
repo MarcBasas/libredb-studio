@@ -25,6 +25,8 @@ import type { MigrationDdlSpec } from "@/lib/db/migration-ddl/types";
 
 const FOREIGN_KEY_ONLY_IN_CREATE_TABLE = "ALTER TABLE cannot add one yet; recreate the table and copy the rows.";
 
+const REQUIRES_TABLE_RECREATION = "Requires table recreation.";
+
 export const DUCKDB_MIGRATION_DDL: MigrationDdlSpec = {
   tableDdl: "written",
   transactionWrapper: BEGIN_COMMIT,
@@ -45,10 +47,10 @@ export const DUCKDB_MIGRATION_DDL: MigrationDdlSpec = {
   // TABLE t DROP CONSTRAINT IF EXISTS fk_x` is "Not implemented Error: No
   // support for that ALTER TABLE option yet!" - and a `Not implemented` is not
   // an `IF EXISTS` no-op, so the line would fail a migration rather than skip.
-  dropForeignKey: () => `-- DuckDB: Cannot drop a foreign key directly. Requires table recreation.`,
+  dropForeignKey: () => `-- DuckDB: Cannot drop a foreign key directly. ${REQUIRES_TABLE_RECREATION}`,
   addColumn: standardAddColumn,
   dropColumn: standardDropColumn,
   modifyColumn: standardModifyColumn,
   dropTable: standardDropTable,
-  reasons: [FOREIGN_KEY_ONLY_IN_CREATE_TABLE],
+  reasons: [FOREIGN_KEY_ONLY_IN_CREATE_TABLE, REQUIRES_TABLE_RECREATION],
 };

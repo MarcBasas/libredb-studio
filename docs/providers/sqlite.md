@@ -1640,9 +1640,10 @@ A dropped column and a dropped foreign key are comments naming the table recreat
 A modified column is a comment too, though SQLite gained `ALTER COLUMN ... SET/DROP NOT NULL` in 3.53.0: the provider runs on whichever SQLite `bun:sqlite` or `node:sqlite` bundles, chosen at runtime with `LIBREDB_SQLITE_DRIVER` as an override, so the statement would write a migration that succeeds on one deployment and fails on another.
 The fields it takes unchanged from `src/lib/db/migration-ddl/shared.ts` are `standardAddColumn`, `standardColumnDef`, `standardCreateIndex`, `standardDropIndex`, `standardDropTable` and `standardPrimaryKey`.
 
-The refusal reason it prints, verbatim:
+Every refusal reason it can print, verbatim:
 
 - "A foreign key is declarable only as a CREATE TABLE constraint; recreate the table and copy the rows."
+- "Requires table recreation."
 
 ---
 

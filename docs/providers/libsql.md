@@ -1089,6 +1089,7 @@ Every refusal reason it can print, verbatim:
 
 - "SQLite cannot retype a column; recreate the table and copy the rows."
 - "SQLite declares one only in CREATE TABLE; recreate the table and copy the rows."
+- "Requires table recreation."
 
 ---
 

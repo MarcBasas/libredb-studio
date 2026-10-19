@@ -19,6 +19,9 @@ import type { MigrationDdlSpec } from "@/lib/db/migration-ddl/types";
 const NO_PORTABLE_INDEX_DDL =
   "Snowflake: Cannot generate index DDL. Snowflake has indexes only on hybrid tables; write the index change by hand.";
 
+const DEFAULT_ONLY_A_SEQUENCE =
+  "ALTER COLUMN sets a default only to a sequence's NEXTVAL; recreate the column with its default.";
+
 export const SNOWFLAKE_MIGRATION_DDL: MigrationDdlSpec = {
   tableDdl: "written",
   transactionWrapper: null,
@@ -45,12 +48,12 @@ export const SNOWFLAKE_MIGRATION_DDL: MigrationDdlSpec = {
         lines.push(`ALTER TABLE ${table} ALTER COLUMN ${column} DROP DEFAULT;`);
       } else {
         lines.push(
-          `-- Snowflake: Cannot set the default of column "${commentName(col.columnName)}". ALTER COLUMN sets a default only to a sequence's NEXTVAL; recreate the column with its default.`,
+          `-- Snowflake: Cannot set the default of column "${commentName(col.columnName)}". ${DEFAULT_ONLY_A_SEQUENCE}`,
         );
       }
     }
     return lines;
   },
   dropTable: standardDropTable,
-  reasons: [NO_PORTABLE_INDEX_DDL],
+  reasons: [NO_PORTABLE_INDEX_DDL, DEFAULT_ONLY_A_SEQUENCE],
 };

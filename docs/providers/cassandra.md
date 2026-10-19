@@ -1783,3 +1783,5 @@ Every refusal reason it can print, verbatim:
 
 - "A CQL primary key splits into a partition key and clustering columns, and a schema diff records neither role, so the partitioning cannot be derived; write the CREATE TABLE by hand."
 - "Cassandra no longer supports altering a column's type; add a new column and migrate the values, or recreate the table."
+- "The clause is not in CQL's grammar; enforce the relationship in the application."
+- "CQL never declared one."

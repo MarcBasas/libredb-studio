@@ -1665,9 +1665,10 @@ Measured on DuckDB v1.5.5: `CREATE TABLE "users" (..., PRIMARY KEY ("id"), FOREI
 `ALTER TABLE t DROP CONSTRAINT IF EXISTS fk_x` answers the same "Not implemented" error, which is not an `IF EXISTS` no-op, so a dropped foreign key is a comment too.
 The fields it takes unchanged from `src/lib/db/migration-ddl/shared.ts` are `BEGIN_COMMIT`, `standardAddColumn`, `standardColumnDef`, `standardCreateIndex`, `standardDropColumn`, `standardDropIndex`, `standardDropTable`, `standardModifyColumn` and `standardPrimaryKey`.
 
-The refusal reason it prints, verbatim:
+Every refusal reason it can print, verbatim:
 
 - "ALTER TABLE cannot add one yet; recreate the table and copy the rows."
+- "Requires table recreation."
 
 ---
 

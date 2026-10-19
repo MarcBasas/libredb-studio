@@ -44,6 +44,10 @@ export const CASSANDRA_NO_CREATE_TABLE =
 const NO_COLUMN_MODIFICATION =
   "Cassandra no longer supports altering a column's type; add a new column and migrate the values, or recreate the table.";
 
+const NO_FOREIGN_KEY_CLAUSE = "The clause is not in CQL's grammar; enforce the relationship in the application.";
+
+const NO_FOREIGN_KEY_TO_DROP = "CQL never declared one.";
+
 export const CASSANDRA_MIGRATION_DDL: MigrationDdlSpec = {
   tableDdl: "written",
   transactionWrapper: null,
@@ -68,10 +72,10 @@ export const CASSANDRA_MIGRATION_DDL: MigrationDdlSpec = {
   // from the current connection and the diff from a snapshot that may be another
   // connection's, so a relational schema's keys arrive with a CQL dialect.
   addForeignKey: (fk) =>
-    `-- Apache Cassandra: Cannot add a foreign key on ${commentName(fk.column)}. The clause is not in CQL's grammar; enforce the relationship in the application.`,
+    `-- Apache Cassandra: Cannot add a foreign key on ${commentName(fk.column)}. ${NO_FOREIGN_KEY_CLAUSE}`,
   // `DROP CONSTRAINT IF EXISTS fk_x` is "mismatched input 'IF' expecting EOF"
   // (measured), and dropping what was never declarable is not a statement.
-  dropForeignKey: () => `-- Apache Cassandra: Cannot drop a foreign key. CQL never declared one.`,
+  dropForeignKey: () => `-- Apache Cassandra: Cannot drop a foreign key. ${NO_FOREIGN_KEY_TO_DROP}`,
   // CQL spells it without the COLUMN keyword, measured on 5.0.9: `ADD COLUMN extra
   // TEXT` is "line 1:42 mismatched input 'TEXT' expecting EOF" while `ADD extra
   // text` succeeds.
@@ -83,5 +87,5 @@ export const CASSANDRA_MIGRATION_DDL: MigrationDdlSpec = {
     `-- Apache Cassandra: Cannot alter column "${commentName(col.columnName)}". ${NO_COLUMN_MODIFICATION}`,
   ],
   dropTable: standardDropTable,
-  reasons: [CASSANDRA_NO_CREATE_TABLE, NO_COLUMN_MODIFICATION],
+  reasons: [CASSANDRA_NO_CREATE_TABLE, NO_COLUMN_MODIFICATION, NO_FOREIGN_KEY_CLAUSE, NO_FOREIGN_KEY_TO_DROP],
 };
