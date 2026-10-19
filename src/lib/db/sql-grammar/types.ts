@@ -1,8 +1,10 @@
 /**
  * The contract every SQL-reading engine fills in once: its grammar facts plus the
  * per-engine readings that sit beside them today (redaction, the update-target
- * reader and completion quoting). Every field is required, so an engine states
- * each fact rather than inheriting one from a base object.
+ * reader and completion quoting). Every field of `SqlGrammarSpec` is required, so an engine states
+ * each of these rather than inheriting one from a base object. `SqlGrammar` itself is unchanged by
+ * the move and still has optional facts (`dollarTags`, `rawStrings`, `confirmForms` and others),
+ * which its readers default when a grammar leaves them out.
  */
 export type { SqlGrammar } from "@/lib/sql/grammar";
 import type { SqlGrammar } from "@/lib/sql/grammar";

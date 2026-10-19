@@ -30,7 +30,7 @@
  *    implied. Never read one dialect's rule off another's behaviour.
  */
 
-import { sqlGrammarFor } from "@/lib/db/sql-grammar";
+import { sqlGrammarFor, sqlGrammarForExactType } from "@/lib/db/sql-grammar";
 import type { DatabaseType } from "@/lib/types";
 
 /**
@@ -437,12 +437,12 @@ export function resolveSqlGrammar(type?: DatabaseType): SqlGrammar {
  * host application passing an unrecognised string on today's reading rather than
  * silently switching the SQL checks off.
  *
- * A value that is not a string answers true as well, as it did when the non-SQL types were a set compared by
- * identity: a host calling from plain JavaScript with `new String("mongodb")` was read as SQL, and `sqlGrammarFor`'s
- * property-key lookup would otherwise convert it to the mongodb row.
+ * A value that is not a string answers the unknown-type fact as well, as it did when the non-SQL types were a set
+ * compared by identity: a host calling from plain JavaScript with `new String("mongodb")` was read as SQL, and
+ * `sqlGrammarFor`'s property-key lookup would otherwise convert it to the mongodb row (`sqlGrammarForExactType`).
  */
 export function readsSqlText(type?: DatabaseType): boolean {
-  return typeof type !== "string" || sqlGrammarFor(type).readsSqlText;
+  return sqlGrammarForExactType(type).readsSqlText;
 }
 
 /**

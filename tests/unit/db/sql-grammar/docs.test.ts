@@ -5,7 +5,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, sep } from "node:path";
 import { SQL_GRAMMAR } from "@/lib/db/sql-grammar";
 import type { DatabaseType } from "@/lib/types";
 import { engineModules, ROOT } from "./engine-modules";
@@ -46,7 +46,8 @@ describe("provider docs state their SQL grammar facts", () => {
       expect(section, `${id}.md has no "SQL grammar" heading`).not.toBeNull();
       const body = section ?? "";
 
-      expect(body).toContain(relative(ROOT, engine.path));
+      // Docs cite the module with forward slashes, the separator `relative` uses on Windows is a backslash.
+      expect(body).toContain(relative(ROOT, engine.path).split(sep).join("/"));
 
       const constant = readFileSync(engine.path, "utf8").match(/^\s*grammar:\s*([A-Z0-9_]+)/m)?.[1];
       expect(constant, `${engine.path} names no grammar constant`).toBeDefined();
@@ -55,6 +56,17 @@ describe("provider docs state their SQL grammar facts", () => {
       const spec = SQL_GRAMMAR[id];
       expect(body).toMatch(new RegExp(`readsSqlText\`? (?:is )?\`${spec.readsSqlText}\``));
       expect(body).toContain(`\`${spec.redaction.kind}\``);
+      if (spec.redaction.kind === "sql") {
+        // The name quote decides whether a quoted run is kept as a name or masked as a literal.
+        const { nameQuote } = spec.redaction;
+        const quote =
+          nameQuote === null
+            ? "no name quote"
+            : nameQuote === "`"
+              ? "a backtick as its name quote"
+              : `\`${nameQuote}\` as its name quote`;
+        expect(body).toContain(`Redaction is \`sql\` with ${quote}`);
+      }
     });
   }
 

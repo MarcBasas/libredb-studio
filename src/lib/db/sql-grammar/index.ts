@@ -106,3 +106,14 @@ export function sqlGrammarFor(type: string | undefined): SqlGrammarSpec {
   if (type === undefined) return NO_CONNECTION_SQL_GRAMMAR;
   return Object.hasOwn(SQL_GRAMMAR, type) ? SQL_GRAMMAR[type as DatabaseType] : UNKNOWN_TYPE_SQL_GRAMMAR;
 }
+
+/**
+ * `sqlGrammarFor` for the facts that were identity comparisons against a type id before they moved here
+ * (`readsSqlText`, the update-target rules and completion quoting): a type that is not a primitive string, such as
+ * `new String("mysql")` from a host calling in plain JavaScript, is the unknown-type spec rather than the row its
+ * string conversion names. The span grammar and redaction were property-key lookups, which convert, and keep
+ * `sqlGrammarFor`.
+ */
+export function sqlGrammarForExactType(type: string | undefined): SqlGrammarSpec {
+  return type === undefined || typeof type === "string" ? sqlGrammarFor(type) : UNKNOWN_TYPE_SQL_GRAMMAR;
+}

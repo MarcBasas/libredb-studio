@@ -4,10 +4,11 @@
  */
 import { describe, expect, test } from "bun:test";
 import { EXTERNAL_DATABASE_TYPES } from "@/lib/db/compatibility";
-import { SQL_GRAMMAR, sqlGrammarFor } from "@/lib/db/sql-grammar";
+import { SQL_GRAMMAR, sqlGrammarFor, sqlGrammarForExactType } from "@/lib/db/sql-grammar";
 import { NO_CONNECTION_SQL_GRAMMAR } from "@/lib/db/sql-grammar/no-connection";
 import type { SqlGrammarSpec } from "@/lib/db/sql-grammar/types";
 import { UNKNOWN_TYPE_SQL_GRAMMAR } from "@/lib/db/sql-grammar/unknown-type";
+import { DEFAULT_SQL_GRAMMAR } from "@/lib/sql/grammar";
 import type { DatabaseType } from "@/lib/types";
 
 const FLAT: Partial<Record<DatabaseType, string>> = {
@@ -92,6 +93,26 @@ describe("the SQL grammar registry", () => {
 
   test.each(["constructor", "__proto__", "not-an-engine"])("%s is the unknown-type spec", (type) => {
     expect(sqlGrammarFor(type)).toBe(UNKNOWN_TYPE_SQL_GRAMMAR);
+  });
+
+  // A redaction reader guessing where a literal ends can store the literal, so `sql` redaction needs text that IS
+  // SQL and a grammar established for the engine. Before the registry, `readerOf` refused both cases itself.
+  test.each([
+    ...Object.entries(SQL_GRAMMAR),
+    ["no connection", NO_CONNECTION_SQL_GRAMMAR],
+    ["unknown type", UNKNOWN_TYPE_SQL_GRAMMAR],
+  ] as [string, SqlGrammarSpec][])("%s redacts as SQL only text it reads as SQL under its own grammar", (_id, spec) => {
+    if (spec.redaction.kind !== "sql") return;
+    expect(spec.readsSqlText).toBe(true);
+    expect(spec.grammar).not.toBe(DEFAULT_SQL_GRAMMAR);
+  });
+
+  test("the exact-type lookup is the registry for a string or no type, and the unknown spec for anything else", () => {
+    expect(sqlGrammarForExactType(undefined)).toBe(NO_CONNECTION_SQL_GRAMMAR);
+    expect(sqlGrammarForExactType("mysql")).toBe(SQL_GRAMMAR.mysql);
+    expect(sqlGrammarForExactType("not-an-engine")).toBe(UNKNOWN_TYPE_SQL_GRAMMAR);
+    expect(sqlGrammarForExactType(new String("mysql") as unknown as string)).toBe(UNKNOWN_TYPE_SQL_GRAMMAR);
+    expect(sqlGrammarFor(new String("mysql") as unknown as string)).toBe(SQL_GRAMMAR.mysql);
   });
 
   test("the two named specs are distinct objects with equal facts", () => {

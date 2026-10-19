@@ -1186,7 +1186,9 @@ Those three reach code and tests only; the four prose greps of the published blo
       Establish each fact from your engine's own documentation or its driver's tokenizer, never from a
       neighbouring dialect, and leave it at the default rather than guess. `redaction` says what a
       redacted query event keeps: `sql` with the name quote, `command` with the module's own reader,
-      or `none`, which stores `?`. Then regenerate the golden file with
+      or `none`, which stores `?`. An engine on `DEFAULT_SQL_GRAMMAR` or with `readsSqlText: false`
+      takes `none` or `command`, never `sql`, because a reader guessing where a literal ends can store
+      the literal; `tests/unit/db/sql-grammar/census.test.ts` holds it. Then regenerate the golden file with
       `UPDATE_GOLDEN=1 bun tests/run-tests.ts tests/unit/db/sql-grammar/golden.test.ts`, commit it,
       and add the `SQL grammar` subsection to your provider doc, which
       `tests/unit/db/sql-grammar/docs.test.ts` holds to the module

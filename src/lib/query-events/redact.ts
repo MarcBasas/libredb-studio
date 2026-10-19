@@ -11,8 +11,8 @@
  * were a name:
  *
  * - SQL is read by the span reader every statement reader in Studio shares (`src/lib/sql/spans.ts`), under the
- *   engine's row of `src/lib/sql/grammar.ts`, so a literal, a comment and a quoted name end here where the
- *   confirmation gate and the statement splitter end them. A quoted run the reader cannot close, such as one whose
+ *   engine's grammar in the SQL grammar registry (`src/lib/db/sql-grammar/`), so a literal, a comment and a quoted
+ *   name end here where the confirmation gate and the statement splitter end them. A quoted run the reader cannot close, such as one whose
  *   closing quote stands behind a backslash that some sessions read as an escape, runs to the end of the text, so
  *   nothing after its opening quote is kept under either reading.
  * - A MongoDB command is the JSON document the provider parses, and a Redis command is the one command
