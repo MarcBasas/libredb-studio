@@ -47,7 +47,13 @@ import type { HostUriScheme } from "@/lib/connection-host-uri";
 import type { ConnectionImportDeclaration } from "@/lib/connection-import";
 import { MODBUS_READ_ONLY_HINT } from "@/lib/db/providers/industrial/modbus/constants";
 import { CREDENTIAL_WARNINGS, type CredentialWarning } from "@/lib/db/credential-warnings";
-import { CONNECTION_FIELDS, type ConnectionField } from "@/lib/db/connection-fields";
+import {
+  CONNECTION_FIELDS,
+  type ConnectionField,
+  type ConnectionFieldOf,
+  type FieldPlacement,
+  type PlaceableField,
+} from "@/lib/db/connection-fields";
 import {
   SNOWFLAKE_FIELD_SENTENCES,
   snowflakeAccountRefusal,
@@ -95,12 +101,12 @@ export interface DatabaseUIConfig {
    */
   fieldPlaceholders?: Partial<Record<ConnectionField, string>>;
   /**
-   * Where the connection dialog draws a field: `"advanced"` behind the Advanced accordion, `"open"` with the other
-   * fields. Read through `connectionFieldPlacement`; absent means open. The `authSource`, `localDataCenter`,
-   * `serviceName` and `instanceName` boxes are drawn where it says, and the dialog draws the accordion only for an
-   * engine that places one of its `connectionFields` there.
+   * Where the connection dialog draws each of the `PLACEABLE_FIELDS` this engine takes: `"advanced"` behind the
+   * Advanced accordion, `"open"` with the other fields. Read through `connectionFieldPlacement`. Required by
+   * `FieldPlacementDeclaration` for every engine that takes one of those fields and refused for every other engine,
+   * so there is no default to fall through to. The dialog draws the accordion only for an engine that places one there.
    */
-  fieldPlacement?: Partial<Record<ConnectionField, "open" | "advanced">>;
+  fieldPlacement?: Readonly<Partial<Record<PlaceableField, FieldPlacement>>>;
   /**
    * The sentence under the Host box derived from what is typed in it, such as the host a Snowflake account
    * identifier resolves to, or `undefined` while the text derives nothing. Drawn in place of the static `fieldHints`
@@ -430,7 +436,20 @@ export const RABBITMQ_FIELD_HINTS: Readonly<Partial<Record<ConnectionField, stri
     "Sends the username and password in clear text to the management API and the AMQP port, where anyone on the path can read them. Prefer an SSL mode and the TLS ports 15671 and 5671.",
 });
 
-export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
+/**
+ * What one type's entry says about placement: where each placeable field it takes is drawn, required and total over
+ * those fields; a type that takes none declares nothing. Adding a placeable field to a type's `CONNECTION_FIELDS` row
+ * therefore fails to compile until its entry decides where the field goes.
+ */
+export type FieldPlacementDeclaration<T extends DatabaseType> = [
+  Extract<ConnectionFieldOf<T>, PlaceableField>,
+] extends [never]
+  ? { readonly fieldPlacement?: never }
+  : { readonly fieldPlacement: { readonly [F in Extract<ConnectionFieldOf<T>, PlaceableField>]: FieldPlacement } };
+
+export const DB_UI_CONFIG: {
+  [T in DatabaseType]: Omit<DatabaseUIConfig, "fieldPlacement"> & FieldPlacementDeclaration<T>;
+} = {
   postgres: {
     icon: PostgreSQLIcon,
     color: "text-hue-blue",
@@ -523,6 +542,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     defaultPort: "27017",
     showConnectionStringToggle: true,
     connectionFields: CONNECTION_FIELDS.mongodb,
+    fieldPlacement: { authSource: "open" },
     fieldPlaceholders: {
       connectionString: "mongodb://localhost:27017/mydb  or  mongodb+srv://...",
     },
@@ -759,6 +779,7 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     // fails the CONNECT rather than the first statement. The form labels it
     // "Keyspace" (fieldLabels below).
     connectionFields: CONNECTION_FIELDS.cassandra,
+    fieldPlacement: { localDataCenter: "open" },
     fieldLabels: {
       // Cassandra pins one KEYSPACE the same way (issue #424 Phase 4). "Database" is the
       // wrong word here too: a keyspace carries the replication settings, not just a
@@ -1729,9 +1750,15 @@ export function connectionFieldHint(config: DatabaseUIConfig, field: ConnectionF
   return config.fieldHints?.[field];
 }
 
-/** Where the connection dialog draws one field: the engine's declared `fieldPlacement`, else in the open. */
-export function connectionFieldPlacement(config: DatabaseUIConfig, field: ConnectionField): "open" | "advanced" {
-  return config.fieldPlacement?.[field] ?? "open";
+/**
+ * Where the connection dialog draws one placeable field the engine takes: its declared `fieldPlacement`. A field with
+ * no declaration is refused rather than drawn in the open, since `FieldPlacementDeclaration` requires one wherever
+ * the engine takes the field.
+ */
+export function connectionFieldPlacement(config: DatabaseUIConfig, field: PlaceableField): FieldPlacement {
+  const placement = config.fieldPlacement?.[field];
+  if (placement === undefined) throw new Error(`${config.label} declares no placement for ${field}`);
+  return placement;
 }
 
 /**

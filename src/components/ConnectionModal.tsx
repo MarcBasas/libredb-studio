@@ -46,6 +46,7 @@ import {
   type ConnectionField,
   type DatabaseUIConfig,
 } from "@/lib/db-ui-config";
+import { type FieldPlacement, PLACEABLE_FIELDS, type PlaceableField } from "@/lib/db/connection-fields";
 import { motion, AnimatePresence } from "framer-motion";
 import { CONNECTION_FORM_DEFAULTS, useConnectionForm } from "@/hooks/use-connection-form";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -554,7 +555,7 @@ export function ConnectionModal({
    * is drawn in the open or inside the Advanced accordion by that fact alone, so the declaration and the drawn place
    * cannot disagree.
    */
-  const placedIn = (field: ConnectionField, where: "open" | "advanced"): boolean =>
+  const placedIn = (field: PlaceableField, where: FieldPlacement): boolean =>
     takesConnectionField(type, field) && connectionFieldPlacement(uiConfig, field) === where;
 
   const authSourceBlock = (
@@ -1674,7 +1675,7 @@ export function ConnectionModal({
           </div>
 
           {/* Advanced Settings: drawn for an engine that places a field behind it (`fieldPlacement`). */}
-          {uiConfig.connectionFields.some((f) => connectionFieldPlacement(uiConfig, f) === "advanced") && (
+          {PLACEABLE_FIELDS.some((f) => placedIn(f, "advanced")) && (
             <div className="space-y-2">
               <button
                 type="button"

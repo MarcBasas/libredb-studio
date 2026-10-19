@@ -80,8 +80,17 @@ export type ConnectionField =
 /** A field a seed file may carry that no connection dialog draws: a deployment fact, named by a file path or a URI. */
 export type SeedOnlyField = "securityPolicyUri" | "clientCertificatePath" | "clientPrivateKeyPath";
 
-/** Each type's connection fields, in the order the connection dialog draws them. */
-export const CONNECTION_FIELDS: Readonly<Record<DatabaseType, readonly ConnectionField[]>> = Object.freeze({
+/**
+ * The fields the connection dialog draws either in the open or behind its Advanced accordion, as the engine's
+ * `fieldPlacement` in src/lib/db-ui-config.ts says. Every other field is drawn in the open by the dialog's own layout.
+ */
+export const PLACEABLE_FIELDS = ["authSource", "localDataCenter", "serviceName", "instanceName"] as const;
+export type PlaceableField = (typeof PLACEABLE_FIELDS)[number];
+/** Where the connection dialog draws a placeable field. */
+export type FieldPlacement = "open" | "advanced";
+
+/** Each type's connection fields as literals, so the compiler can ask what a given type takes. */
+const CONNECTION_FIELD_ROWS = {
   postgres: ["host", "port", "user", "password", "database"],
   mysql: ["host", "port", "user", "password", "database"],
   sqlite: ["database"],
@@ -135,7 +144,14 @@ export const CONNECTION_FIELDS: Readonly<Record<DatabaseType, readonly Connectio
   snmp: ["host", "port", "password", "allowInsecureAuth"],
   sparkplug: ["host", "port", "database"],
   libredb: ["database"],
-});
+} as const satisfies Record<DatabaseType, readonly ConnectionField[]>;
+
+/** The connection fields one type takes, as a union of literals. */
+export type ConnectionFieldOf<T extends DatabaseType> = (typeof CONNECTION_FIELD_ROWS)[T][number];
+
+/** Each type's connection fields, in the order the connection dialog draws them. */
+export const CONNECTION_FIELDS: Readonly<Record<DatabaseType, readonly ConnectionField[]>> =
+  Object.freeze(CONNECTION_FIELD_ROWS);
 
 /** The fields only one engine's provider reads, and how a seed of another type that carries one is refused. */
 export interface SeedOnlyFields {

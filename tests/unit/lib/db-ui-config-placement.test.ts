@@ -9,9 +9,11 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import ts from "typescript";
-import { CONNECTION_FIELDS } from "@/lib/db/connection-fields";
+import { CONNECTION_FIELDS, PLACEABLE_FIELDS } from "@/lib/db/connection-fields";
 import {
   DB_UI_CONFIG,
+  type DatabaseUIConfig,
+  type FieldPlacementDeclaration,
   connectionFieldLabel,
   connectionFieldPlacement,
   connectionFieldPlaceholder,
@@ -27,16 +29,55 @@ describe("connectionFieldPlacement", () => {
     expect(connectionFieldPlacement(DB_UI_CONFIG.mssql, "instanceName")).toBe("advanced");
   });
 
-  test("every other field every engine takes is drawn in the open", () => {
+  test("every other placeable field an engine takes is drawn in the open", () => {
     const misplaced: string[] = [];
     for (const [id, fields] of Object.entries(CONNECTION_FIELDS)) {
-      for (const field of fields) {
-        if (ADVANCED[id] === field) continue;
+      for (const field of PLACEABLE_FIELDS) {
+        if (!fields.includes(field) || ADVANCED[id] === field) continue;
         const placement = connectionFieldPlacement(DB_UI_CONFIG[id as DatabaseType], field);
         if (placement !== "open") misplaced.push(`${id}.${field}=${placement}`);
       }
     }
     expect(misplaced).toEqual([]);
+  });
+
+  test("each engine declares a placement for exactly the placeable fields it takes, and no other", () => {
+    const declared: Record<string, string[]> = {};
+    const taken: Record<string, string[]> = {};
+    for (const [id, fields] of Object.entries(CONNECTION_FIELDS)) {
+      const config: DatabaseUIConfig = DB_UI_CONFIG[id as DatabaseType];
+      declared[id] = Object.keys(config.fieldPlacement ?? {}).sort();
+      taken[id] = PLACEABLE_FIELDS.filter((field) => fields.includes(field)).sort();
+    }
+    expect(declared).toEqual(taken);
+  });
+
+  test("a field with no declared placement is refused, not drawn in the open by default", () => {
+    expect(() => connectionFieldPlacement(DB_UI_CONFIG.postgres, "serviceName")).toThrow(
+      "PostgreSQL declares no placement for serviceName",
+    );
+  });
+
+  /**
+   * Held by the compiler: `bun run typecheck` reads this file, and each `@ts-expect-error` below fails it the day its
+   * line compiles. The runtime assertion only keeps the fixtures from being unused.
+   */
+  test("the declaration is required where an engine takes a placeable field, and refused elsewhere", () => {
+    const fixtures: readonly unknown[] = [
+      // @ts-expect-error: Oracle takes serviceName, so it must say where the dialog draws it.
+      {} satisfies FieldPlacementDeclaration<"oracle">,
+      // @ts-expect-error: PostgreSQL takes no placeable field, so it declares no placement.
+      { fieldPlacement: { serviceName: "open" } } satisfies FieldPlacementDeclaration<"postgres">,
+      // @ts-expect-error: only the four placeable fields are drawn where a placement says.
+      { fieldPlacement: { warehouse: "advanced" } } satisfies FieldPlacementDeclaration<"databend">,
+      {
+        // @ts-expect-error: SQL Server does not take serviceName, so it cannot place one.
+        fieldPlacement: { instanceName: "advanced", serviceName: "open" },
+      } satisfies FieldPlacementDeclaration<"mssql">,
+      { fieldPlacement: { serviceName: "advanced" } } satisfies FieldPlacementDeclaration<"oracle">,
+      {} satisfies FieldPlacementDeclaration<"postgres">,
+    ];
+    expect(fixtures).toHaveLength(6);
   });
 });
 

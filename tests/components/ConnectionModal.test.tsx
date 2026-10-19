@@ -393,6 +393,7 @@ const MOCK_FIELD_COPY: Record<string, MockFieldCopy> = {
   // Mirrored from the real entries (engine contract, row 8): the words the dialog chose by type id before these
   // entries declared them. tests/unit/lib/db-ui-config.test.ts pins the real ones.
   mongodb: {
+    fieldPlacement: { authSource: "open" },
     fieldPlaceholders: { connectionString: "mongodb://localhost:27017/mydb  or  mongodb+srv://..." },
     fieldHints: {
       authSource:
@@ -418,6 +419,7 @@ const MOCK_FIELD_COPY: Record<string, MockFieldCopy> = {
     },
   },
   cassandra: {
+    fieldPlacement: { localDataCenter: "open" },
     fieldLabels: { database: "Keyspace Name" },
     fieldPlaceholders: { database: "probe" },
     fieldHints: {
@@ -712,7 +714,11 @@ mock.module("@/lib/db-ui-config", () => ({
   connectionFieldHint: (config: MockFieldCopy, field: string) => config.fieldHints?.[field],
   connectionFieldPlaceholder: (config: MockFieldCopy, field: string, fallback: string) =>
     config.fieldPlaceholders?.[field] ?? fallback,
-  connectionFieldPlacement: (config: MockFieldCopy, field: string) => config.fieldPlacement?.[field] ?? "open",
+  connectionFieldPlacement: (config: MockFieldCopy & { readonly label: string }, field: string) => {
+    const placement = config.fieldPlacement?.[field];
+    if (placement === undefined) throw new Error(`${config.label} declares no placement for ${field}`);
+    return placement;
+  },
   // The real reader's rule: an unset controlling field reads as its first option.
   connectionFieldShown: (
     config: MockFieldCopy & { readonly fieldOptions?: MockFieldCopy["fieldOptions"] },
@@ -1920,8 +1926,8 @@ describe("ConnectionModal", () => {
      */
     const EVERY_FIELD: readonly string[] = (() => {
       const source = readFileSync(join(import.meta.dir, "../../src/lib/db/connection-fields.ts"), "utf8");
-      const start = source.indexOf("export const CONNECTION_FIELDS");
-      const table = source.slice(start, source.indexOf("\n});", start));
+      const start = source.indexOf("const CONNECTION_FIELD_ROWS");
+      const table = source.slice(start, source.indexOf("\n} as const", start));
       const seen: string[] = [];
       for (const declaration of table.matchAll(/^\s+\w+: \[([^\]]*)\]/gm)) {
         for (const [, field] of (declaration[1] ?? "").matchAll(/"(\w+)"/g)) {
