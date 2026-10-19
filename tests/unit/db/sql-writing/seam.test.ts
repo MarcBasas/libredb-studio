@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { existsSync, readFileSync } from "node:fs";
-import { basename, dirname, join } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { basename, dirname, join, resolve } from "node:path";
 import ts from "typescript";
 import { SQL_WRITING } from "@/lib/db/sql-writing";
-import { ENGINE_MODULES, ROOT, type EngineModule } from "./engine-modules";
+import { ENGINE_MODULES, ROOT, TYPED_LITERAL_MODULES, type EngineModule } from "./engine-modules";
 
 /**
  * The seam between one engine's SQL writing module and every other one (spec 5.3).
@@ -12,10 +12,12 @@ import { ENGINE_MODULES, ROOT, type EngineModule } from "./engine-modules";
  * export leaf `export-shared.ts` (spec 5.3 [T1]), plus the sibling its typed writer lives in
  * when that is large (spec 5.3), and nothing else, so no module can reach
  * another engine's rules or the registry that holds them all; a type
- * import of `@/lib/types` is allowed because it emits no code. The registry imports each
- * engine module once, and the two named specs stay the registry's own. Every module also
- * loads first in a fresh process without a `ReferenceError` (Review Focus 4), which is
- * what a typed writer or provider importing it directly would do.
+ * import of `@/lib/types` is allowed because it emits no code. A sibling is held to the
+ * same rule and is imported under `src/` by its owner only. The registry imports each
+ * engine module once, and the two named specs stay the registry's own. Every module, every
+ * sibling and the export leaf also load first in a fresh process without a
+ * `ReferenceError` (Review Focus 4), which is what a typed writer or provider importing
+ * one directly would do. The export path itself imports no engine's module (spec 5.4).
  *
  * Imports are read off the TypeScript AST: static imports and exports, `import("x")` and
  * `require("x")` with a literal specifier.
@@ -69,18 +71,21 @@ function importsOf(file: string, text = readFileSync(file, "utf8")): ImportRef[]
 const aliasOf = (repoPath: string): string => `@/${repoPath.replace(/^src\//, "").replace(/\.ts$/, "")}`;
 
 /**
- * The sibling an engine's typed writer lives in (spec 5.3): `./typed-literals` beside a
- * `<id>/sql-writing.ts`, `./<id>-typed-literals` beside an `<id>-sql-writing.ts`. It is the
- * engine's own file, so it is held to the module's import rule in turn.
+ * The specifiers an engine module may reach its own typed writer sibling by (spec 5.3):
+ * `./typed-literals` beside a `<id>/sql-writing.ts`, `./<id>-typed-literals` beside an
+ * `<id>-sql-writing.ts`, or the sibling's alias. An engine with no sibling has none.
  */
-const ownTypedLiterals = (engine: EngineModule): string =>
-  basename(engine.absPath) === "sql-writing.ts" ? "./typed-literals" : `./${engine.id}-typed-literals`;
+const ownTypedLiterals = (engine: EngineModule): string[] =>
+  TYPED_LITERAL_MODULES.filter(({ ownerId }) => ownerId === engine.id).flatMap(({ absPath, repoPath }) => [
+    `./${basename(absPath, ".ts")}`,
+    aliasOf(repoPath),
+  ]);
 
-const forbiddenImports = (file: string, text?: string, own?: string): string[] =>
+const forbiddenImports = (file: string, text?: string, own: readonly string[] = []): string[] =>
   importsOf(file, text)
     .filter(
       ({ specifier, typeOnly }) =>
-        !ALLOWED.has(specifier) && specifier !== own && !(typeOnly && TYPE_ONLY_ALLOWED.has(specifier)),
+        !ALLOWED.has(specifier) && !own.includes(specifier) && !(typeOnly && TYPE_ONLY_ALLOWED.has(specifier)),
     )
     .map(({ specifier, typeOnly }) => (typeOnly ? `type ${specifier}` : specifier));
 
@@ -101,6 +106,34 @@ const leafViolations = (file: string, text?: string, valueAllowed: ReadonlySet<s
  */
 const EXPORT_LEAF = join(ROOT, "src", "lib", "db", "sql-writing", "export-shared.ts");
 const EXPORT_LEAF_ALLOWED = new Set(["./shared", "@/lib/db/sql-writing/shared", "@/lib/non-finite"]);
+
+const SRC = join(ROOT, "src");
+
+function sourceFiles(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) return sourceFiles(full);
+    return /\.tsx?$/.test(entry.name) ? [full] : [];
+  });
+}
+
+/** A relative or `@/` specifier as the `.ts` path it names; a package specifier as `undefined`. */
+const resolvedPath = (from: string, specifier: string): string | undefined => {
+  if (specifier.startsWith("@/")) return `${join(SRC, specifier.slice(2))}.ts`;
+  if (specifier.startsWith(".")) return `${resolve(dirname(from), specifier)}.ts`;
+  return undefined;
+};
+
+/** Every file under `src/` that imports `target`, by whatever spelling, as a path from the repo root. */
+const importersOf = (target: string): string[] =>
+  sourceFiles(SRC)
+    .filter((file) => importsOf(file).some(({ specifier }) => resolvedPath(file, specifier) === target))
+    .map((file) =>
+      file
+        .slice(ROOT.length + 1)
+        .split("\\")
+        .join("/"),
+    );
 
 describe("SQL writing seam", () => {
   // Every engine module may import these two, so an import here reaches every engine transitively.
@@ -142,15 +175,47 @@ describe("SQL writing seam", () => {
 
   for (const engine of ENGINE_MODULES) {
     test(`${engine.id}: imports only the contract's types and shared building blocks`, () => {
-      const own = ownTypedLiterals(engine);
-      expect({ id: engine.id, forbidden: forbiddenImports(engine.absPath, undefined, own) }).toEqual({
+      expect({
         id: engine.id,
+        forbidden: forbiddenImports(engine.absPath, undefined, ownTypedLiterals(engine)),
+      }).toEqual({ id: engine.id, forbidden: [] });
+    });
+  }
+
+  test("the typed writer siblings on disk and their owners", () => {
+    expect(TYPED_LITERAL_MODULES.map(({ ownerId }) => ownerId)).toEqual([
+      "cassandra",
+      "clickhouse",
+      "databend",
+      "duckdb",
+      "postgres",
+      "snowflake",
+      "spark",
+      "trino",
+    ]);
+  });
+
+  for (const sibling of TYPED_LITERAL_MODULES) {
+    test(`${sibling.repoPath}: imports only the contract's types, shared building blocks and export leaf`, () => {
+      expect({ path: sibling.repoPath, forbidden: forbiddenImports(sibling.absPath) }).toEqual({
+        path: sibling.repoPath,
         forbidden: [],
       });
-      const sibling = join(dirname(engine.absPath), `${own.slice(2)}.ts`);
-      if (existsSync(sibling)) {
-        expect({ id: engine.id, forbidden: forbiddenImports(sibling) }).toEqual({ id: engine.id, forbidden: [] });
-      }
+    });
+
+    test(`${sibling.repoPath}: is imported under src/ by ${sibling.ownerId}'s module only`, () => {
+      const owners = ENGINE_MODULES.filter(({ id }) => id === sibling.ownerId).map(({ repoPath }) => repoPath);
+      expect(importersOf(sibling.absPath)).toEqual(owners);
+    });
+  }
+
+  // Spec 5.4: the export path reads every engine's facts through the registry.
+  for (const file of ["result-export.ts", "typed-literals.ts"]) {
+    test(`src/lib/export/${file}: imports nothing from an engine's provider tree`, () => {
+      const reached = importsOf(join(SRC, "lib", "export", file))
+        .map(({ specifier }) => specifier)
+        .filter((specifier) => specifier.startsWith("@/lib/db/providers/"));
+      expect(reached).toEqual([]);
     });
   }
 
@@ -195,6 +260,38 @@ describe("SQL writing seam", () => {
         ownTypedLiterals(mysql),
       ),
     ).toEqual(["./postgres-typed-literals"]);
+    expect(
+      forbiddenImports(
+        mysql.absPath,
+        `import { postgresLiteral } from "@/lib/db/providers/sql/postgres-typed-literals";\n`,
+        ownTypedLiterals(mysql),
+      ),
+    ).toEqual(["@/lib/db/providers/sql/postgres-typed-literals"]);
+    expect(
+      forbiddenImports(
+        mysql.absPath,
+        `import { buildResultExport } from "@/lib/export/result-export";\n`,
+        ownTypedLiterals(mysql),
+      ),
+    ).toEqual(["@/lib/export/result-export"]);
+    const cassandra = ENGINE_MODULES.find(({ id }) => id === "cassandra");
+    if (cassandra === undefined) throw new Error("cassandra module not found");
+    expect(
+      forbiddenImports(
+        cassandra.absPath,
+        `import { cassandraLiteral } from "@/lib/db/providers/sql/cassandra/typed-literals";\n`,
+        ownTypedLiterals(cassandra),
+      ),
+    ).toEqual([]);
+  });
+
+  test("an importer is found by either spelling of the sibling", () => {
+    const sibling = TYPED_LITERAL_MODULES.find(({ ownerId }) => ownerId === "postgres");
+    if (sibling === undefined) throw new Error("postgres typed writer sibling not found");
+    const mysql = join(SRC, "lib", "db", "providers", "sql", "mysql-sql-writing.ts");
+    expect(resolvedPath(mysql, "./postgres-typed-literals")).toBe(sibling.absPath);
+    expect(resolvedPath(mysql, "@/lib/db/providers/sql/postgres-typed-literals")).toBe(sibling.absPath);
+    expect(resolvedPath(mysql, "typescript")).toBeUndefined();
   });
 
   // Spec 5.4: the inline editor reads its key column kinds and bound edits from the registry,
@@ -211,15 +308,20 @@ describe("SQL writing seam", () => {
     expect(forbidden).toEqual([]);
   });
 
-  for (const engine of ENGINE_MODULES) {
-    test(`${engine.id}: loads first in a fresh process`, () => {
-      const result = Bun.spawnSync(["bun", "-e", `await import(${JSON.stringify(engine.absPath)});`], {
+  const loadsFirst = [
+    ...ENGINE_MODULES.map(({ id, absPath }) => ({ id, absPath })),
+    ...TYPED_LITERAL_MODULES.map(({ repoPath, absPath }) => ({ id: repoPath, absPath })),
+    { id: EXPORT_LEAF.slice(ROOT.length + 1), absPath: EXPORT_LEAF },
+  ];
+  for (const { id, absPath } of loadsFirst) {
+    test(`${id}: loads first in a fresh process`, () => {
+      const result = Bun.spawnSync(["bun", "-e", `await import(${JSON.stringify(absPath)});`], {
         cwd: ROOT,
         stdout: "pipe",
         stderr: "pipe",
       });
-      expect({ id: engine.id, exitCode: result.exitCode, stderr: result.stderr.toString() }).toEqual({
-        id: engine.id,
+      expect({ id, exitCode: result.exitCode, stderr: result.stderr.toString() }).toEqual({
+        id,
         exitCode: 0,
         stderr: "",
       });

@@ -18,6 +18,11 @@ import { GOLDEN_KEYS, goldenFileName } from "./fixtures";
  * sentinel already lands in an edit's SQL through the quoted names and the placeholders.
  * Where the committed golden file shows an edit reaching its UPDATE, every edit of a value
  * that is not NULL must carry `BOUND_EDIT`, so the hook read the mocked `inlineEdit`.
+ *
+ * The export field keeps the engine's own type vocabulary, so declared names are still
+ * read, and answers `SENTINEL` for every spelling it writes. The replaced engine's
+ * `ddl(inferred)` line must show a quoted name followed by a sentinel type, so the export
+ * read the mocked `export` and not a table of its own.
  */
 const GOLDEN_DIR = join(import.meta.dir, "golden");
 const FIXTURES = join(import.meta.dir, "fixtures.ts");
@@ -45,6 +50,16 @@ mock.module(${JSON.stringify(engine.absPath)}, () => ({
       exactDecimalTypeNames: new Set(),
       float64TypeNames: "all",
       boundEdit: () => ${JSON.stringify(BOUND_EDIT)},
+    },
+    export: {
+      ddlTypes: { text: "SENTINEL", integer: "SENTINEL", numeric: "SENTINEL", boolean: "SENTINEL", timestamp: "SENTINEL", binary: "SENTINEL" },
+      standsAlone: [],
+      bareSpelling: {},
+      typeVocabulary: actual.${engine.exportName}.export.typeVocabulary,
+      binaryLiteral: SENTINEL,
+      nonFinite: { NaN: "SENTINEL", Infinity: "SENTINEL", "-Infinity": "SENTINEL" },
+      insertForm: "values",
+      typedLiteral: SENTINEL,
     },
   },
 }));
@@ -102,6 +117,8 @@ describe("SQL writing isolation", () => {
       expect({ exitCode: run?.exitCode, stderr: run?.stderr }).toEqual({ exitCode: 0, stderr: "" });
       const rendered = run?.rendered ?? {};
       expect(rendered[engine.id]).toContain('=> "SENTINEL"');
+      const ddl = (rendered[engine.id] ?? "").split("\n").find((line) => line.startsWith("ddl(inferred) => "));
+      expect(ddl).toContain("SENTINEL SENTINEL");
       if (editsReachUpdate(engine.id)) {
         const edits = valueEdits(rendered[engine.id] ?? "");
         expect(edits.length).toBeGreaterThan(0);
