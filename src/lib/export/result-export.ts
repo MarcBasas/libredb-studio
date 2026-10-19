@@ -7,7 +7,9 @@ import { htmlTable } from "./html";
 import { binaryCellsAsHex, jsonText } from "./json";
 import { markdownTable } from "./markdown";
 import { resolveUpdateTarget } from "@/lib/sql/update-target";
-import { cqlFrozenNested, snowflakeVectorType, typedLiteral, UnwritableValue } from "./typed-literals";
+import { cqlFrozenNested } from "@/lib/db/providers/sql/cassandra/typed-literals";
+import { snowflakeVectorType } from "@/lib/db/providers/sql/snowflake/typed-literals";
+import { typedLiteral, UnwritableValue } from "./typed-literals";
 import { isNonFiniteWord, nonFiniteWord, type NonFiniteWord } from "@/lib/non-finite";
 import {
   ISO_INSTANT_TEXT,

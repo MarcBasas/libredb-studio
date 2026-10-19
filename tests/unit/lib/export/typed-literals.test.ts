@@ -1,5 +1,6 @@
 import { describe, test, expect } from "bun:test";
-import { cqlFrozenNested, typedLiteral, UnwritableValue } from "@/lib/export/typed-literals";
+import { cqlFrozenNested } from "@/lib/db/providers/sql/cassandra/typed-literals";
+import { typedLiteral, UnwritableValue } from "@/lib/export/typed-literals";
 
 // The generic writer stands in for `result-export.ts`'s own, so every fallback is visible
 // as `<...>` and cannot be mistaken for a typed literal.

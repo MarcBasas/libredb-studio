@@ -8,8 +8,9 @@ import { ENGINE_MODULES, ROOT } from "./engine-modules";
 /**
  * The seam between one engine's SQL writing module and every other one (spec 5.3).
  *
- * An engine module imports the contract's `types.ts` and `shared.ts` and nothing else, so
- * no module can reach another engine's rules or the registry that holds them all; a type
+ * An engine module imports the contract's `types.ts`, `shared.ts` and the engine-neutral
+ * export leaf `export-shared.ts` (spec 5.3 [T1]) and nothing else, so no module can reach
+ * another engine's rules or the registry that holds them all; a type
  * import of `@/lib/types` is allowed because it emits no code. The registry imports each
  * engine module once, and the two named specs stay the registry's own. Every module also
  * loads first in a fresh process without a `ReferenceError` (Review Focus 4), which is
@@ -18,7 +19,11 @@ import { ENGINE_MODULES, ROOT } from "./engine-modules";
  * Imports are read off the TypeScript AST: static imports and exports, `import("x")` and
  * `require("x")` with a literal specifier.
  */
-const ALLOWED = new Set(["@/lib/db/sql-writing/types", "@/lib/db/sql-writing/shared"]);
+const ALLOWED = new Set([
+  "@/lib/db/sql-writing/types",
+  "@/lib/db/sql-writing/shared",
+  "@/lib/db/sql-writing/export-shared",
+]);
 const TYPE_ONLY_ALLOWED = new Set(["@/lib/types"]);
 const NAMED_SPECS = ["@/lib/db/sql-writing/no-connection", "@/lib/db/sql-writing/unknown-type"];
 
