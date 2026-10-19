@@ -1,14 +1,17 @@
 /**
- * One engine's connection string module cannot reach another engine's output. For each type id, a fresh `bun test`
- * process replaces that id's module with a sentinel spec (its own scheme, a TLS reader and a seed refusal) before the
- * parser, the seed schema and the golden fixtures load, renders every golden key, and writes them out. Every OTHER key
- * must still equal its committed golden file, and the replaced key must not, which proves the sentinel was read.
+ * One engine's connection string module cannot reach another engine's output. For each of `separatingGroups`' groups
+ * of type ids, a fresh `bun test` process replaces every module in the group with a sentinel spec (its own scheme, a
+ * TLS reader and a seed refusal) before the parser, the seed schema and the golden fixtures load, renders every golden
+ * key, and writes them out. Every key OUTSIDE the group must still equal its committed golden file, and every replaced
+ * key must not, which proves the sentinel was read; the groups separate every ordered pair of ids, so each engine is
+ * held real while each other engine is replaced.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { CONNECTION_STRING } from "@/lib/db/connection-string";
+import { runPool, separatingGroups } from "../isolation-children";
 import { GOLDEN_KEYS } from "./fixtures";
 
 const ROOT = join(import.meta.dir, "..", "..", "..", "..");
@@ -16,7 +19,7 @@ const GOLDEN_DIR = join(import.meta.dir, "golden");
 const FIXTURES = join(import.meta.dir, "fixtures.ts");
 const INDEX = join(ROOT, "src/lib/db/connection-string/index.ts");
 const IDS = Object.keys(CONNECTION_STRING).sort();
-const CONCURRENCY = 8;
+const GROUPS = separatingGroups(IDS);
 
 /** The module path the registry index imports for `id`, read from the index itself. */
 function modulePath(id: string): string {
@@ -26,18 +29,23 @@ function modulePath(id: string): string {
   return join(ROOT, "src", `${match[1]}.ts`);
 }
 
-/** A test file that swaps `id`'s module for the sentinel, then renders every golden key into `out`. */
-function childScript(id: string, out: string): string {
-  return `import { mock, test } from "bun:test";
-import { writeFileSync } from "node:fs";
-
-mock.module(${JSON.stringify(modulePath(id))}, () => ({
+/** A test file that swaps each of `group`'s modules for the sentinel, then renders every golden key into `out`. */
+function childScript(group: readonly string[], out: string): string {
+  const mocks = group
+    .map(
+      (id) => `mock.module(${JSON.stringify(modulePath(id))}, () => ({
   ${id.toUpperCase()}_CONNECTION_STRING: {
     scheme: "sentinel",
     readTls: () => ({ sslMode: "verify-full" }),
     validateSeed: () => [{ field: "host", sentence: "SENTINEL" }],
   },
-}));
+}));`,
+    )
+    .join("\n");
+  return `import { mock, test } from "bun:test";
+import { writeFileSync } from "node:fs";
+
+${mocks}
 const { GOLDEN_KEYS, renderConnectionStringGolden } = await import(${JSON.stringify(FIXTURES)});
 
 test("render", () => {
@@ -48,30 +56,27 @@ test("render", () => {
 }
 
 let dir = "";
-const rendered = new Map<string, Record<string, string>>();
-const failures = new Map<string, string>();
+const rendered = new Map<number, Record<string, string>>();
+const failures = new Map<number, string>();
 
-async function runChild(id: string): Promise<void> {
-  const script = join(dir, `${id}.test.ts`);
-  const out = join(dir, `${id}.json`);
-  writeFileSync(script, childScript(id, out));
+async function runChild(index: number): Promise<void> {
+  const script = join(dir, `group-${index}.test.ts`);
+  const out = join(dir, `group-${index}.json`);
+  writeFileSync(script, childScript(GROUPS[index] ?? [], out));
   const child = Bun.spawn(["bun", "test", script], { cwd: ROOT, stdout: "pipe", stderr: "pipe" });
   const [exitCode, stderr] = await Promise.all([child.exited, new Response(child.stderr).text()]);
   if (exitCode !== 0) {
-    failures.set(id, stderr);
+    failures.set(index, stderr);
     return;
   }
-  rendered.set(id, JSON.parse(readFileSync(out, "utf8")));
+  rendered.set(index, JSON.parse(readFileSync(out, "utf8")));
 }
 
 beforeAll(async () => {
   dir = mkdtempSync(join(tmpdir(), "connection-string-isolation-"));
-  const queue = [...IDS];
-  await Promise.all(
-    Array.from({ length: CONCURRENCY }, async () => {
-      // oxlint-disable-next-line no-await-in-loop -- a pool of CONCURRENCY workers, each taking the next id when its child exits.
-      for (let id = queue.shift(); id !== undefined; id = queue.shift()) await runChild(id);
-    }),
+  await runPool(
+    GROUPS.map((_, index) => index),
+    runChild,
   );
 }, 300_000);
 
@@ -84,16 +89,26 @@ describe("one engine's connection string module cannot reach another engine's ou
     expect(IDS.length).toBe(42);
   });
 
-  for (const id of IDS) {
-    test(`with ${id} replaced, every other key renders its golden`, () => {
-      expect(failures.get(id)).toBeUndefined();
-      const output = rendered.get(id) as Record<string, string>;
+  test("the groups replace every engine while holding every other engine real", () => {
+    const unseparated: string[] = [];
+    for (const a of IDS) {
+      for (const b of IDS) {
+        if (a !== b && !GROUPS.some((group) => group.includes(a) && !group.includes(b))) unseparated.push(`${a}>${b}`);
+      }
+    }
+    expect(unseparated).toEqual([]);
+  });
+
+  GROUPS.forEach((group, index) => {
+    test(`with ${group.join(", ")} replaced, every other key renders its golden`, () => {
+      expect(failures.get(index)).toBeUndefined();
+      const output = rendered.get(index) as Record<string, string>;
       expect(Object.keys(output).sort()).toEqual([...GOLDEN_KEYS].sort());
       for (const key of GOLDEN_KEYS) {
         const golden = readFileSync(join(GOLDEN_DIR, `${key}.txt`), "utf8");
-        if (key === id) expect(output[key]).not.toBe(golden);
+        if (group.includes(key)) expect(output[key]).not.toBe(golden);
         else expect({ key, rendered: output[key] }).toEqual({ key, rendered: golden });
       }
     });
-  }
+  });
 });

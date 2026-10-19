@@ -37,6 +37,16 @@ function describeElement(element: Element): string {
   return `${tag}#${element.id || "none"}${type} placeholder=${attr(element, "placeholder")} describedby=${attr(element, "aria-describedby")}`;
 }
 
+/**
+ * The buttons whose name, as `describeElement` writes it, is `name`. A by-name role query computes every button's
+ * accessible name and was three quarters of each render's time; the goldens hold this to the same buttons.
+ */
+function buttonsNamed(name: string): HTMLButtonElement[] {
+  return Array.from(document.querySelectorAll("button")).filter(
+    (button) => (button.getAttribute("aria-label") ?? text(button)) === name,
+  );
+}
+
 function dialogLines(): string[] {
   return Array.from(
     screen.getByRole("dialog").querySelectorAll("label, input, textarea, select, button, p.text-xs"),
@@ -130,11 +140,14 @@ export async function renderFormGolden(type: DatabaseType): Promise<string> {
         onTestConnection={async () => ({ success: true })}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: DB_UI_CONFIG[type].label }));
+    const [picker, ...others] = buttonsNamed(DB_UI_CONFIG[type].label);
+    if (picker === undefined || others.length > 0) throw new Error(`not exactly one ${type} picker button drawn`);
+    fireEvent.click(picker);
     lines.push("== discrete", ...dialogLines());
 
-    const advanced = screen.queryByRole("button", { name: "Advanced" });
-    if (advanced !== null) {
+    const [advanced, ...moreAdvanced] = buttonsNamed("Advanced");
+    if (moreAdvanced.length > 0) throw new Error(`more than one Advanced button drawn for ${type}`);
+    if (advanced !== undefined) {
       await act(async () => {
         fireEvent.click(advanced);
       });
@@ -143,9 +156,9 @@ export async function renderFormGolden(type: DatabaseType): Promise<string> {
 
     if (DB_UI_CONFIG[type].showConnectionStringToggle) {
       // The mode toggle's own button, the one beside "Host / Port", not any other button of the same name.
-      const toggle = screen
-        .getAllByRole("button", { name: "Connection String" })
-        .find((button) => button.previousElementSibling?.textContent?.trim() === "Host / Port");
+      const toggle = buttonsNamed("Connection String").find(
+        (button) => button.previousElementSibling?.textContent?.trim() === "Host / Port",
+      );
       if (toggle === undefined) throw new Error(`no connection-string toggle drawn for ${type}`);
       await act(async () => {
         fireEvent.click(toggle);
