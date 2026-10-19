@@ -23,7 +23,7 @@ import type { SqlWritingSpec, TypedWriter } from "@/lib/db/sql-writing/types";
  * The inline grid edit (`use-inline-editing.ts`) binds it with a `T` for the same reason the
  * SQL INSERT export (`mssqlLiteral` below) writes it with one.
  */
-export const MSSQL_DATETIME_TEXT = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d{1,3})?$/;
+const MSSQL_DATETIME_TEXT = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d{1,3})?$/;
 
 /**
  * The SQL Server types that read `yyyy-mm-dd hh:mi:ss` through the session's DATEFORMAT.
@@ -43,7 +43,7 @@ const MSSQL_DATEFORMAT_TYPES: ReadonlySet<string> = new Set(["datetime", "smalld
  * `'2026-10-25 …'` is refused, while `'2026-10-04T12:34:56.123'` is October 4th under those
  * and under `us_english` and `Japanese`. So the text goes out with its space as a `T`.
  */
-export const mssqlLiteral: TypedWriter = (value, declared) => {
+const mssqlLiteral: TypedWriter = (value, declared) => {
   if (typeof value === "boolean") return value ? "1" : "0";
   const type = normalized(declared);
   if (

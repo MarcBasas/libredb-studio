@@ -23,7 +23,7 @@ import type { SqlWritingSpec } from "@/lib/db/sql-writing/types";
  * that reaches end of file with no trailing newline is left open, so this is never
  * the last thing in the file without one: the statement always follows it.
  */
-export const CASSANDRA_PRIMARY_KEY_NOTE =
+const CASSANDRA_PRIMARY_KEY_NOTE =
   "-- CQL requires exactly one PRIMARY KEY per table, and a result set carries no key of\n" +
   "-- its own. This export chose the first column as a placeholder: confirm it is unique\n" +
   "-- per row before running this statement.\n";

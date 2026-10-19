@@ -220,35 +220,6 @@ export const FALSE_POSITIVES: readonly Listed[] = [
 
 /** Every branch of spec 2.6 not yet moved, with the PR that moves it. */
 export const DEBT: readonly Debt[] = [
-  { path: "src/lib/export/result-export.ts", declaration: "DIALECT_TYPES", count: 1, pr: 4, reason: MOVES_IN[4] },
-  { path: "src/lib/export/result-export.ts", declaration: "STANDS_ALONE", count: 1, pr: 4, reason: MOVES_IN[4] },
-  {
-    path: "src/lib/export/result-export.ts",
-    declaration: "DIALECT_BARE_SPELLING",
-    count: 1,
-    pr: 4,
-    reason: MOVES_IN[4],
-  },
-  {
-    path: "src/lib/export/result-export.ts",
-    declaration: "DECLARED_TYPE_REWRITE",
-    count: 1,
-    pr: 4,
-    reason: MOVES_IN[4],
-  },
-  { path: "src/lib/export/result-export.ts", declaration: "sqlTypeOf", count: 1, pr: 4, reason: MOVES_IN[4] },
-  { path: "src/lib/export/result-export.ts", declaration: "BINARY_LITERAL", count: 1, pr: 4, reason: MOVES_IN[4] },
-  { path: "src/lib/export/result-export.ts", declaration: "NON_FINITE_LITERALS", count: 1, pr: 4, reason: MOVES_IN[4] },
-  {
-    path: "src/lib/export/result-export.ts",
-    declaration: "INSERT_SELECT_DIALECTS",
-    count: 3,
-    pr: 4,
-    reason: MOVES_IN[4],
-  },
-  { path: "src/lib/export/result-export.ts", declaration: "oracleColumns", count: 1, pr: 4, reason: MOVES_IN[4] },
-  { path: "src/lib/export/result-export.ts", declaration: "buildResultExport", count: 1, pr: 4, reason: MOVES_IN[4] },
-  { path: "src/lib/export/typed-literals.ts", declaration: "TYPED_WRITERS", count: 1, pr: 4, reason: MOVES_IN[4] },
   { path: "src/lib/sql/grammar.ts", declaration: "SQL_GRAMMARS", count: 1, pr: 5, reason: MOVES_IN[5] },
   { path: "src/lib/sql/grammar.ts", declaration: "NON_SQL_DIALECTS", count: 3, pr: 5, reason: MOVES_IN[5] },
   { path: "src/lib/sql/update-target.ts", declaration: "readPieces", count: 1, pr: 5, reason: MOVES_IN[5] },

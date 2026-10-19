@@ -91,12 +91,12 @@ function oracleDateShape(declared: string | undefined): OracleDateShape {
  * holding `2026-09-01 10:30:00` is text, and converting it would store the NLS rendering
  * of a timestamp where the characters belonged.
  */
-export interface OracleDateColumn {
+interface OracleDateColumn {
   shape: OracleDateShape;
   text?: "date" | "timestamp" | "zoned";
 }
 
-export function oracleDateColumn(declared: string | undefined): OracleDateColumn {
+function oracleDateColumn(declared: string | undefined): OracleDateColumn {
   const bare = declared?.trim().toUpperCase() ?? "";
   const text =
     bare === "DATE"
@@ -124,7 +124,7 @@ function pad(value: number, width = 2): string {
  * inserted into a `DATE` column is accepted and silently truncated to the whole second,
  * so nothing is lost either way and the explicit function says what the column is.
  */
-export function oracleDateLiteral(value: Date, shape: OracleDateShape): string {
+function oracleDateLiteral(value: Date, shape: OracleDateShape): string {
   const utc = shape === "zoned";
   const year = utc ? value.getUTCFullYear() : value.getFullYear();
   // A BC year keeps its sign in front of the zeros (`-0044`, never `0-44`) and takes the signed
@@ -148,7 +148,7 @@ export function oracleDateLiteral(value: Date, shape: OracleDateShape): string {
  * fractional second, so a fraction is not a DATE's text. The text is digits and separators
  * by that same match, so interpolating it needs no quoting.
  */
-export function oracleTextLiteral(text: string, type: "date" | "timestamp"): string | undefined {
+function oracleTextLiteral(text: string, type: "date" | "timestamp"): string | undefined {
   const match = ORACLE_ZONELESS_TEXT.exec(text);
   if (match === null) return undefined;
   const [, sign, fraction] = match;
@@ -170,7 +170,7 @@ export function oracleTextLiteral(text: string, type: "date" | "timestamp"): str
  * form but are not what `toISOString` writes for any instant. The literal is built from
  * the parsed fields, never from the text.
  */
-export function oracleZonedTextLiteral(text: string): string | undefined {
+function oracleZonedTextLiteral(text: string): string | undefined {
   if (!ISO_INSTANT_TEXT.test(text)) return undefined;
   const instant = new Date(text);
   return !Number.isNaN(instant.getTime()) && instant.toISOString() === text
@@ -223,7 +223,7 @@ export const ORACLE_SQL_WRITING: SqlWritingSpec = {
      * while `:1` wrapped in `TO_DATE(:1, '[S]YYYY-MM-DD HH24:MI:SS')`, `TO_TIMESTAMP(:1,
      * '[S]YYYY-MM-DD HH24:MI:SS[.FF]')`, or `FROM_TZ(TO_TIMESTAMP(:1, 'YYYY-MM-DD HH24:MI:SS.FF3'), 'UTC')`
      * stored each value equal on the server, BC dates included. Matched by the same regexes and masks the
-     * SQL INSERT export uses (`result-export.ts`). Everything else returns `undefined` and binds as `:n`.
+     * SQL INSERT export uses (`export.columnWriters` below). Everything else returns `undefined` and binds as `:n`.
      */
     boundEdit: (text, declaredType, bind) => {
       const bare = declaredType?.trim().toUpperCase() ?? "";
