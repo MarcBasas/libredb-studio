@@ -1,11 +1,19 @@
 import {
+  BARE_TYPE_FAMILY,
+  CLICKHOUSE_WRAPPER,
   EXACT_DECIMAL_TYPE_NAMES,
+  EXACT_NUMERIC_TYPE,
   FLOAT64_TYPE_NAMES,
-  INSTANT_TYPE_NAMES,
+  FLOAT_TYPE,
   identifierDoubleQuoted,
+  INSTANT_TYPE_NAMES,
   literalStandard,
+  NO_BARE_SPELLING,
+  NULL_NON_FINITE,
   unquoteStandard,
 } from "@/lib/db/sql-writing/shared";
+import { binaryStandardHex } from "@/lib/db/sql-writing/export-shared";
+import { trinoLiteral } from "./typed-literals";
 import type { SqlWritingSpec } from "@/lib/db/sql-writing/types";
 
 /** How a generated statement spells a literal, a name and a bind for Trino. */
@@ -32,5 +40,33 @@ export const TRINO_SQL_WRITING: SqlWritingSpec = {
     instantTypeNames: INSTANT_TYPE_NAMES,
     exactDecimalTypeNames: EXACT_DECIMAL_TYPE_NAMES,
     float64TypeNames: FLOAT64_TYPE_NAMES,
+  },
+  export: {
+    // `text` is `Unknown type 'text'` on Trino 476: `VARCHAR` is the unbounded
+    // character type, and `DOUBLE PRECISION`, `BIGINT`, `BOOLEAN` and `TIMESTAMP` are
+    // all accepted as they are (measured, `DOUBLE PRECISION` is stored as `double`).
+    ddlTypes: {
+      text: "VARCHAR",
+      integer: "BIGINT",
+      numeric: "DOUBLE PRECISION",
+      boolean: "BOOLEAN",
+      timestamp: "TIMESTAMP",
+      binary: "VARBINARY",
+    },
+    standsAlone: ["varchar", "varbinary", "timestamp", "timestamp without time zone", "timestamp with time zone"],
+    bareSpelling: NO_BARE_SPELLING,
+    typeVocabulary: {
+      bareTypeFamily: BARE_TYPE_FAMILY,
+      floatType: FLOAT_TYPE,
+      exactNumericType: EXACT_NUMERIC_TYPE,
+      numericWrapper: CLICKHOUSE_WRAPPER,
+    },
+    // Trino measured on 476: `SELECT typeof(X'0102')` answers `varbinary`,
+    // `to_hex(X'0102deadbeef')` answers `0102DEADBEEF`, `length(X'')` answers 0, and the
+    // whole generated pair replays into the memory connector.
+    binaryLiteral: binaryStandardHex,
+    nonFinite: NULL_NON_FINITE,
+    insertForm: "values",
+    typedLiteral: trinoLiteral,
   },
 };

@@ -1,4 +1,16 @@
-import { identifierDoubleQuoted, literalStandard, unquoteStandard } from "@/lib/db/sql-writing/shared";
+import {
+  BARE_TYPE_FAMILY,
+  CLICKHOUSE_WRAPPER,
+  EXACT_NUMERIC_TYPE,
+  FLOAT_TYPE,
+  identifierDoubleQuoted,
+  literalStandard,
+  NO_BARE_SPELLING,
+  NULL_NON_FINITE,
+  STANDARD_DDL_TYPES,
+  unquoteStandard,
+} from "@/lib/db/sql-writing/shared";
+import { binaryStandardHex } from "@/lib/db/sql-writing/export-shared";
 import type { SqlWritingSpec } from "@/lib/db/sql-writing/types";
 
 /** How a generated statement spells a literal, a name and a bind for libSQL. */
@@ -99,5 +111,65 @@ export const LIBSQL_SQL_WRITING: SqlWritingSpec = {
      * day among them, measured on bun:sqlite in the SQLite module.
      */
     float64TypeNames: "all",
+  },
+  export: {
+    ddlTypes: STANDARD_DDL_TYPES,
+    // The same list, for the same measured reason: libSQL IS SQLite 3.47.0, and
+    // `pragma_table_info` there answers the declared spelling verbatim too (measured on
+    // sqld 0.24.33). Written out rather than aliased so a future divergence can be
+    // recorded in one row without touching the other.
+    standsAlone: [
+      "character varying",
+      "varchar",
+      "varchar2",
+      "nvarchar",
+      "nvarchar2",
+      "character",
+      "char",
+      "nchar",
+      "text",
+      "ntext",
+      "tinytext",
+      "mediumtext",
+      "longtext",
+      "clob",
+      "nclob",
+      "binary",
+      "varbinary",
+      "raw",
+      "blob",
+      "tinyblob",
+      "mediumblob",
+      "longblob",
+      "bytea",
+      "image",
+      "numeric",
+      "decimal",
+      "number",
+      "binary_double",
+      "binary_float",
+      "money",
+      "timestamp",
+      "timestamp without time zone",
+      "timestamp with time zone",
+      "datetime",
+      "datetime2",
+      "smalldatetime",
+      "datetimeoffset",
+      "year",
+    ],
+    bareSpelling: NO_BARE_SPELLING,
+    typeVocabulary: {
+      bareTypeFamily: BARE_TYPE_FAMILY,
+      floatType: FLOAT_TYPE,
+      exactNumericType: EXACT_NUMERIC_TYPE,
+      numericWrapper: CLICKHOUSE_WRAPPER,
+    },
+    // Measured over Hrana on sqld 0.24.33: `SELECT hex(X'0102deadbeef')` answers
+    // `0102DEADBEEF`, `typeof(X'')` answers `blob` and `length(X'')` answers 0 - the
+    // same readings as the SQLite row above, taken again rather than assumed.
+    binaryLiteral: binaryStandardHex,
+    nonFinite: NULL_NON_FINITE,
+    insertForm: "values",
   },
 };

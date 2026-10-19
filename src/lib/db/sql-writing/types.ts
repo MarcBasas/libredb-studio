@@ -4,8 +4,8 @@ import type { NonFiniteWord } from "@/lib/non-finite";
  * The SQL writing contract: what one engine states about the literals, identifiers and
  * binds a generated statement spells for it.
  *
- * This is the values subset and the inline edit fields, `InlineEditSpec`. The export fields
- * arrive with row 4, so no field exists before the code that reads it.
+ * This is the values subset, the inline edit fields, `InlineEditSpec`, and the result export's
+ * SQL forms, `ExportSpec`.
  *
  * Every fact is required. A `null` is an answer, not an omission: it says the engine has
  * no form of that kind, and the reader turns it into today's fallback.
@@ -23,6 +23,8 @@ export interface SqlWritingSpec {
   readonly temporalLiteral: ((text: string, kind: "date" | "timestamp") => string | undefined) | null;
   /** The key column kinds and bound edit the inline editor reads for this engine. */
   readonly inlineEdit: InlineEditSpec;
+  /** The CREATE TABLE types and INSERT literals the result export writes for this engine. */
+  readonly export: ExportSpec;
 }
 
 /**

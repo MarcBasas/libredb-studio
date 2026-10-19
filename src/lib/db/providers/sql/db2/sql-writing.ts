@@ -1,12 +1,20 @@
 import {
+  BARE_TYPE_FAMILY,
+  CLICKHOUSE_WRAPPER,
   EXACT_DECIMAL_TYPE_NAMES,
+  EXACT_NUMERIC_TYPE,
   FLOAT64_TYPE_NAMES,
-  INSTANT_TYPE_NAMES,
+  FLOAT_TYPE,
   identifierDoubleQuoted,
+  INSTANT_TYPE_NAMES,
   literalStandard,
+  NO_BARE_SPELLING,
+  NOTHING_STANDS_ALONE,
+  NULL_NON_FINITE,
   placeholderQuestion,
   unquoteStandard,
 } from "@/lib/db/sql-writing/shared";
+import { binaryBinaryHex } from "@/lib/db/sql-writing/export-shared";
 import type { SqlWritingSpec } from "@/lib/db/sql-writing/types";
 
 /** How a generated statement spells a literal, a name and a bind for Db2. */
@@ -24,5 +32,36 @@ export const DB2_SQL_WRITING: SqlWritingSpec = {
     instantTypeNames: INSTANT_TYPE_NAMES,
     exactDecimalTypeNames: EXACT_DECIMAL_TYPE_NAMES,
     float64TypeNames: FLOAT64_TYPE_NAMES,
+  },
+  export: {
+    // Db2 has no TEXT: measured on 12.1.0.0, `CREATE TABLE ... (c TEXT)` is SQL0204N `"TEXT" is an
+    // undefined name`, while BIGINT, DOUBLE PRECISION, BOOLEAN, TIMESTAMP and BLOB are whole types.
+    // CLOB, the unbounded character type, rather than a VARCHAR whose bound a cell could pass (#786).
+    ddlTypes: {
+      text: "CLOB",
+      integer: "BIGINT",
+      numeric: "DOUBLE PRECISION",
+      boolean: "BOOLEAN",
+      timestamp: "TIMESTAMP",
+      binary: "BLOB",
+    },
+    // No name was measured standing alone on Db2 in its first version (#786), so every bare name is
+    // re-spelled from its family.
+    standsAlone: NOTHING_STANDS_ALONE,
+    bareSpelling: NO_BARE_SPELLING,
+    typeVocabulary: {
+      bareTypeFamily: BARE_TYPE_FAMILY,
+      floatType: FLOAT_TYPE,
+      exactNumericType: EXACT_NUMERIC_TYPE,
+      numericWrapper: CLICKHOUSE_WRAPPER,
+    },
+    // Measured on Db2 LUW 12.1.0.0 (#786): `INSERT … VALUES (X'0102deadbeef')` into a `BLOB` or a
+    // `VARBINARY` column is SQL0408N, "a value is not compatible with the data type of its
+    // assignment target", because `X'…'` is a character string here. `BX'0102deadbeef'` goes into
+    // `BLOB`, `VARBINARY` and `VARCHAR FOR BIT DATA` alike, reading back as `HEX(…)` =
+    // `0102DEADBEEF`, and `BX''` inserts the zero-length value into all three.
+    binaryLiteral: binaryBinaryHex,
+    nonFinite: NULL_NON_FINITE,
+    insertForm: "values",
   },
 };

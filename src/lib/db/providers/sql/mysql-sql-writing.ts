@@ -1,12 +1,18 @@
 import {
+  BARE_TYPE_FAMILY,
+  CLICKHOUSE_WRAPPER,
   EXACT_DECIMAL_TYPE_NAMES,
+  EXACT_NUMERIC_TYPE,
   FLOAT64_TYPE_NAMES,
-  INSTANT_TYPE_NAMES,
+  FLOAT_TYPE,
   identifierBacktickDoubled,
+  INSTANT_TYPE_NAMES,
   literalDoubleAndBackslash,
+  NULL_NON_FINITE,
   placeholderQuestion,
   unquoteDoubleAndBackslash,
 } from "@/lib/db/sql-writing/shared";
+import { binaryStandardHex } from "@/lib/db/sql-writing/export-shared";
 import type { SqlWritingSpec } from "@/lib/db/sql-writing/types";
 
 /** How a generated statement spells a literal, a name and a bind for MySQL. */
@@ -24,5 +30,35 @@ export const MYSQL_SQL_WRITING: SqlWritingSpec = {
     instantTypeNames: INSTANT_TYPE_NAMES,
     exactDecimalTypeNames: EXACT_DECIMAL_TYPE_NAMES,
     float64TypeNames: FLOAT64_TYPE_NAMES,
+  },
+  export: {
+    ddlTypes: {
+      text: "TEXT",
+      integer: "BIGINT",
+      numeric: "DOUBLE",
+      boolean: "BOOLEAN",
+      timestamp: "DATETIME",
+      binary: "BLOB",
+    },
+    standsAlone: ["text", "tinytext", "mediumtext", "longtext", "blob", "tinyblob", "mediumblob", "longblob", "year"],
+    // `mysql2` hands a bit string back as bytes, which `bit(64)`, MySQL's widest, takes for every
+    // width. MySQL's bare `datetime`, `timestamp` and `time` have fractional precision 0, which
+    // ROUNDS a `.999` replayed into them up to the next second, so they are written at precision 6
+    // (#1386).
+    bareSpelling: { bit: "bit(64)", datetime: "datetime(6)", timestamp: "timestamp(6)", time: "time(6)" },
+    typeVocabulary: {
+      bareTypeFamily: BARE_TYPE_FAMILY,
+      floatType: FLOAT_TYPE,
+      exactNumericType: EXACT_NUMERIC_TYPE,
+      numericWrapper: CLICKHOUSE_WRAPPER,
+    },
+    // Measured on MySQL 26.7.0: `SELECT HEX(X'0102deadbeef')` answers `0102DEADBEEF` and
+    // `SELECT LENGTH(X'')` answers 0, so MySQL is here rather than in `zero-x` even
+    // though it accepts `0x0102deadbeef` too: a zero-length value has no `0x` spelling
+    // (`SELECT LENGTH(0x)` is `ERROR 1054 … Unknown column '0x'`), and an empty cell is
+    // not a case an export gets to refuse.
+    binaryLiteral: binaryStandardHex,
+    nonFinite: NULL_NON_FINITE,
+    insertForm: "values",
   },
 };

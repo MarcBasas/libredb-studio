@@ -76,7 +76,7 @@ function snowflakeTemporalLiteral(text: string, convert: string, mask: string): 
  * The VECTOR type a cell's own text spells, for a column whose result metadata carries no dimension, as the trial's
  * did: as many elements as the value holds, FLOAT when any is not an integer, else INT.
  */
-export function snowflakeVectorType(text: string): string {
+function snowflakeVectorType(text: string): string {
   const inner = /^\s*\[([\s\S]*)\]\s*$/.exec(text)?.[1];
   const elements = inner === undefined ? [] : inner.split(",").map((element) => element.trim());
   if (elements.length === 0 || !elements.every((element) => SNOWFLAKE_VECTOR_ELEMENT.test(element))) {
@@ -84,6 +84,26 @@ export function snowflakeVectorType(text: string): string {
   }
   const float = elements.some((element) => !/^-?\d+$/.test(element));
   return `VECTOR(${float ? "FLOAT" : "INT"}, ${elements.length})`;
+}
+
+/**
+ * A Snowflake VECTOR column's declaration, from its first value.
+ *
+ * Snowflake reports a VECTOR result column as `vector` with no element type and no dimension, and
+ * `CREATE TABLE t (v VECTOR)` is a syntax error (001003), so the declaration is the one the first
+ * non-null cell spells, as the SQL INSERT export already casts each cell (`snowflakeVectorType`).
+ * Every cell of a VECTOR column has the same element type and dimension, so one cell decides. A
+ * column with no value to read is declared `ARRAY`, which holds the NULLs the file inserts and is
+ * the semi-structured type the cell's JSON text belongs to.
+ */
+export function snowflakeVectorDeclaration(sample: unknown): string {
+  if (sample === undefined) return "ARRAY";
+  try {
+    return snowflakeVectorType(typeof sample === "string" ? sample : jsonText(sample));
+  } catch (error) {
+    if (!(error instanceof UnwritableValue)) throw error;
+    return "ARRAY";
+  }
 }
 
 /**

@@ -1,11 +1,19 @@
 import {
+  BARE_TYPE_FAMILY,
+  CLICKHOUSE_WRAPPER,
   EXACT_DECIMAL_TYPE_NAMES,
+  EXACT_NUMERIC_TYPE,
   FLOAT64_TYPE_NAMES,
-  INSTANT_TYPE_NAMES,
+  FLOAT_TYPE,
   identifierBacktickDoubled,
+  INSTANT_TYPE_NAMES,
   literalBackslash,
+  NO_BARE_SPELLING,
+  NOTHING_STANDS_ALONE,
   unquoteBackslash,
 } from "@/lib/db/sql-writing/shared";
+import { binaryStandardHex } from "@/lib/db/sql-writing/export-shared";
+import { sparkLiteral } from "./typed-literals";
 import type { SqlWritingSpec } from "@/lib/db/sql-writing/types";
 
 /** How a generated statement spells a literal, a name and a bind for Spark. */
@@ -25,5 +33,36 @@ export const SPARK_SQL_WRITING: SqlWritingSpec = {
     instantTypeNames: INSTANT_TYPE_NAMES,
     exactDecimalTypeNames: EXACT_DECIMAL_TYPE_NAMES,
     float64TypeNames: FLOAT64_TYPE_NAMES,
+  },
+  export: {
+    // Spark SQL has no TEXT, DOUBLE PRECISION or BLOB: its spellings are STRING, DOUBLE and BINARY.
+    ddlTypes: {
+      text: "STRING",
+      integer: "BIGINT",
+      numeric: "DOUBLE",
+      boolean: "BOOLEAN",
+      timestamp: "TIMESTAMP",
+      binary: "BINARY",
+    },
+    // Not measured: no Spark server read a probe column back for this change, so every bare name is re-spelled portably
+    // until one does.
+    standsAlone: NOTHING_STANDS_ALONE,
+    bareSpelling: NO_BARE_SPELLING,
+    typeVocabulary: {
+      bareTypeFamily: BARE_TYPE_FAMILY,
+      floatType: FLOAT_TYPE,
+      exactNumericType: EXACT_NUMERIC_TYPE,
+      numericWrapper: CLICKHOUSE_WRAPPER,
+    },
+    // Spark reads `X'0102deadbeef'` as a BINARY literal, the standard form.
+    binaryLiteral: binaryStandardHex,
+    // Spark reads the three words through a CAST to DOUBLE, its documented special floating-point values.
+    nonFinite: {
+      NaN: "CAST('NaN' AS DOUBLE)",
+      Infinity: "CAST('Infinity' AS DOUBLE)",
+      "-Infinity": "CAST('-Infinity' AS DOUBLE)",
+    },
+    insertForm: "values",
+    typedLiteral: sparkLiteral,
   },
 };

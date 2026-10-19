@@ -8,16 +8,16 @@ import { binaryCellsAsHex, jsonText } from "./json";
 import { markdownTable } from "./markdown";
 import { resolveUpdateTarget } from "@/lib/sql/update-target";
 import { cqlFrozenNested } from "@/lib/db/providers/sql/cassandra/typed-literals";
-import { snowflakeVectorType } from "@/lib/db/providers/sql/snowflake/typed-literals";
+import { snowflakeVectorDeclaration } from "@/lib/db/providers/sql/snowflake/typed-literals";
+import { CASSANDRA_PRIMARY_KEY_NOTE } from "@/lib/db/providers/sql/cassandra/sql-writing";
 import { typedLiteral, UnwritableValue } from "./typed-literals";
 import { isNonFiniteWord, nonFiniteWord, type NonFiniteWord } from "@/lib/non-finite";
 import {
-  ISO_INSTANT_TEXT,
-  ORACLE_BC_DATE_MASK,
-  ORACLE_DATE_MASK,
-  ORACLE_TIMESTAMP_TYPE,
-  ORACLE_ZONED_TIMESTAMP_TYPE,
-  ORACLE_ZONELESS_TEXT,
+  oracleDateColumn,
+  oracleDateLiteral,
+  oracleTextLiteral,
+  oracleZonedTextLiteral,
+  type OracleDateColumn,
 } from "@/lib/db/providers/sql/oracle-sql-writing";
 
 /**
@@ -106,18 +106,6 @@ const NOTHING_TO_EXPORT = {
   rows: "-- No rows to export.",
   columns: "-- No columns to export.",
 } as const;
-
-/**
- * Written above the Cassandra `CREATE TABLE` only, immediately before the statement.
- *
- * Every line is its own `--` comment closed by a real newline: a CQL line comment
- * that reaches end of file with no trailing newline is left open, so this is never
- * the last thing in the file without one — the statement always follows it.
- */
-const CASSANDRA_PRIMARY_KEY_NOTE =
-  "-- CQL requires exactly one PRIMARY KEY per table, and a result set carries no key of\n" +
-  "-- its own. This export chose the first column as a placeholder: confirm it is unique\n" +
-  "-- per row before running this statement.\n";
 
 /**
  * The table name the SQL exports write, derived from the tab's title.
@@ -708,26 +696,6 @@ function completeDeclaredType(declared: string, dialect: DatabaseType | undefine
 }
 
 /**
- * A Snowflake VECTOR column's declaration, from its first value.
- *
- * Snowflake reports a VECTOR result column as `vector` with no element type and no dimension, and
- * `CREATE TABLE t (v VECTOR)` is a syntax error (001003), so the declaration is the one the first
- * non-null cell spells, as the SQL INSERT export already casts each cell (`snowflakeVectorType`).
- * Every cell of a VECTOR column has the same element type and dimension, so one cell decides. A
- * column with no value to read is declared `ARRAY`, which holds the NULLs the file inserts and is
- * the semi-structured type the cell's JSON text belongs to.
- */
-function snowflakeVectorDeclaration(sample: unknown): string {
-  if (sample === undefined) return "ARRAY";
-  try {
-    return snowflakeVectorType(typeof sample === "string" ? sample : jsonText(sample));
-  } catch (error) {
-    if (!(error instanceof UnwritableValue)) throw error;
-    return "ARRAY";
-  }
-}
-
-/**
  * A column's declared type for the CREATE TABLE.
  *
  * What the engine declared, when it declared anything plausible: that is the type of
@@ -924,153 +892,12 @@ function binaryLiteral(bytes: Uint8Array, dialect: DatabaseType | undefined): st
   }
 }
 
-/**
- * Which Oracle conversion function a `Date` cell is written through. The provider's own
- * rows carry a DATE and a TIMESTAMP as text since #1131 (`OracleDateColumn` below), so a
- * naive `Date` reaches this only from a host that built its rows itself.
- *
- * Oracle parses none of the literal forms a `Date` stringifies to: measured through the
- * real export path on the Oracle Free image (`Oracle AI Database 26ai Free Release
- * 23.26.2.0.0`), an exported `'2026-08-24T07:11:12.345Z'` is `ORA-01843: An invalid month
- * was specified` for all three timestamp types and `ORA-01861: literal does not match
- * format string` for a DATE, so every ordinary Oracle table with a date column produced a
- * file that could not be replayed. The conversion function IS the literal here, the way
- * `HEXTORAW` is for a RAW.
- *
- * The shape has to come from the DECLARED type, because the two shapes disagree about
- * which fields of the `Date` are the value:
- *
- * - A naive `DATE`/`TIMESTAMP` reaches us as a `Date` the driver built by reading the
- *   stored wall clock **in the Node process's zone**. Measured, a `DATE` holding
- *   `2026-08-24 10:11:12` arrived as `2026-08-24T07:11:12.000Z` from a process at
- *   `+03:00`. So the fields that replay it are the LOCAL ones, and writing the ISO text
- *   would move every such value by the exporter's own offset - silently, since it still
- *   parses.
- * - A zoned column (`WITH TIME ZONE`, `WITH LOCAL TIME ZONE`) reaches us as the true UTC
- *   instant, its stored offset already gone at the driver boundary
- *   (`docs/providers/oracle.md` 5.5). `FROM_TZ(..., 'UTC')` is what keeps that instant
- *   whatever zone the replaying session runs in: a plain `TO_TIMESTAMP` is read in the
- *   SESSION time zone, so the same file would land on a different instant on a machine
- *   in another zone. No offset is invented - the value comes back rendered as UTC, and
- *   the original zone is the thing 5.5 says only the server still has.
- *
- * With no declared type - `columnTypes` is optional on `ResultExportSource`, and a host
- * driving the embeddable surface may supply none - the timestamp form is the fallback:
- * Oracle's own provider always declares (`metaData[].dbTypeName`, 5.4), the naive types
- * are the common ones, and the fallback is the shape that is exact for them.
- */
-type OracleDateShape = "date" | "timestamp" | "zoned";
-
-function oracleDateShape(declared: string | undefined): OracleDateShape {
-  const bare = declared?.trim().toUpperCase().replace(/\s+/g, " ") ?? "";
-  if (bare === "DATE") return "date";
-  return bare.endsWith("TIME ZONE") ? "zoned" : "timestamp";
-}
-
-/**
- * How one Oracle column's date cells are written: `shape` for a `Date`, and `text` for a
- * cell that arrives as a string: the zone-less text the provider reads a DATE and a
- * TIMESTAMP as (#1131), or, for a zoned column, the `Date#toISOString` text a row carries
- * once it has been through JSON over HTTP (#1224).
- *
- * `text` is set only for a column DECLARED `DATE`, `TIMESTAMP[(n)]` or
- * `TIMESTAMP[(n)] WITH [LOCAL] TIME ZONE`, never by the fallback `shape` takes. A VARCHAR2
- * holding `2026-09-01 10:30:00` is text, and converting it would store the NLS rendering
- * of a timestamp where the characters belonged.
- */
-interface OracleDateColumn {
-  shape: OracleDateShape;
-  text?: "date" | "timestamp" | "zoned";
-}
-
-function oracleDateColumn(declared: string | undefined): OracleDateColumn {
-  const bare = declared?.trim().toUpperCase() ?? "";
-  const text =
-    bare === "DATE"
-      ? "date"
-      : ORACLE_TIMESTAMP_TYPE.test(bare)
-        ? "timestamp"
-        : ORACLE_ZONED_TIMESTAMP_TYPE.test(bare)
-          ? "zoned"
-          : undefined;
-  return { shape: oracleDateShape(declared), ...(text === undefined ? {} : { text }) };
-}
-
 /** What `source` declared for `column`, or `undefined`. */
 function declaredTypeOf(source: ResultExportSource, column: string): string | undefined {
   // `Object.hasOwn` for the reason `sqlTypeOf` uses it: a column named `constructor`
   // would otherwise read `Object.prototype.constructor` as its declared type.
   const declared = source.columnTypes;
   return declared !== undefined && Object.hasOwn(declared, column) ? declared[column] : undefined;
-}
-
-/** `value`, two digits at least, so `2026-1-2 3:4:5` never reaches a format mask. */
-function pad(value: number, width = 2): string {
-  return String(value).padStart(width, "0");
-}
-
-/**
- * An Oracle date literal, from the LOCAL fields for a naive column and the UTC ones for
- * a zoned column (see `oracleDateShape`).
- *
- * The fraction is three digits and `FF3` rather than dropped: a `Date` carries
- * milliseconds and a `TIMESTAMP(6)` keeps them. `TO_DATE` is used for a declared `DATE`
- * because a `DATE` has no fractional second at all - measured, a `TO_TIMESTAMP` literal
- * inserted into a `DATE` column is accepted and silently truncated to the whole second,
- * so nothing is lost either way and the explicit function says what the column is.
- */
-function oracleDateLiteral(value: Date, shape: OracleDateShape): string {
-  const utc = shape === "zoned";
-  const year = utc ? value.getUTCFullYear() : value.getFullYear();
-  // A BC year keeps its sign in front of the zeros (`-0044`, never `0-44`) and takes the signed
-  // `SYYYY` mask, as `oracleTextLiteral` does for the provider's text (#1498).
-  const bc = year < 0;
-  const date = `${bc ? "-" : ""}${pad(Math.abs(year), 4)}-${pad((utc ? value.getUTCMonth() : value.getMonth()) + 1)}-${pad(utc ? value.getUTCDate() : value.getDate())}`;
-  const time = `${pad(utc ? value.getUTCHours() : value.getHours())}:${pad(utc ? value.getUTCMinutes() : value.getMinutes())}:${pad(utc ? value.getUTCSeconds() : value.getSeconds())}`;
-  const mask = bc ? ORACLE_BC_DATE_MASK : ORACLE_DATE_MASK;
-  if (shape === "date") return `TO_DATE('${date} ${time}', '${mask}')`;
-  const stamp = `TO_TIMESTAMP('${date} ${time}.${pad(utc ? value.getUTCMilliseconds() : value.getMilliseconds(), 3)}', '${mask}.FF3')`;
-  return utc ? `FROM_TZ(${stamp}, 'UTC')` : stamp;
-}
-
-/**
- * That text as the literal of the declared type, or `undefined` when it is not in that form.
- *
- * Quoted as it is, the text is read through the session's `NLS_DATE_FORMAT`, `DD-MON-RR` by
- * default, and refused. The mask spells the text's own form instead, so it replays the same
- * in every session: `SYYYY` only for a signed year, and `FF` only for a fraction, since `FF`
- * with no digit count takes the one to nine digits a TIMESTAMP holds. A DATE has no
- * fractional second, so a fraction is not a DATE's text. The text is digits and separators
- * by that same match, so interpolating it needs no quoting.
- */
-function oracleTextLiteral(text: string, type: "date" | "timestamp"): string | undefined {
-  const match = ORACLE_ZONELESS_TEXT.exec(text);
-  if (match === null) return undefined;
-  const [, sign, fraction] = match;
-  const mask = sign === "" ? ORACLE_DATE_MASK : ORACLE_BC_DATE_MASK;
-  if (type === "date") return fraction === undefined ? `TO_DATE('${text}', '${mask}')` : undefined;
-  return `TO_TIMESTAMP('${text}', '${mask}${fraction === undefined ? "" : ".FF"}')`;
-}
-
-/**
- * A zoned column's cell as it arrives over HTTP (#1224), as the literal the `Date` of that
- * instant gets, or `undefined` when it is not that text.
- *
- * The driver hands a `TIMESTAMP WITH [LOCAL] TIME ZONE` over as the `Date` of its instant,
- * and `POST /api/db/query` answers with JSON, so by the time an export over HTTP sees the
- * row the cell is that `Date`'s ISO text. Quoted, Oracle reads it through the session's
- * `NLS_TIMESTAMP_TZ_FORMAT` and refuses it (`ORA-01843`). The text is parsed back to its
- * `Date` and written by `oracleDateLiteral`, so the two paths cannot drift apart, and only
- * when that `Date` writes the same text again: `2026-02-30T…` and `T24:00:00.000Z` fit the
- * form but are not what `toISOString` writes for any instant. The literal is built from
- * the parsed fields, never from the text.
- */
-function oracleZonedTextLiteral(text: string): string | undefined {
-  if (!ISO_INSTANT_TEXT.test(text)) return undefined;
-  const instant = new Date(text);
-  return !Number.isNaN(instant.getTime()) && instant.toISOString() === text
-    ? oracleDateLiteral(instant, "zoned")
-    : undefined;
 }
 
 /**

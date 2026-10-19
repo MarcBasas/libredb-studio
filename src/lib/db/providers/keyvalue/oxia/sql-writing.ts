@@ -1,11 +1,20 @@
 import {
+  BARE_TYPE_FAMILY,
+  CLICKHOUSE_WRAPPER,
   EXACT_DECIMAL_TYPE_NAMES,
+  EXACT_NUMERIC_TYPE,
   FLOAT64_TYPE_NAMES,
-  INSTANT_TYPE_NAMES,
+  FLOAT_TYPE,
   identifierDoubleQuoted,
+  INSTANT_TYPE_NAMES,
   literalStandard,
+  NO_BARE_SPELLING,
+  NOTHING_STANDS_ALONE,
+  NULL_NON_FINITE,
+  STANDARD_DDL_TYPES,
   unquoteStandard,
 } from "@/lib/db/sql-writing/shared";
+import { binaryStandardHex } from "@/lib/db/sql-writing/export-shared";
 import type { SqlWritingSpec } from "@/lib/db/sql-writing/types";
 
 /** How a generated statement spells a literal, a name and a bind for Oxia. */
@@ -22,5 +31,22 @@ export const OXIA_SQL_WRITING: SqlWritingSpec = {
     instantTypeNames: INSTANT_TYPE_NAMES,
     exactDecimalTypeNames: EXACT_DECIMAL_TYPE_NAMES,
     float64TypeNames: FLOAT64_TYPE_NAMES,
+  },
+  export: {
+    ddlTypes: STANDARD_DDL_TYPES,
+    // Oxia has no statement form for an export.
+    standsAlone: NOTHING_STANDS_ALONE,
+    bareSpelling: NO_BARE_SPELLING,
+    typeVocabulary: {
+      bareTypeFamily: BARE_TYPE_FAMILY,
+      floatType: FLOAT_TYPE,
+      exactNumericType: EXACT_NUMERIC_TYPE,
+      numericWrapper: CLICKHOUSE_WRAPPER,
+    },
+    // Oxia has no statement language for a value, so no statement is built for it; the answer is the inert default,
+    // as `etcd`'s and `neo4j`'s.
+    binaryLiteral: binaryStandardHex,
+    nonFinite: NULL_NON_FINITE,
+    insertForm: "values",
   },
 };

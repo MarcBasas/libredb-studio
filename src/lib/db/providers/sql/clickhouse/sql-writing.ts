@@ -1,11 +1,18 @@
 import {
+  BARE_TYPE_FAMILY,
+  CLICKHOUSE_WRAPPER,
   EXACT_DECIMAL_TYPE_NAMES,
+  EXACT_NUMERIC_TYPE,
   FLOAT64_TYPE_NAMES,
-  INSTANT_TYPE_NAMES,
+  FLOAT_TYPE,
   identifierDoubleQuoted,
+  INSTANT_TYPE_NAMES,
   literalDoubleAndBackslash,
+  NO_BARE_SPELLING,
   unquoteDoubleAndBackslash,
 } from "@/lib/db/sql-writing/shared";
+import { binaryUnhex } from "@/lib/db/sql-writing/export-shared";
+import { clickhouseLiteral } from "./typed-literals";
 import type { SqlWritingSpec } from "@/lib/db/sql-writing/types";
 
 /** How a generated statement spells a literal, a name and a bind for ClickHouse. */
@@ -23,5 +30,58 @@ export const CLICKHOUSE_SQL_WRITING: SqlWritingSpec = {
     instantTypeNames: INSTANT_TYPE_NAMES,
     exactDecimalTypeNames: EXACT_DECIMAL_TYPE_NAMES,
     float64TypeNames: FLOAT64_TYPE_NAMES,
+  },
+  export: {
+    // ClickHouse has no BLOB: its byte container IS `String`, which is a byte sequence
+    // and not a text encoding, and `unhex` (the literal below) returns exactly that.
+    // Measured on 26.7.1, the other four standard spellings all resolve to a whole type
+    // (`TEXT` -> `String`, `BIGINT` -> `Int64`, `DOUBLE PRECISION` -> `Float64`,
+    // `TIMESTAMP` -> `DateTime`), so ClickHouse needs no row of its own for them.
+    ddlTypes: {
+      text: "TEXT",
+      integer: "BIGINT",
+      numeric: "DOUBLE PRECISION",
+      boolean: "BOOLEAN",
+      timestamp: "TIMESTAMP",
+      binary: "String",
+    },
+    standsAlone: [
+      "character varying",
+      "varchar",
+      "varchar2",
+      "nvarchar",
+      "character",
+      "char",
+      "nchar",
+      "text",
+      "tinytext",
+      "mediumtext",
+      "longtext",
+      "clob",
+      "varbinary",
+      "blob",
+      "tinyblob",
+      "mediumblob",
+      "longblob",
+      "bytea",
+      "timestamp",
+      "datetime",
+      "year",
+    ],
+    bareSpelling: NO_BARE_SPELLING,
+    typeVocabulary: {
+      bareTypeFamily: BARE_TYPE_FAMILY,
+      floatType: FLOAT_TYPE,
+      exactNumericType: EXACT_NUMERIC_TYPE,
+      numericWrapper: CLICKHOUSE_WRAPPER,
+    },
+    // Measured on 26.7.1: `unhex('0102deadbeef')` into a `String` column reads back as
+    // `hex(payload)` = `0102DEADBEEF` with `length(payload)` 6, and `length(unhex(''))`
+    // is 0.
+    binaryLiteral: binaryUnhex,
+    // ClickHouse 26.9.18.11 read the bare `nan`, `inf` and `-inf` back into `Float64` and `Float32` (2026-10-14).
+    nonFinite: { NaN: "nan", Infinity: "inf", "-Infinity": "-inf" },
+    insertForm: "values",
+    typedLiteral: clickhouseLiteral,
   },
 };

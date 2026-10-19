@@ -1,11 +1,17 @@
-import { normalized } from "@/lib/db/sql-writing/export-shared";
+import { binaryZeroX, normalized } from "@/lib/db/sql-writing/export-shared";
 import {
+  BARE_TYPE_FAMILY,
+  CLICKHOUSE_WRAPPER,
   EXACT_DECIMAL_TYPE_NAMES,
-  FLOAT64_TYPE_NAMES,
+  EXACT_NUMERIC_TYPE,
   firstWord,
+  FLOAT64_TYPE_NAMES,
+  FLOAT_TYPE,
   identifierBracket,
   INSTANT_TYPE_NAMES,
   literalUnicode,
+  NO_BARE_SPELLING,
+  NULL_NON_FINITE,
   placeholderAtP,
   unquoteUnicode,
   unwrappedType,
@@ -24,6 +30,31 @@ export const MSSQL_DATETIME_TEXT = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d{1,
  * `datetime2` and `date` read it the same under every DATEFORMAT, so they are not here.
  */
 const MSSQL_DATEFORMAT_TYPES: ReadonlySet<string> = new Set(["datetime", "smalldatetime"]);
+
+/**
+ * T-SQL has no boolean literal: `true` parses as a column name (`Msg 207: Invalid column
+ * name 'true'`, measured on SQL Server 2025 17.0.5005.3) and fails the whole batch. A BIT
+ * takes `1` and `0`, and `mssql` hands a BIT back as a JS boolean.
+ *
+ * A `datetime` or `smalldatetime` cell is the engine's own `yyyy-mm-dd hh:mi:ss[.mmm]` text
+ * (#1452), and unlike `datetime2` and `date`, those two types read that form through the
+ * session's DATEFORMAT. Measured on SQL Server 2022 CU27 (16.0.4295.3): under `british`,
+ * `Deutsch` and `Français` (dmy) `'2026-10-04 12:34:56.123'` is stored as April 10th and
+ * `'2026-10-25 …'` is refused, while `'2026-10-04T12:34:56.123'` is October 4th under those
+ * and under `us_english` and `Japanese`. So the text goes out with its space as a `T`.
+ */
+export const mssqlLiteral: TypedWriter = (value, declared) => {
+  if (typeof value === "boolean") return value ? "1" : "0";
+  const type = normalized(declared);
+  if (
+    (type === "datetime" || type === "smalldatetime") &&
+    typeof value === "string" &&
+    MSSQL_DATETIME_TEXT.test(value)
+  ) {
+    return literalUnicode(value.replace(" ", "T"));
+  }
+  return undefined;
+};
 
 /** How a generated statement spells a literal, a name and a bind for SQL Server. */
 export const MSSQL_SQL_WRITING: SqlWritingSpec = {
@@ -61,7 +92,7 @@ export const MSSQL_SQL_WRITING: SqlWritingSpec = {
      * `mdy` today - tedious opens each one with `set dateformat mdy` and `set language
      * us_english`, and a `SET LANGUAGE` a user runs ends with its own `sp_executesql` call - so the
      * `T` keeps the edit from leaning on that driver default, the way the SQL INSERT export does
-     * (`mssqlLiteral` below). Text in any other shape is bound as typed.
+     * (`mssqlLiteral` above). Text in any other shape is bound as typed.
      */
     boundEdit: (text, declaredType, bind) =>
       declaredType !== undefined &&
@@ -70,29 +101,41 @@ export const MSSQL_SQL_WRITING: SqlWritingSpec = {
         ? bind(text.replace(" ", "T"))
         : undefined,
   },
-};
-
-/**
- * T-SQL has no boolean literal: `true` parses as a column name (`Msg 207: Invalid column
- * name 'true'`, measured on SQL Server 2025 17.0.5005.3) and fails the whole batch. A BIT
- * takes `1` and `0`, and `mssql` hands a BIT back as a JS boolean.
- *
- * A `datetime` or `smalldatetime` cell is the engine's own `yyyy-mm-dd hh:mi:ss[.mmm]` text
- * (#1452), and unlike `datetime2` and `date`, those two types read that form through the
- * session's DATEFORMAT. Measured on SQL Server 2022 CU27 (16.0.4295.3): under `british`,
- * `Deutsch` and `Français` (dmy) `'2026-10-04 12:34:56.123'` is stored as April 10th and
- * `'2026-10-25 …'` is refused, while `'2026-10-04T12:34:56.123'` is October 4th under those
- * and under `us_english` and `Japanese`. So the text goes out with its space as a `T`.
- */
-export const mssqlLiteral: TypedWriter = (value, declared) => {
-  if (typeof value === "boolean") return value ? "1" : "0";
-  const type = normalized(declared);
-  if (
-    (type === "datetime" || type === "smalldatetime") &&
-    typeof value === "string" &&
-    MSSQL_DATETIME_TEXT.test(value)
-  ) {
-    return literalUnicode(value.replace(" ", "T"));
-  }
-  return undefined;
+  export: {
+    ddlTypes: {
+      text: "NVARCHAR(MAX)",
+      integer: "BIGINT",
+      numeric: "FLOAT",
+      boolean: "BIT",
+      timestamp: "DATETIME2",
+      // `BLOB` is not a T-SQL type name at all, and `IMAGE` has been deprecated since
+      // 2005.
+      binary: "VARBINARY(MAX)",
+    },
+    standsAlone: [
+      "text",
+      "ntext",
+      "image",
+      "money",
+      "uniqueidentifier",
+      "datetime",
+      "datetime2",
+      "smalldatetime",
+      "datetimeoffset",
+    ],
+    bareSpelling: NO_BARE_SPELLING,
+    typeVocabulary: {
+      bareTypeFamily: BARE_TYPE_FAMILY,
+      floatType: FLOAT_TYPE,
+      exactNumericType: EXACT_NUMERIC_TYPE,
+      numericWrapper: CLICKHOUSE_WRAPPER,
+    },
+    // Measured on SQL Server 2022: `SELECT CONVERT(varchar(64), 0x0102deadbeef, 2)`
+    // answers `0102DEADBEEF`, `DATALENGTH(0x)` answers 0, so the empty case is spelled,
+    // and `SELECT X'0102'` is `Msg 207 … Invalid column name 'X'`.
+    binaryLiteral: binaryZeroX,
+    nonFinite: NULL_NON_FINITE,
+    insertForm: "values",
+    typedLiteral: mssqlLiteral,
+  },
 };

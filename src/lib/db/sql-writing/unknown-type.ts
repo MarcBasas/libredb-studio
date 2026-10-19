@@ -1,10 +1,19 @@
+import { binaryStandardHex } from "./export-shared";
 import {
+  BARE_TYPE_FAMILY,
+  CLICKHOUSE_WRAPPER,
   EXACT_DECIMAL_TYPE_NAMES,
+  EXACT_NUMERIC_TYPE,
   FLOAT64_TYPE_NAMES,
+  FLOAT_TYPE,
   INSTANT_TYPE_NAMES,
   identifierDoubleQuoted,
   literalDoubleAndBackslash,
   unquoteDoublingOnly,
+  NO_BARE_SPELLING,
+  NOTHING_STANDS_ALONE,
+  NULL_NON_FINITE,
+  STANDARD_DDL_TYPES,
 } from "./shared";
 import type { SqlWritingSpec } from "./types";
 
@@ -27,5 +36,19 @@ export const UNKNOWN_TYPE_SQL_WRITING: SqlWritingSpec = {
     instantTypeNames: INSTANT_TYPE_NAMES,
     exactDecimalTypeNames: EXACT_DECIMAL_TYPE_NAMES,
     float64TypeNames: FLOAT64_TYPE_NAMES,
+  },
+  export: {
+    ddlTypes: STANDARD_DDL_TYPES,
+    standsAlone: NOTHING_STANDS_ALONE,
+    bareSpelling: NO_BARE_SPELLING,
+    typeVocabulary: {
+      bareTypeFamily: BARE_TYPE_FAMILY,
+      floatType: FLOAT_TYPE,
+      exactNumericType: EXACT_NUMERIC_TYPE,
+      numericWrapper: CLICKHOUSE_WRAPPER,
+    },
+    binaryLiteral: binaryStandardHex,
+    nonFinite: NULL_NON_FINITE,
+    insertForm: "values",
   },
 };

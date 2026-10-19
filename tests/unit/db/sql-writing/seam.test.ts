@@ -1,15 +1,16 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
 import ts from "typescript";
 import { SQL_WRITING } from "@/lib/db/sql-writing";
-import { ENGINE_MODULES, ROOT } from "./engine-modules";
+import { ENGINE_MODULES, ROOT, type EngineModule } from "./engine-modules";
 
 /**
  * The seam between one engine's SQL writing module and every other one (spec 5.3).
  *
  * An engine module imports the contract's `types.ts`, `shared.ts` and the engine-neutral
- * export leaf `export-shared.ts` (spec 5.3 [T1]) and nothing else, so no module can reach
+ * export leaf `export-shared.ts` (spec 5.3 [T1]), plus the sibling its typed writer lives in
+ * when that is large (spec 5.3), and nothing else, so no module can reach
  * another engine's rules or the registry that holds them all; a type
  * import of `@/lib/types` is allowed because it emits no code. The registry imports each
  * engine module once, and the two named specs stay the registry's own. Every module also
@@ -67,9 +68,20 @@ function importsOf(file: string, text = readFileSync(file, "utf8")): ImportRef[]
 /** `src/lib/db/providers/sql/mysql-sql-writing.ts` as the alias `@/lib/db/providers/sql/mysql-sql-writing`. */
 const aliasOf = (repoPath: string): string => `@/${repoPath.replace(/^src\//, "").replace(/\.ts$/, "")}`;
 
-const forbiddenImports = (file: string, text?: string): string[] =>
+/**
+ * The sibling an engine's typed writer lives in (spec 5.3): `./typed-literals` beside a
+ * `<id>/sql-writing.ts`, `./<id>-typed-literals` beside an `<id>-sql-writing.ts`. It is the
+ * engine's own file, so it is held to the module's import rule in turn.
+ */
+const ownTypedLiterals = (engine: EngineModule): string =>
+  basename(engine.absPath) === "sql-writing.ts" ? "./typed-literals" : `./${engine.id}-typed-literals`;
+
+const forbiddenImports = (file: string, text?: string, own?: string): string[] =>
   importsOf(file, text)
-    .filter(({ specifier, typeOnly }) => !ALLOWED.has(specifier) && !(typeOnly && TYPE_ONLY_ALLOWED.has(specifier)))
+    .filter(
+      ({ specifier, typeOnly }) =>
+        !ALLOWED.has(specifier) && specifier !== own && !(typeOnly && TYPE_ONLY_ALLOWED.has(specifier)),
+    )
     .map(({ specifier, typeOnly }) => (typeOnly ? `type ${specifier}` : specifier));
 
 /** What `types.ts` or `shared.ts` imports beyond a type-only import of the contract's types; both are leaves. */
@@ -130,7 +142,15 @@ describe("SQL writing seam", () => {
 
   for (const engine of ENGINE_MODULES) {
     test(`${engine.id}: imports only the contract's types and shared building blocks`, () => {
-      expect({ id: engine.id, forbidden: forbiddenImports(engine.absPath) }).toEqual({ id: engine.id, forbidden: [] });
+      const own = ownTypedLiterals(engine);
+      expect({ id: engine.id, forbidden: forbiddenImports(engine.absPath, undefined, own) }).toEqual({
+        id: engine.id,
+        forbidden: [],
+      });
+      const sibling = join(dirname(engine.absPath), `${own.slice(2)}.ts`);
+      if (existsSync(sibling)) {
+        expect({ id: engine.id, forbidden: forbiddenImports(sibling) }).toEqual({ id: engine.id, forbidden: [] });
+      }
     });
   }
 
@@ -167,6 +187,14 @@ describe("SQL writing seam", () => {
     ]);
     expect(forbiddenImports(mysql.absPath, `import { type X, Y } from "@/lib/types";\n`)).toEqual(["@/lib/types"]);
     expect(forbiddenImports(mysql.absPath, `import type { DatabaseType } from "@/lib/types";\n`)).toEqual([]);
+    // Only the engine's own sibling is allowed: another engine's typed writer is not.
+    expect(
+      forbiddenImports(
+        mysql.absPath,
+        `import { postgresLiteral } from "./postgres-typed-literals";\n`,
+        ownTypedLiterals(mysql),
+      ),
+    ).toEqual(["./postgres-typed-literals"]);
   });
 
   // Spec 5.4: the inline editor reads its key column kinds and bound edits from the registry,

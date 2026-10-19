@@ -1,9 +1,16 @@
 import {
+  BARE_TYPE_FAMILY,
+  CLICKHOUSE_WRAPPER,
+  EXACT_NUMERIC_TYPE,
+  FLOAT_TYPE,
   identifierDoubleQuoted,
   literalStandard,
+  NO_BARE_SPELLING,
   placeholderQuestion,
+  STANDARD_DDL_TYPES,
   unquoteStandard,
 } from "@/lib/db/sql-writing/shared";
+import { binaryStandardHex } from "@/lib/db/sql-writing/export-shared";
 import type { SqlWritingSpec } from "@/lib/db/sql-writing/types";
 
 /** How a generated statement spells a literal, a name and a bind for SQLite. */
@@ -107,5 +114,73 @@ export const SQLITE_SQL_WRITING: SqlWritingSpec = {
      * float", and the sentence it showed was the one this rule exists to say is false on SQLite.
      */
     float64TypeNames: "all",
+  },
+  export: {
+    ddlTypes: STANDARD_DDL_TYPES,
+    // SQLite's `enum`, `uniqueidentifier` and `rowid`. SQLite parses any type name, so
+    // the narrowing is in the AFFINITY: these three match none of its keywords, so the
+    // column is NUMERIC and `INSERT INTO p (c) VALUES ('007')` reads back as the integer
+    // 7 (measured), where the same insert into `varchar2` reads back as the text `007`.
+    // `set` is not in SQLite's grammar as a type name at all (`near "set": syntax
+    // error`).
+    //
+    // Every candidate name but the four listed in the note above: SQLite keeps a declared
+    // type as the exact string it was given (`pragma_table_info` answers `varchar2` for
+    // `varchar2`), so the spelling the source engine used is the one that survives.
+    standsAlone: [
+      "character varying",
+      "varchar",
+      "varchar2",
+      "nvarchar",
+      "nvarchar2",
+      "character",
+      "char",
+      "nchar",
+      "text",
+      "ntext",
+      "tinytext",
+      "mediumtext",
+      "longtext",
+      "clob",
+      "nclob",
+      "binary",
+      "varbinary",
+      "raw",
+      "blob",
+      "tinyblob",
+      "mediumblob",
+      "longblob",
+      "bytea",
+      "image",
+      "numeric",
+      "decimal",
+      "number",
+      "binary_double",
+      "binary_float",
+      "money",
+      "timestamp",
+      "timestamp without time zone",
+      "timestamp with time zone",
+      "datetime",
+      "datetime2",
+      "smalldatetime",
+      "datetimeoffset",
+      "year",
+    ],
+    bareSpelling: NO_BARE_SPELLING,
+    typeVocabulary: {
+      bareTypeFamily: BARE_TYPE_FAMILY,
+      floatType: FLOAT_TYPE,
+      exactNumericType: EXACT_NUMERIC_TYPE,
+      numericWrapper: CLICKHOUSE_WRAPPER,
+    },
+    // Measured through `bun:sqlite`: `select hex(X'0102deadbeef')` -> `0102DEADBEEF`,
+    // and `typeof(X'')` -> `blob` with `length(X'')` 0.
+    binaryLiteral: binaryStandardHex,
+    // Replayed into the engine (2026-10-04): SQLite reads `9e999` and `-9e999` as its
+    // infinities in a `REAL` column, where a quoted `'Infinity'` is stored as TEXT, and has
+    // no NaN at all (it stores one as NULL).
+    nonFinite: { NaN: "NULL", Infinity: "9e999", "-Infinity": "-9e999" },
+    insertForm: "values",
   },
 };
