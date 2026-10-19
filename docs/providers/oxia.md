@@ -79,6 +79,7 @@ The console's modules are pure and shipped to the browser, because the editor, t
 | `monitoring-reads.ts` | Health and the overview | server |
 | `labels.ts` | The labels, the statement language and the key order in words | browser |
 | `connection-string.ts` | The engine's connection string row: no scheme, no TLS read from a URL query, no seed load check | browser |
+| `execution-ui.ts` | The engine's execution UI row: the rolled-back notice names `COMMIT`, no consent deadline | browser |
 | `generators.ts` | The commands Generate Command writes | browser |
 | `index.ts` | The composition root: the session, the declarations, the snapshot cache, the order verdict's lifetime, the run registry and the one failure path | server |
 

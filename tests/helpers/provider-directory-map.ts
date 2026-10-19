@@ -11,8 +11,9 @@ import type { DatabaseType } from "@/lib/types";
  * census reads a type's whole directory as that type's source. `timeseries/influxdb/` breaks both, by decision
  * (I2, I23): one directory, two classes, flat prefixed files. So the split is DECLARED here, once, for both censuses,
  * rather than inferred twice: `influxql-*` files are `influxdb`'s, `sql-*` files are `influxdb3`'s, and the
- * unprefixed connection layer is both, with the two engine-contract data modules (`influxdb-connection-string.ts`,
- * `influxdb3-connection-string.ts`), which declare no source a census reads.
+ * unprefixed connection layer is both, with the four engine-contract data modules (`influxdb-connection-string.ts`,
+ * `influxdb3-connection-string.ts`, `influxdb-execution-ui.ts`, `influxdb3-execution-ui.ts`), which declare no source
+ * a census reads.
  * `tests/unit/helpers/provider-directory-map.test.ts` holds the table equal to the directory on disk, so a new file
  * is claimed the day it lands.
  *
@@ -39,6 +40,8 @@ export const PROVIDER_DIRECTORY_MAP: Readonly<Record<string, ProviderDirectoryEn
       "index.ts",
       "influxdb-connection-string.ts",
       "influxdb3-connection-string.ts",
+      "influxdb-execution-ui.ts",
+      "influxdb3-execution-ui.ts",
       "labels.ts",
       "monitoring.ts",
       "routes.ts",

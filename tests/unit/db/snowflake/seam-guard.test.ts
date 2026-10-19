@@ -58,6 +58,8 @@ const OUTSIDE_VALUES = [
   "src/lib/app-version.ts",
   "src/lib/logger.ts",
   SQL_BASE,
+  // The engine contract's execution UI row takes the shared commit keyword, a pure module that imports nothing.
+  "src/lib/db/execution-ui/shared.ts",
 ];
 const PACKAGE_VALUES = new Set(["jose"]);
 const BUILTIN_VALUES = new Set(["node:crypto", "node:zlib"]);

@@ -42,6 +42,8 @@ const SHARED = [
   "labels",
   "influxdb-connection-string",
   "influxdb3-connection-string",
+  "influxdb-execution-ui",
+  "influxdb3-execution-ui",
 ];
 const BROWSER = ["influxql-lexer", "influxql-policy", "influxql-quote", "influxql-generators"];
 const INFLUXQL_SERVER = ["influxql-results", "influxql-objects", "influxql-provider"];
@@ -80,7 +82,11 @@ const CONNECTION_OUTSIDE = [
  * and the TLS mapping where they are.
  */
 const OUTSIDE_VALUES: Readonly<Record<Layer, readonly string[]>> = {
-  connection: CONNECTION_OUTSIDE,
+  connection: [
+    ...CONNECTION_OUTSIDE,
+    // The engine contract's execution UI rows take the shared commit keyword, a pure module that imports nothing.
+    "src/lib/db/execution-ui/shared.ts",
+  ],
   browser: [],
   "influxql-server": [
     ...CONNECTION_OUTSIDE,

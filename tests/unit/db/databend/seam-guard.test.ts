@@ -49,6 +49,8 @@ const OUTSIDE_VALUES = [
   SQL_BASE,
   "src/lib/db/object-kinds.ts",
   "src/lib/app-version.ts",
+  // The engine contract's execution UI row takes the shared commit keyword, a pure module that imports nothing.
+  "src/lib/db/execution-ui/shared.ts",
 ];
 /** A module a value may come from only under the names listed. */
 const OUTSIDE_NAMED: Readonly<Record<string, readonly string[]>> = {

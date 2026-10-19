@@ -649,6 +649,7 @@ const provider = new S3Provider(
 const BROWSER_SET: ReadonlySet<string> = new Set([
   "constants.ts",
   "connection-string.ts",
+  "execution-ui.ts",
   "names.ts",
   "xml.ts",
   "shapes.ts",

@@ -52,6 +52,7 @@ const OUTSIDE_IMPORTERS_ALLOWED: readonly string[] = [
   "src/lib/db/factory.ts",
   "src/lib/connection-string-parser.ts",
   "src/lib/db/connection-string/index.ts",
+  "src/lib/db/execution-ui/index.ts",
 ];
 /** The one module under src/lib/db/providers/ outside the directory a Spark file may import. */
 const SQL_BASE = "src/lib/db/providers/sql/sql-base";
