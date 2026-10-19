@@ -56,7 +56,7 @@ const MOVES_IN: Readonly<Record<Debt["pr"], string>> = {
   3: "SQL writing, inline editing: the editor's per-engine value rules (docs/BACKLOG.md R4)",
   4: "SQL writing, export: the per-engine export tables",
   5: "the SQL grammar: tokenizer, update target, redaction and completion quoting",
-  6: "migration DDL (docs/BACKLOG.md D376)",
+  6: "migration DDL (engine contract spec 5.5, MigrationDdlSpec)",
   7: "the connection form, connection string and seed checks",
   8: "execution UI and the explain request default",
 };
@@ -286,13 +286,6 @@ export const DEBT: readonly Debt[] = [
   { path: "src/lib/editor/sql-completions.ts", declaration: "formatSegment", count: 1, pr: 5, reason: MOVES_IN[5] },
   { path: "src/lib/editor/sql-completions.ts", declaration: "tableSuggestions", count: 1, pr: 5, reason: MOVES_IN[5] },
   { path: "src/lib/editor/sql-completions.ts", declaration: "quotedIdentifier", count: 1, pr: 5, reason: MOVES_IN[5] },
-  {
-    path: "src/lib/schema-diff/migration-generator.ts",
-    declaration: "generateMigrationSQL",
-    count: 1,
-    pr: 6,
-    reason: MOVES_IN[6],
-  },
   { path: "src/components/ConnectionModal.tsx", declaration: "isCouchbase", count: 1, pr: 7, reason: MOVES_IN[7] },
   { path: "src/components/ConnectionModal.tsx", declaration: "isTrino", count: 1, pr: 7, reason: MOVES_IN[7] },
   { path: "src/components/ConnectionModal.tsx", declaration: "isCassandra", count: 1, pr: 7, reason: MOVES_IN[7] },

@@ -11,8 +11,7 @@
  * (a view, a materialized view) is named in a comment rather than altered.
  * Review the generated SQL before executing it against the target database.
  */
-import { migrationDdlFor } from "@/lib/db/migration-ddl";
-import { NO_CONNECTION_DIALECT } from "@/lib/db/migration-ddl/no-connection";
+import { migrationDdlFor, migrationDialectHeader } from "@/lib/db/migration-ddl";
 import { commentName } from "@/lib/db/migration-ddl/shared";
 import type { ForeignKeyDdl, IndexDdl, InsideOrAfter, TableDdlWritten } from "@/lib/db/migration-ddl/types";
 import type { DatabaseType } from "@/lib/types";
@@ -210,7 +209,7 @@ export function generateMigrationSQL(diff: SchemaDiff, dialect: DatabaseType | u
   const spec = migrationDdlFor(dialect);
   const sections: string[] = [];
   sections.push(`-- Migration generated at ${new Date().toISOString()}`);
-  sections.push(`-- Dialect: ${dialect === undefined ? NO_CONNECTION_DIALECT : dialect}`);
+  sections.push(`-- Dialect: ${migrationDialectHeader(dialect)}`);
   sections.push(
     `-- Changes: ${diff.summary.added} added, ${diff.summary.removed} removed, ${diff.summary.modified} modified`,
   );

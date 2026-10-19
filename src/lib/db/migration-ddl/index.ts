@@ -45,7 +45,7 @@ import { PROMETHEUS_MIGRATION_DDL } from "@/lib/db/providers/timeseries/promethe
 import { MILVUS_MIGRATION_DDL } from "@/lib/db/providers/vector/milvus/migration-ddl";
 import { QDRANT_MIGRATION_DDL } from "@/lib/db/providers/vector/qdrant/migration-ddl";
 import type { DatabaseType } from "@/lib/types";
-import { NO_CONNECTION_MIGRATION_DDL } from "./no-connection";
+import { NO_CONNECTION_DIALECT, NO_CONNECTION_MIGRATION_DDL } from "./no-connection";
 import type { MigrationDdlSpec } from "./types";
 import { UNKNOWN_TYPE_MIGRATION_DDL } from "./unknown-type";
 
@@ -103,4 +103,12 @@ export function migrationDdlFor(type: string | undefined): MigrationDdlSpec {
   if (type === undefined) return NO_CONNECTION_MIGRATION_DDL;
   if (Object.hasOwn(MIGRATION_DDL, type)) return MIGRATION_DDL[type as DatabaseType];
   return UNKNOWN_TYPE_MIGRATION_DDL;
+}
+
+/**
+ * The word the migration's `-- Dialect:` header prints: the no-connection dialect for `undefined`, the type string
+ * as given otherwise, so the generator holds no type id of its own.
+ */
+export function migrationDialectHeader(type: string | undefined): string {
+  return type === undefined ? NO_CONNECTION_DIALECT : type;
 }
