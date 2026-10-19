@@ -220,10 +220,6 @@ export const FALSE_POSITIVES: readonly Listed[] = [
 
 /** Every branch of spec 2.6 not yet moved, with the PR that moves it. */
 export const DEBT: readonly Debt[] = [
-  { path: "src/lib/sql/values.ts", declaration: "LITERAL_ESCAPE", count: 1, pr: 2, reason: MOVES_IN[2] },
-  { path: "src/lib/sql/values.ts", declaration: "temporalLiteral", count: 1, pr: 2, reason: MOVES_IN[2] },
-  { path: "src/lib/sql/values.ts", declaration: "positionalPlaceholder", count: 9, pr: 2, reason: MOVES_IN[2] },
-  { path: "src/lib/sql/identifier.ts", declaration: "quoteIdentifier", count: 6, pr: 2, reason: MOVES_IN[2] },
   {
     path: "src/hooks/use-inline-editing.ts",
     declaration: "NO_INSTANT_TYPE_DIALECTS",
