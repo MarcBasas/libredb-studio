@@ -2,8 +2,8 @@
  * The migration DDL seam (spec 5.3): an engine module imports only the contract's `types` and `shared`, and the
  * type-only `@/lib/types`, so it can reach no other engine's text, no registry and none of the quoting or export
  * helpers. The no-connection and unknown-type specs are built the same way and no engine module imports them; the
- * registry imports each engine module once; the generator names no type id (D376's done-when, held here because the
- * engine-branch guard is not on this branch); and every engine module loads first in a fresh process.
+ * registry imports each engine module once; the generator names no type id (held here because the engine-branch guard
+ * is not on this branch); and every engine module loads first in a fresh process.
  *
  * The guard is syntactic: a module name built at run time is reported, not chased. Each rule is proven both ways
  * where a planted text can show it: the real sources pass and a planted file fails by name.

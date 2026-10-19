@@ -209,6 +209,7 @@ const OUTLINE: readonly string[] = [
   "### 11.4 The raw seeder, the evidence harness and the live check",
   "## 12. Running Oxia for Studio",
   "## 13. Known limitations",
+  "## Migration DDL",
   "## 14. References",
 ];
 
@@ -222,6 +223,7 @@ const BROWSER_SET: ReadonlySet<string> = new Set([
   "generators.ts",
   "order.ts",
   "cursor.ts",
+  "migration-ddl.ts",
 ]);
 
 /** The version note of contract section 23 (SB1-6.6), the one text three files hold identically. */
@@ -410,7 +412,7 @@ async function healthFailure(snapshotError: Error | undefined, status: string): 
 }
 
 describe("docs/providers/oxia.md quotes what the provider's modules say", () => {
-  test("1. the doc has the header and the 14 sections, in order, and every subsection the outline names", () => {
+  test("1. the doc has the header, the 14 sections and the Migration DDL section, in order, and every subsection the outline names", () => {
     expect(headings(DOC)).toEqual([...OUTLINE]);
     expect(DOC).toContain(
       "The `oxia` type-id: read-only browsing, key lookups, lists and range scans over Oxia's gRPC client API, tested against Oxia 0.16.10 and 0.17.1.",

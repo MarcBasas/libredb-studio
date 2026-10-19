@@ -1722,6 +1722,20 @@ because the provider exposes no `cancelQuery` ([§3.8](#38-the-deadline-is-the-c
 
 ---
 
+## Migration DDL
+
+[`ELASTICSEARCH_MIGRATION_DDL`](../../src/lib/db/providers/sql/search/elasticsearch-migration-ddl.ts) is what the schema-diff migration generator writes for `elasticsearch`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+It declines the whole diff: `refusal` is the one line the migration prints after its header, in place of any DDL, and `transactionWrapper` is `null`.
+Measured 2026-08-19 on Elasticsearch 9.1.4: `ALTER TABLE probe_orders ADD COLUMN x INT` and `... MODIFY COLUMN customer TEXT` are refused with `parsing_exception`, "mismatched input 'ALTER' expecting {'(', 'DEBUG', 'DESC', 'DESCRIBE', 'EXPLAIN', 'SELECT', 'SHOW', 'SYS', 'WITH'}".
+That list is every statement Elasticsearch SQL accepts, so it has no DDL and no `BEGIN` either (#284).
+An existing field's type cannot be changed in a mapping at all, which is why the reason says reindex rather than "use the mapping API".
+
+The refusal reason it prints, verbatim:
+
+- "Elasticsearch SQL reads only; change a field by reindexing into an index whose mapping declares it."
+
+---
+
 ## 14. References
 
 - Source: [`src/lib/db/providers/sql/search/`](../../src/lib/db/providers/sql/search/)

@@ -810,6 +810,8 @@ const SEARCH_MODULE_CITATIONS = [
   { name: "LITERAL_ESCAPE", source: "src/lib/sql/values.ts" },
   { name: "ELASTICSEARCH_GRAMMAR", source: "src/lib/sql/grammar.ts" },
   { name: "OPENSEARCH_GRAMMAR", source: "src/lib/sql/grammar.ts" },
+  { name: "ELASTICSEARCH_MIGRATION_DDL", source: "src/lib/db/providers/sql/search/elasticsearch-migration-ddl.ts" },
+  { name: "OPENSEARCH_MIGRATION_DDL", source: "src/lib/db/providers/sql/search/opensearch-migration-ddl.ts" },
 ] as const;
 
 /** Members of the dialect table rather than top-level declarations, so matched as object keys. */
