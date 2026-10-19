@@ -83,6 +83,12 @@ describe("SQL writing census", () => {
     expect(sqlWritingFor(undefined)).toBe(NO_CONNECTION_SQL_WRITING);
   });
 
+  // Before the contract every writer tested `dialect ? ... : "standard"`, so the empty string a
+  // published component's `databaseType?: string` can carry, and a JS caller's `null`, meant no connection.
+  test.each(["", null])("%p reads the named no-connection spec", (type) => {
+    expect(sqlWritingFor(type as string | undefined)).toBe(NO_CONNECTION_SQL_WRITING);
+  });
+
   test.each(["constructor", "__proto__", "not-an-engine"])("%s reads the named unknown-type spec", (type) => {
     expect(sqlWritingFor(type)).toBe(UNKNOWN_TYPE_SQL_WRITING);
   });

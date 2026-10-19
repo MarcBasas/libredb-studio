@@ -18,7 +18,8 @@ const GOLDEN_DIR = join(import.meta.dir, "golden");
 const FIXTURES = join(import.meta.dir, "fixtures.ts");
 const CONCURRENCY = 8;
 
-const keyOf = (key: string): string | undefined => (key === "no-connection" ? undefined : key);
+const keyOf = (key: string): string | undefined =>
+  key === "no-connection" ? undefined : key === "empty-string" ? "" : key;
 
 function scriptFor(engine: EngineModule): string {
   return `

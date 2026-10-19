@@ -102,10 +102,14 @@ export const SQL_WRITING: Readonly<Record<DatabaseType, SqlWritingSpec>> = Objec
  * The rules for `type`: its row for a member of the union, the no-connection spec for
  * `undefined`, and the unknown-type spec for any other string.
  *
+ * The empty string, and the `null` an untyped JS caller can pass, also mean no connection:
+ * every writer tested `dialect ? ... : "standard"` before this contract, and a published
+ * component's `databaseType?: string` can still hand either one over.
+ *
  * `Object.hasOwn` is the membership test, so `"constructor"` or `"__proto__"` is not read
  * off the prototype as if it were a row.
  */
 export function sqlWritingFor(type: string | undefined): SqlWritingSpec {
-  if (type === undefined) return NO_CONNECTION_SQL_WRITING;
+  if (!type) return NO_CONNECTION_SQL_WRITING;
   return Object.hasOwn(SQL_WRITING, type) ? SQL_WRITING[type as DatabaseType] : UNKNOWN_TYPE_SQL_WRITING;
 }

@@ -7,8 +7,10 @@
  * change. The isolation test reuses `renderGolden` to prove that one engine's row
  * cannot move another engine's output.
  *
- * Three keys are not engines. `no-connection` is the generator that has no connection
- * to name a dialect, so it renders `undefined`. `constructor` and `not-an-engine` reach
+ * Four keys are not engines. `no-connection` is the generator that has no connection
+ * to name a dialect, so it renders `undefined`. `empty-string` renders `""`, which a
+ * published component's `databaseType?: string` can carry and which every writer read as
+ * no connection before the contract. `constructor` and `not-an-engine` reach
  * the functions as raw strings, the way `QuerySafetyDialog` can hand one over through
  * its `databaseType?: string`: today `constructor` resolves to an `Object.prototype`
  * member in a plain lookup table, and the golden pins whatever that answers.
@@ -22,6 +24,7 @@ export const GOLDEN_KEYS: readonly string[] = Object.freeze([
   ...EXTERNAL_DATABASE_TYPES,
   "libredb",
   "no-connection",
+  "empty-string",
   "constructor",
   "not-an-engine",
 ]);
