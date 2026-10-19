@@ -656,7 +656,7 @@ it — the same reading the SQLite, Couchbase, ClickHouse and Druid strategies t
 ### 5.7 What the SQL INSERT and DDL exports write
 
 Trino's INSERT coerces almost nothing from a quoted string: a `bigint`, `decimal`, `date`, `timestamp`, `json`, `array`, `map`, `uuid`, `varbinary` or `row` written as one is `Insert query has mismatched column types`.
-The SQL INSERT export reads each cell's declared type (#1386, [`typed-literals.ts`](../../src/lib/export/typed-literals.ts)) and writes:
+The SQL INSERT export reads each cell's declared type (#1386, [`trino/typed-literals.ts`](../../src/lib/db/providers/sql/trino/typed-literals.ts)) and writes:
 
 | Declared | Written as |
 |---|---|
@@ -1746,6 +1746,14 @@ The name quote is measured on 476: `SELECT "nationkey" FROM tpch.sf1.nation LIMI
 Trino does bind, through `PREPARE`/`EXECUTE` plus an `X-Trino-Prepared-Statement` header, but the provider's transport seam carries the statement alone, so `TrinoProvider.query()` refuses a non-empty params array outright.
 Emitting `?` would build a statement whose placeholder the provider then declines to fill.
 Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
+
+The module's `export` field spells a result export's column types through `ddlTypes`, the standard spelling with `VARCHAR` for text and `VARBINARY` for a binary column: `text` is `Unknown type 'text'` on Trino 476, and `DOUBLE PRECISION`, `BIGINT`, `BOOLEAN` and `TIMESTAMP` are all accepted as they are (`DOUBLE PRECISION` is stored as `double`, measured).
+Each name in `standsAlone` was measured, one `CREATE TABLE probe (c <name>)` per name on Trino 476, read back out of `information_schema.columns`, and is listed only because Trino both accepted it and stored it unnarrowed.
+Trino's `char` and `decimal` are absent, stored as `char(1)` and `decimal(38,0)`.
+Trino is why a bare name cannot simply be re-spelled whenever the target is unmeasured: its own `varchar` is legal and unbounded, and would have become a `TEXT` it answers `Unknown type 'text'` to.
+A binary cell is written by `binaryStandardHex`: measured on 476, `SELECT typeof(X'0102')` answers `varbinary`, `to_hex(X'0102deadbeef')` answers `0102DEADBEEF`, `length(X'')` answers 0, and the whole generated pair replays into the memory connector.
+`typedLiteral` writes the cells whose generic form Trino refuses, from the engine's own [`trino/typed-literals.ts`](../../src/lib/db/providers/sql/trino/typed-literals.ts).
+`NO_BARE_SPELLING` and `NULL_NON_FINITE` complete it.
 
 ---
 

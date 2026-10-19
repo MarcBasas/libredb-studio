@@ -974,6 +974,10 @@ Measured 2026-09-18 on libSQL server v0.24.33 and bun:sqlite, `zz_real(r REAL, f
 That was measured 2026-09-19 on bun:sqlite only ([SQLite](sqlite.md)): `WHERE k = 1234567890123456.8` matched one row, its own; libSQL states it because it embeds the same engine and reports the same `sqlite3_column_decltype` declarations.
 Every edit is bound as typed.
 
+The module's `export` field writes a result export's column types from `STANDARD_DDL_TYPES`, NaN and the infinities as NULL through `NULL_NON_FINITE`, no re-spelling through `NO_BARE_SPELLING`, and a binary cell through `binaryStandardHex` (`X'0102'`).
+`standsAlone` is the SQLite list, for the same measured reason: libSQL is SQLite 3.47.0, and `pragma_table_info` there answers the declared spelling verbatim too (measured on sqld 0.24.33).
+It is written out rather than aliased, so a future divergence can be recorded in one engine's row without touching the other.
+
 ---
 
 ## 10. Error handling

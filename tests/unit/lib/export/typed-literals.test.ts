@@ -259,7 +259,7 @@ describe("typedLiteral: databend", () => {
     // Text that is not whole bytes of hex cannot be the cell a Binary column holds.
     expect(() => typedLiteral("abc", "Binary", "databend", scalar)).toThrow(UnwritableValue);
     expect(() => typedLiteral("x'; DROP", "Binary", "databend", scalar)).toThrow(UnwritableValue);
-    // Bytes from a host are left to the generic writer, whose BINARY_LITERAL row spells unhex too.
+    // Bytes from a host are left to the generic writer, whose `binaryLiteral` for databend is `binaryUnhex` too.
     expect(typedLiteral(new Uint8Array([1, 2]), "Binary", "databend", scalar)).toBeUndefined();
   });
 

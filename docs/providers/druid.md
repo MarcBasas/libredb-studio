@@ -1651,6 +1651,9 @@ Druid quotes a string with single quotes and puts its backslash escapes in the s
 Druid binds a `parameters` array against `?`, live-verified when the provider was written ([`index.ts`](../../src/lib/db/providers/sql/druid/index.ts)).
 Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
 
+The module's `export` field writes a result export's CREATE TABLE and INSERT from the shared building blocks alone: `STANDARD_DDL_TYPES` for the column types, `NOTHING_STANDS_ALONE` and `NO_BARE_SPELLING`, so every bare declared name is re-spelled from its family, `NULL_NON_FINITE` for NaN and the infinities, and `binaryStandardHex` for a binary cell (`X'0102'`).
+Druid takes no INSERT at all without the MSQ extension, so every bare name in a file written from it is re-spelled from its family, portably.
+
 ---
 
 ## 10. Error handling

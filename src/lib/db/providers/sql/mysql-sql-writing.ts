@@ -53,7 +53,7 @@ export const MYSQL_SQL_WRITING: SqlWritingSpec = {
       numericWrapper: CLICKHOUSE_WRAPPER,
     },
     // Measured on MySQL 26.7.0: `SELECT HEX(X'0102deadbeef')` answers `0102DEADBEEF` and
-    // `SELECT LENGTH(X'')` answers 0, so MySQL is here rather than in `zero-x` even
+    // `SELECT LENGTH(X'')` answers 0, so MySQL is on `binaryStandardHex` rather than `binaryZeroX` even
     // though it accepts `0x0102deadbeef` too: a zero-length value has no `0x` spelling
     // (`SELECT LENGTH(0x)` is `ERROR 1054 … Unknown column '0x'`), and an empty cell is
     // not a case an export gets to refuse.

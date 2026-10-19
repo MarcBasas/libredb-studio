@@ -532,6 +532,13 @@ Spark SQL (4.1 and 4.2) quotes a name in backticks and doubles a backtick inside
 Names are case-insensitive there, so quoting never changes which object a name means.
 Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
 
+The module's `export` field spells a result export's column types through `ddlTypes`: Spark SQL has no TEXT, DOUBLE PRECISION or BLOB, and its spellings are `STRING`, `DOUBLE` and `BINARY`.
+No Spark server read a probe column back, so it holds `NOTHING_STANDS_ALONE` and every bare name is re-spelled portably until one does.
+A binary cell is written by `binaryStandardHex`, which Spark reads as a BINARY literal.
+`nonFinite` writes `CAST('NaN' AS DOUBLE)`, `CAST('Infinity' AS DOUBLE)` and `CAST('-Infinity' AS DOUBLE)`, Spark's documented special floating-point values.
+`typedLiteral` writes the temporal, interval and nested cells, from the engine's own [`spark/typed-literals.ts`](../../src/lib/db/providers/sql/spark/typed-literals.ts).
+`NO_BARE_SPELLING` completes it.
+
 ## 9. The confirmation gate
 
 The gate asks before every DELETE, DROP, TRUNCATE, ALTER, GRANT, REVOKE, UPDATE and MERGE as for every SQL engine, and the Spark grammar row adds these forms.

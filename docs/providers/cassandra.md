@@ -716,7 +716,7 @@ deliberately left out of this provider; if it is ever exposed it must not be cal
 ### 5.7 What the SQL INSERT and DDL exports write
 
 CQL reads none of the generic forms for its non-text types: a collection, a UDT, a tuple, a `bigint`, a `varint` or a `decimal` written as quoted JSON or quoted text is `Invalid STRING constant`.
-The SQL INSERT export reads the declared type (#1386, [`typed-literals.ts`](../../src/lib/export/typed-literals.ts)) and writes `[1, 2]` for a `list` or a `vector`, `{'a', 'b'}` for a `set`, `{1: {'x'}}` for a `map`, `(7, 'x')` for a `tuple`, `{"street": 'Main', "zip": 1}` for a UDT, and the numbers, uuids, timeuuids and durations bare.
+The SQL INSERT export reads the declared type (#1386, [`cassandra/typed-literals.ts`](../../src/lib/db/providers/sql/cassandra/typed-literals.ts)) and writes `[1, 2]` for a `list` or a `vector`, `{'a', 'b'}` for a `set`, `{1: {'x'}}` for a `map`, `(7, 'x')` for a `tuple`, `{"street": 'Main', "zip": 1}` for a UDT, and the numbers, uuids, timeuuids and durations bare.
 A `float` or `double` NaN or infinity, at the top level or inside a collection, is written as CQL's bare `NaN`, `Infinity` or `-Infinity`.
 A UDT is declared by its bare name, so its field types are unknown and each field value goes through the generic writer: a UDT with a `bigint`, `varint`, `decimal`, `uuid` or collection field is written with that field quoted and still stops the replay with `Invalid STRING constant`.
 A collection or tuple that does not have its declared shape is skipped with a `-- Row N skipped` comment naming the column.
@@ -1276,6 +1276,16 @@ The name quote is measured on 5.0.9 as well: `SELECT "id" FROM probe.customers` 
 CQL does bind `?` positionally, and `cassandra-driver` binds an array against it, but only through a prepared statement, which is exactly what the transport does not send (`prepare: false`, so a one-shot statement costs one round trip and no server-side cache entry).
 `CassandraProvider.query()` therefore refuses a non-empty params array outright, and emitting `?` would build a statement whose placeholder the provider then declines to fill.
 Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
+
+The module's `export` field spells a result export's column types through `ddlTypes`, the standard spelling with `DOUBLE` for a float: CQL has no `DOUBLE PRECISION`, and measured on Cassandra 5.0.9, `CREATE TABLE … (c DOUBLE PRECISION)` is `SyntaxException: no viable alternative at input 'PRECISION'`, while `DOUBLE`, `TEXT`, `BIGINT`, `BOOLEAN`, `TIMESTAMP` and `BLOB` are all whole type names.
+Each name in `standsAlone` was measured, one `CREATE TABLE probe (c <name>)` per name on Cassandra 5.0.9, read back out of `system_schema.columns`, and is listed only because Cassandra both accepted it and stored it unnarrowed.
+Cassandra's `decimal` is arbitrary-precision.
+A binary cell is written by `binaryZeroX`: measured on 5.0.9, the generated pair replays and `SELECT "payload"` answers `0x0102deadbeef`; a bare `0x` is the empty blob (`blobAsText(0x)` answers the empty string rather than raising), and `X'…'` is not in the grammar at all.
+`rewriteDeclared` restores the `frozen<…>` the driver drops from a nested collection: measured on 5.0.9, a `list<frozen<list<int>>>` column is declared `list<list<int>>`, and CQL refuses that spelling with `Non-frozen collections are not allowed inside collections`.
+`createTableKey` adds a key, because measured on 5.0.9 a CQL `CREATE TABLE` with a column list and no key is `InvalidRequest ... No PRIMARY KEY specifed for table (exactly one required)`.
+A result set does not know which column is the real key, so the first one is chosen as a placeholder, and a comment above the statement says so: a wrong key that replays beats a file that fails to parse.
+`typedLiteral` writes lists, sets, maps, tuples, vectors and the other cells whose generic form CQL refuses, from the engine's own [`cassandra/typed-literals.ts`](../../src/lib/db/providers/sql/cassandra/typed-literals.ts).
+`NO_BARE_SPELLING` and `NULL_NON_FINITE` complete it.
 
 ---
 

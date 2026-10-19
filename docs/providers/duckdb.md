@@ -739,7 +739,7 @@ form; the strategy publishes no timings and fabricates none. See §3.6 for the f
 ### What the SQL INSERT and DDL exports write
 
 `@duckdb/node-api` answers an INTERVAL as `{months, days, micros}`, a MAP as a list of `{key, value}` entries and a STRUCT as an object.
-Written as JSON, the INTERVAL and the MAP were `Conversion Error` on replay, so the SQL INSERT export reads the declared type (#1386, [`typed-literals.ts`](../../src/lib/export/typed-literals.ts)) and writes `INTERVAL '14 months 3 days 14706000001 microseconds'`, `MAP {'k': 1}` (`MAP {}` when empty), `{'a': 7, 'b': ['p']}` and `[1, 2, 3]`, recursing through the element types, with a number inside a container written bare.
+Written as JSON, the INTERVAL and the MAP were `Conversion Error` on replay, so the SQL INSERT export reads the declared type (#1386, [`duckdb/typed-literals.ts`](../../src/lib/db/providers/sql/duckdb/typed-literals.ts)) and writes `INTERVAL '14 months 3 days 14706000001 microseconds'`, `MAP {'k': 1}` (`MAP {}` when empty), `{'a': 7, 'b': ['p']}` and `[1, 2, 3]`, recursing through the element types, with a number inside a container written bare.
 A quoted scalar (`'170141183460469231731687303715884105727'` into a `HUGEINT`) is left as it was, since DuckDB reads it back.
 The DDL keeps `STRUCT("a" INTEGER, "b" VARCHAR[])`, `INTEGER[3]`, `INTEGER[][]` and `MAP(INTEGER, VARCHAR[])` instead of writing `TEXT`.
 A composite that does not have its declared shape is skipped with a `-- Row N skipped` comment naming the column.
@@ -1358,6 +1358,14 @@ DuckDB binds both forms, measured on v1.5.5: `runAndReadAll("SELECT ?::INTEGER A
 `$` is overloaded in this dialect: `$tag$…$tag$` is a dollar-quoted string literal (measured), so a `$1` written into a generated statement sits one character away from a form the readers have to tell apart, while `?` has no second meaning anywhere in DuckDB's grammar.
 `?` also matches the positional order the driver binds by, which is the array's, not the digit's.
 Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
+
+The module's `export` field writes a result export's column types from `STANDARD_DDL_TYPES`.
+Each name in `standsAlone` was measured on DuckDB v1.5.5, one `CREATE TABLE probe (c <name>)` per name read back out of `duckdb_columns().data_type`, and resolved to an unnarrowed type: the seven text spellings to `VARCHAR`, the four byte ones to `BLOB`, the four moment ones to `TIMESTAMP` (and `TIMESTAMP WITH TIME ZONE` to itself).
+`numeric` and `decimal` are the absences that matter: DuckDB accepts both and stores `DECIMAL(18,3)`, which rounds away every value past the third decimal, so they are re-spelled from their family.
+A binary cell is written by `binaryUnhex`, not the standard hex: measured on v1.5.5, `SELECT typeof(X'0102')` answers `VARCHAR` and `SELECT X'0102'` answers the five characters `x0102`, while `unhex('0102deadbeef')` answers a real `BLOB` that reads back as `hex(payload)` = `0102DEADBEEF` with `octet_length(payload)` 6, `unhex('')` inserts the zero-length blob, and `0x0102` is a parser error.
+`nonFinite` writes the quoted words `'NaN'`, `'Infinity'` and `'-Infinity'`, which DuckDB read back into `DOUBLE` and `FLOAT` when replayed (2026-10-04).
+`typedLiteral` writes intervals, maps, structs and the other cells whose JSON form DuckDB refuses, from the engine's own [`duckdb/typed-literals.ts`](../../src/lib/db/providers/sql/duckdb/typed-literals.ts).
+`NO_BARE_SPELLING` completes it.
 
 
 

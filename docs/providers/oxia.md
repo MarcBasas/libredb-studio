@@ -642,6 +642,9 @@ There is no placeholder (`placeholder: null`), so a generator quotes the value w
 No generator calls `quoteLiteral` for Oxia: the command table's own quoting writes every word (O10), so the row is the inert answer etcd's is.
 Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
 
+The module's `export` field writes a result export's CREATE TABLE and INSERT from the shared building blocks alone: `STANDARD_DDL_TYPES` for the column types, `NOTHING_STANDS_ALONE` and `NO_BARE_SPELLING`, so every bare declared name is re-spelled from its family, `NULL_NON_FINITE` for NaN and the infinities, and `binaryStandardHex` for a binary cell (`X'0102'`).
+The engine declares `queryLanguage: "json"`, so no SQL statement is ever built for it to read, and a file exported from it is meant to run somewhere else: every bare name in it is re-spelled portably rather than kept as one engine's private word.
+
 ## 10. Error handling
 
 One closed table maps every failure to a sentence, for both of Oxia's error models: 0.16 sends its own status codes 100 to 112, and 0.17 sends standard gRPC codes with an `ErrorInfo` reason in the domain `oxia.io`, which Studio does not read, because the code alone decides the row.

@@ -2,9 +2,17 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { SQL_WRITING } from "@/lib/db/sql-writing";
-import { EXACT_DECIMAL_TYPE_NAMES, FLOAT64_TYPE_NAMES, INSTANT_TYPE_NAMES } from "@/lib/db/sql-writing/shared";
+import {
+  EXACT_DECIMAL_TYPE_NAMES,
+  FLOAT64_TYPE_NAMES,
+  INSTANT_TYPE_NAMES,
+  NO_BARE_SPELLING,
+  NOTHING_STANDS_ALONE,
+  NULL_NON_FINITE,
+  STANDARD_DDL_TYPES,
+} from "@/lib/db/sql-writing/shared";
 import type { DatabaseType } from "@/lib/types";
-import { ENGINE_MODULES, ROOT } from "./engine-modules";
+import { ENGINE_MODULES, ROOT, TYPED_LITERAL_MODULES } from "./engine-modules";
 
 /**
  * Each provider doc says how a generated statement spells that engine's literals, names and
@@ -18,6 +26,11 @@ import { ENGINE_MODULES, ROOT } from "./engine-modules";
  * It also names `inlineEdit`, and for each key-column name set either the shared set it
  * holds, by that set's name, or the field itself where the engine states its own set (or
  * `"all"`, quoted, for `float64TypeNames`). A `boundEdit`, where one exists, is named too.
+ *
+ * And it names `export`: the binary literal form by function name, each export fact either
+ * by the shared constant it holds or by its field name, `insertForm` where the engine writes
+ * `INSERT ... SELECT`, every export hook the engine defines by field name, and the engine's
+ * own `typed-literals` sibling by its path, where it has one.
  */
 const HEADING = /^(#{2,4}) (?:\d+(?:\.\d+)*\.? +)?SQL writing$/gm;
 
@@ -32,6 +45,14 @@ function subsection(doc: string): string | undefined {
 }
 
 const modulePath = new Map(ENGINE_MODULES.map((engine) => [engine.id, engine.repoPath]));
+const siblingPath = new Map(TYPED_LITERAL_MODULES.map((sibling) => [sibling.ownerId, sibling.repoPath]));
+const EXPORT_HOOKS = [
+  "typedLiteral",
+  "rewriteDeclared",
+  "declareFromSample",
+  "columnWriters",
+  "createTableKey",
+] as const;
 
 describe("provider docs name their SQL writing rules", () => {
   for (const type of Object.keys(SQL_WRITING) as DatabaseType[]) {
@@ -72,6 +93,25 @@ describe("provider docs name their SQL writing rules", () => {
         }
       }
       if (inlineEdit.boundEdit !== undefined) expect(text).toContain("`boundEdit`");
+
+      expect(text).toContain("`export`");
+      const facts = spec.export;
+      expect(text).toContain(`\`${facts.binaryLiteral.name}\``);
+      const constants = [
+        ["ddlTypes", facts.ddlTypes, STANDARD_DDL_TYPES, "STANDARD_DDL_TYPES"],
+        ["standsAlone", facts.standsAlone, NOTHING_STANDS_ALONE, "NOTHING_STANDS_ALONE"],
+        ["bareSpelling", facts.bareSpelling, NO_BARE_SPELLING, "NO_BARE_SPELLING"],
+        ["nonFinite", facts.nonFinite, NULL_NON_FINITE, "NULL_NON_FINITE"],
+      ] as const;
+      for (const [field, value, shared, sharedName] of constants) {
+        expect(text).toContain(value === shared ? `\`${sharedName}\`` : `\`${field}\``);
+      }
+      if (facts.insertForm === "select") expect(text).toContain("`insertForm`");
+      for (const hook of EXPORT_HOOKS) {
+        if (facts[hook] !== undefined) expect(text).toContain(`\`${hook}\``);
+      }
+      const sibling = siblingPath.get(type);
+      if (sibling !== undefined) expect(text).toContain(`../../${sibling}`);
     });
   }
 });

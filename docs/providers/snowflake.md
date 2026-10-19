@@ -608,6 +608,15 @@ There is no placeholder (`placeholder: null`), so a generator quotes the value w
 Snowflake reads both escapes in a single-quoted string constant: a doubled quote is one quote, and a backslash escapes the next character, so it is doubled first, as Databend's is.
 Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
 
+The module's `export` field spells a result export's column types through `ddlTypes`, the standard spelling with `FLOAT` for a float and `BINARY` for a binary column, since Snowflake has no BLOB; provisional until a replay on an account.
+No Snowflake account read a probe column back, so it holds `NOTHING_STANDS_ALONE` and every bare name is re-spelled portably until one does.
+A binary cell is written by `binaryStandardHex`, which Snowflake reads as a BINARY constant; not yet measured on an account.
+`nonFinite` writes `'NaN'::FLOAT`, `'inf'::FLOAT` and `'-inf'::FLOAT`: Snowflake's trial setup (2026-10-12) created its FLOAT infinities with the last two, and the first is the same documented form.
+`insertForm` is `"select"`: Snowflake's `INSERT ... VALUES` refuses `PARSE_JSON`, which its semi-structured cells are written with, so every Snowflake row takes the `INSERT ... SELECT` form; provisional until a replay on an account confirms it.
+`declareFromSample` declares a VECTOR column from its first value: Snowflake reports a VECTOR result column as `vector` with no element type and no dimension, and `CREATE TABLE t (v VECTOR)` is a syntax error (001003).
+`typedLiteral` writes the semi-structured, structured, VECTOR and temporal cells, from the engine's own [`snowflake/typed-literals.ts`](../../src/lib/db/providers/sql/snowflake/typed-literals.ts).
+`NO_BARE_SPELLING` completes it.
+
 ## 9. The confirmation gate
 
 The gate is a browser confirmation, not a boundary: it asks before a statement runs from the editor, and the role decides what can happen.

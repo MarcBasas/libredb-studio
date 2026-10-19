@@ -3999,7 +3999,7 @@ likely to meet.
 ### X12. A declared type the export cannot map still reaches every target verbatim
 
 `completeDeclaredType` re-spells a bare declared type the target dialect does not stand behind, and it
-can only re-spell a name that is in `BARE_TYPE_FAMILY` - the four families whose parameters the wire
+can only re-spell a name that is in `BARE_TYPE_FAMILY` (`src/lib/db/sql-writing/shared.ts`) - the four families whose parameters the wire
 drops. Everything else goes through as the declaring engine wrote it, which is fine for a target that
 happens to know the word and fatal for one that does not. Measured 2026-08-24, a Postgres result under
 each target after the stands-alone work landed:
@@ -5692,7 +5692,7 @@ Found 2026-10-13 while building the Apache Spark provider (#1759); a known upcom
 
 When a cell has no literal in the target dialect, the SQL INSERT export writes `-- Row N skipped: column X holds <held>, which <dialect> has no literal for.` (`skippedRow` in `src/lib/export/result-export.ts`).
 `<dialect>` is the `DatabaseType` id, so the file reads "which snowflake has no literal for", "which trino ...", "which cassandra ...", where every other sentence a user reads names the engine by its display label ("Snowflake", "Trino", "Apache Cassandra").
-On `main` no held phrase (`UnwritableValue` in `src/lib/export/typed-literals.ts`) ends in a "which" clause of its own, so the line does not yet read "which" twice; a held phrase that adds one would.
+On `main` no held phrase (`UnwritableValue` in `src/lib/db/sql-writing/export-shared.ts`) ends in a "which" clause of its own, so the line does not yet read "which" twice; a held phrase that adds one would.
 
 Found 2026-10-13 while building the Apache Spark provider (#1759); pre-existing.
 
@@ -5700,7 +5700,7 @@ Found 2026-10-13 while building the Apache Spark provider (#1759); pre-existing.
 
 ### U144. Nothing ties the SQL export's Spark literal shapes to the text forms Spark's decoder writes
 
-`SPARK_TEMPORAL` and `SPARK_ANSI_INTERVAL` in `src/lib/export/typed-literals.ts` accept a Spark temporal or ANSI interval cell only in the text form that `dateText`, `timestampText`, `timeText`, `yearMonthText` and `dayTimeText` in `src/lib/db/providers/sql/spark/temporal.ts` write, and refuse any other as `UnwritableValue`, which skips the row.
+`SPARK_TEMPORAL` and `SPARK_ANSI_INTERVAL` in `src/lib/db/providers/sql/spark/typed-literals.ts` accept a Spark temporal or ANSI interval cell only in the text form that `dateText`, `timestampText`, `timeText`, `yearMonthText` and `dayTimeText` in `src/lib/db/providers/sql/spark/temporal.ts` write, and refuse any other as `UnwritableValue`, which skips the row.
 `tests/unit/lib/export/typed-literals.test.ts` imports only `@/lib/export/typed-literals` and uses hand-typed strings, and no test under `tests/` feeds the decoder's output to `typedLiteral`.
 So a change to one form in `temporal.ts` (for example `Z` for `+00:00`) would make the SQL INSERT export skip every row holding such a cell, with every test green.
 The two agree today: the review passed decoder output for years 0, -1 and +10000, a zoned timestamp at year 0, `timeText` at 23:59:59.999999999 and negative intervals through `typedLiteral(..., "spark")`, and each came back as a literal.

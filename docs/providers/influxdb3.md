@@ -443,6 +443,9 @@ DataFusion also has PostgreSQL-style `E'...'` strings (measured: `SELECT E'a\nb'
 The engine has placeholders (measured on 3.12.0: `SELECT $1 AS x` and `SELECT ? AS x` both answer `Error during planning: No value found for placeholder ...`), but the route body is exactly `db`, `q` and `format`, so the provider's `query()` refuses a non-empty params array, and emitting a placeholder would build a statement nothing fills.
 Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
 
+The module's `export` field writes a result export's CREATE TABLE and INSERT from the shared building blocks alone: `STANDARD_DDL_TYPES` for the column types, `NOTHING_STANDS_ALONE` and `NO_BARE_SPELLING`, so every bare declared name is re-spelled from its family, `NULL_NON_FINITE` for NaN and the infinities, and `binaryStandardHex` for a binary cell (`X'0102'`).
+InfluxDB 3 parses SQL, but its 3.12 planner refuses DDL and DML, so a file written from it is meant to run somewhere else, and every bare name in it is re-spelled from its family, portably.
+
 ## 10. Error handling
 
 | Answer | What Studio says |

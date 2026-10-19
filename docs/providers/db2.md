@@ -231,6 +231,13 @@ Measured on Db2 LUW 12.1.0.0 through db2-node 1.0.22 (#786), both directions: `V
 db2-node binds a params array against `?`, measured on the same server (#786).
 Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
 
+The module's `export` field spells a result export's column types through `ddlTypes`, the standard spelling with `CLOB` for text: Db2 has no TEXT, and measured on 12.1.0.0, `CREATE TABLE ... (c TEXT)` is SQL0204N `"TEXT" is an undefined name`, while BIGINT, DOUBLE PRECISION, BOOLEAN, TIMESTAMP and BLOB are whole types.
+`CLOB` is the unbounded character type, chosen over a VARCHAR whose bound a cell could pass (#786).
+No name was measured standing alone on Db2 in its first version (#786), so it holds `NOTHING_STANDS_ALONE` and every bare name is re-spelled from its family.
+A binary cell is written by `binaryBinaryHex`, `BX'0102'`: measured on Db2 LUW 12.1.0.0 (#786), `INSERT … VALUES (X'0102deadbeef')` into a `BLOB` or a `VARBINARY` column is SQL0408N, "a value is not compatible with the data type of its assignment target", because `X'…'` is a character string here.
+`BX'0102deadbeef'` goes into `BLOB`, `VARBINARY` and `VARCHAR FOR BIT DATA` alike, reading back as `HEX(…)` = `0102DEADBEEF`, and `BX''` inserts the zero-length value into all three.
+`NO_BARE_SPELLING` and `NULL_NON_FINITE` complete it.
+
 ## 6. Object surface
 
 ### 6.1 Containers

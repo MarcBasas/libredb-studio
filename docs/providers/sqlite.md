@@ -1329,6 +1329,15 @@ Every declaration and not only `real` and `float`: measured 2026-09-19 on bun:sq
 Measured 2026-09-19 on bun:sqlite (Bun 1.4.0), `zz(k DECIMAL(20,4), n NUMERIC(20,4))`: `typeof()` answered `real` for both, 1234567890123456.7891 came back as 1234567890123456.8, which is what the file holds, and `WHERE k = 1234567890123456.8` matched one row, its own.
 Every edit is bound as typed.
 
+The module's `export` field writes a result export's column types from `STANDARD_DDL_TYPES`, SQLite's column types being advisory affinities anyway.
+Each name in `standsAlone` was measured, one `CREATE TABLE probe (c <name>)` per name on SQLite through `bun:sqlite`, read back out of `pragma_table_info`, and is listed only because SQLite both accepted it and stored it unnarrowed.
+SQLite keeps a declared type as the exact string it was given (`pragma_table_info` answers `varchar2` for `varchar2`), so the spelling the source engine used is the one that survives.
+SQLite's `enum`, `uniqueidentifier` and `rowid` are absent: SQLite parses any type name, so the narrowing is in the affinity, and these three match none of its keywords, so the column is NUMERIC and `INSERT INTO p (c) VALUES ('007')` reads back as the integer 7 (measured), where the same insert into `varchar2` reads back as the text `007`.
+`set` is not in SQLite's grammar as a type name at all (`near "set": syntax error`).
+A binary cell is written by `binaryStandardHex`: measured through `bun:sqlite`, `select hex(X'0102deadbeef')` answers `0102DEADBEEF`, and `typeof(X'')` answers `blob` with `length(X'')` 0.
+`nonFinite` writes the infinities as `9e999` and `-9e999` and NaN as NULL: replayed (2026-10-04), SQLite reads `9e999` and `-9e999` as its infinities in a `REAL` column, where a quoted `'Infinity'` is stored as TEXT, and it has no NaN at all (it stores one as NULL).
+`NO_BARE_SPELLING` completes it.
+
 ---
 
 ## 10. Error handling
