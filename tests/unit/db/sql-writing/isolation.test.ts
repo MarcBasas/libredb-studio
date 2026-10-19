@@ -13,10 +13,16 @@ import { GOLDEN_KEYS, goldenFileName } from "./fixtures";
  * replaced engine's own output must show the sentinel, so a mock that never took hold
  * cannot pass as isolation. Each engine runs in its own process because bun's module
  * mocks are process-wide with no undo.
+ *
+ * The inline edit field gets a sentinel of its own, `BOUND_EDIT`, because every other
+ * sentinel already lands in an edit's SQL through the quoted names and the placeholders.
+ * Where the committed golden file shows an edit reaching its UPDATE, every edit of a value
+ * that is not NULL must carry `BOUND_EDIT`, so the hook read the mocked `inlineEdit`.
  */
 const GOLDEN_DIR = join(import.meta.dir, "golden");
 const FIXTURES = join(import.meta.dir, "fixtures.ts");
 const CONCURRENCY = 8;
+const BOUND_EDIT = "INLINE_EDIT_SENTINEL";
 
 const keyOf = (key: string): string | undefined =>
   key === "no-connection" ? undefined : key === "empty-string" ? "" : key;
@@ -38,7 +44,7 @@ mock.module(${JSON.stringify(engine.absPath)}, () => ({
       instantTypeNames: new Set(),
       exactDecimalTypeNames: new Set(),
       float64TypeNames: "all",
-      boundEdit: SENTINEL,
+      boundEdit: () => ${JSON.stringify(BOUND_EDIT)},
     },
   },
 }));
@@ -81,6 +87,14 @@ beforeAll(async () => {
 
 const golden = (key: string): string => readFileSync(join(GOLDEN_DIR, goldenFileName(key)), "utf8");
 
+/** The `edit(` lines of a rendering whose edited text is a value, not NULL. */
+const valueEdits = (rendered: string): string[] =>
+  rendered.split("\n").filter((line) => line.startsWith("edit(") && !/^edit\([^,]+, "(NULL)?", /.test(line));
+
+/** The engine's committed edits reach their UPDATE: the key check ran, so a bound edit has a statement to land in. */
+const editsReachUpdate = (key: string): boolean =>
+  valueEdits(golden(key)).every((line) => !line.includes('"keyCheck":null'));
+
 describe("SQL writing isolation", () => {
   for (const engine of ENGINE_MODULES) {
     test(`${engine.id}: replacing its module moves no other engine's output`, () => {
@@ -88,6 +102,11 @@ describe("SQL writing isolation", () => {
       expect({ exitCode: run?.exitCode, stderr: run?.stderr }).toEqual({ exitCode: 0, stderr: "" });
       const rendered = run?.rendered ?? {};
       expect(rendered[engine.id]).toContain('=> "SENTINEL"');
+      if (editsReachUpdate(engine.id)) {
+        const edits = valueEdits(rendered[engine.id] ?? "");
+        expect(edits.length).toBeGreaterThan(0);
+        expect(edits.filter((line) => !line.includes(BOUND_EDIT))).toEqual([]);
+      }
       for (const key of GOLDEN_KEYS) {
         if (key === engine.id) continue;
         expect({ key, rendered: rendered[key] }).toEqual({ key, rendered: golden(key) });
