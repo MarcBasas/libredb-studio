@@ -48,7 +48,11 @@ const GENERATOR_IMPORTERS: readonly string[] = [DESCRIPTOR_TEST, HARNESS];
 /** The provider files that import src/lib/db/grpc/, type-only imports included, as the shared guard's G5 counts them. */
 const TRANSPORT_IMPORTERS: readonly string[] = [`${SPARK}/connection-options.ts`, ADAPTER];
 /** The only files under src/ outside the provider directory that may import a Spark module. */
-const OUTSIDE_IMPORTERS_ALLOWED: readonly string[] = ["src/lib/db/factory.ts", "src/lib/connection-string-parser.ts"];
+const OUTSIDE_IMPORTERS_ALLOWED: readonly string[] = [
+  "src/lib/db/factory.ts",
+  "src/lib/connection-string-parser.ts",
+  "src/lib/db/connection-string/index.ts",
+];
 /** The one module under src/lib/db/providers/ outside the directory a Spark file may import. */
 const SQL_BASE = "src/lib/db/providers/sql/sql-base";
 /** The pure modules: no I/O, no logger, no transport and no console. */

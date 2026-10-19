@@ -31,7 +31,18 @@ const DIR = "src/lib/db/providers/timeseries/influxdb";
 const PROVIDERS = "src/lib/db/providers/";
 const SQL_BASE = "@/lib/db/providers/sql/sql-base";
 
-const SHARED = ["connection-options", "routes", "client", "versions", "errors", "run-database", "monitoring", "labels"];
+const SHARED = [
+  "connection-options",
+  "routes",
+  "client",
+  "versions",
+  "errors",
+  "run-database",
+  "monitoring",
+  "labels",
+  "influxdb-connection-string",
+  "influxdb3-connection-string",
+];
 const BROWSER = ["influxql-lexer", "influxql-policy", "influxql-quote", "influxql-generators"];
 const INFLUXQL_SERVER = ["influxql-results", "influxql-objects", "influxql-provider"];
 

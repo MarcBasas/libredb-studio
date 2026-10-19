@@ -222,6 +222,7 @@ const BROWSER_SET: ReadonlySet<string> = new Set([
   "generators.ts",
   "order.ts",
   "cursor.ts",
+  "connection-string.ts",
 ]);
 
 /** The version note of contract section 23 (SB1-6.6), the one text three files hold identically. */

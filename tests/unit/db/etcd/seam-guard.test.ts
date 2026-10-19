@@ -1559,6 +1559,8 @@ const SPEC_3_1_MODULES: readonly string[] = [
   "errors.ts",
   "labels.ts",
   "index.ts",
+  // The engine contract's connection string row (engine-contract spec 5.3), declared beside the provider.
+  "connection-string.ts",
 ];
 
 const SPEC_3_1_DIRECTORY = join(import.meta.dir, "../../../../src/lib/db/providers/keyvalue/etcd");
