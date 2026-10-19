@@ -628,6 +628,14 @@ request is at most 200 nodes or 500 values, and a history read stops at its cap,
 server's continuation point back at that point — every earlier page's point is consumed by the
 request that follows it, which is the other way a slot is not left held.
 
+### 5.7 SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/industrial/opcua/sql-grammar.ts`](../../src/lib/db/providers/industrial/opcua/sql-grammar.ts), the `opcua` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+`readsSqlText` is `false`: the console takes one JSON read request naming node ids, so no span of it is SQL (#1677).
+The confirmation gate therefore answers from this engine's row of `NON_SQL_DESTRUCTIVE_VOCABULARY` in `src/lib/db/destructive-commands.ts` instead of a SQL reading.
+Its grammar is `DEFAULT_SQL_GRAMMAR`, the compatibility default, since no SQL grammar of its own applies to this text.
+Redaction is `none`: a redacted statement is stored as `?`, because a reader guessing where a literal ends in a language it does not read can store the literal.
+
 ## 6. Schema introspection
 
 ### 6.1 The object surface (#789)
@@ -1210,6 +1218,16 @@ and the ones that disagreed with it were replaced ([3.3](#33-more-rows-than-node
     already handles (it falls back to `os.hostname()`), and the factory imports the library when a
     session is opened rather than when a provider is built, so nothing that merely constructs a
     connection loads it.
+
+## Migration DDL
+
+[`OPCUA_MIGRATION_DDL`](../../src/lib/db/providers/industrial/opcua/migration-ddl.ts) is what the schema-diff migration generator writes for `opcua`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+It declines the whole diff: `refusal` is the one line the migration prints after its header, in place of any DDL, and `transactionWrapper` is `null`.
+A node's attributes are defined by its type in the server's own model, and this provider has no code that writes to a server (#1677).
+
+The refusal reason it prints, verbatim:
+
+- "An OPC UA node has attributes defined by its type in the server's own model, not columns, and this provider has no code that can write to a server, so there is no column definition to change."
 
 ## 13. References
 

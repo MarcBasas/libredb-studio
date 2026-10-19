@@ -220,6 +220,14 @@ Studio never presents such a read as complete:
 
 From 4.3.7 such messages are delivered with those values removed ([§5.3](#53-rendering-rules)); the handling stays on every version, because a development build reports `4.3.0+<sha>`.
 
+### 5.7 SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/stream/rabbitmq/sql-grammar.ts`](../../src/lib/db/providers/stream/rabbitmq/sql-grammar.ts), the `rabbitmq` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+`readsSqlText` is `false`: the console takes one JSON read request naming a vhost and a stream ([§5.1](#51-the-read-request)), which the provider parses itself, so no span of it is SQL.
+The confirmation gate therefore answers from this engine's row of `NON_SQL_DESTRUCTIVE_VOCABULARY` in `src/lib/db/destructive-commands.ts` instead of a SQL reading.
+Its grammar is `DEFAULT_SQL_GRAMMAR`, the compatibility default, since no SQL grammar of its own applies to this text.
+Redaction is `none`: a redacted statement is stored as `?`, because a reader guessing where a literal ends in a language it does not read can store the literal.
+
 ## 6. Schema introspection
 
 - Containers: `GET /api/vhosts`; `/` is marked as the session default for the agent walk when the account lists it.
@@ -525,6 +533,16 @@ CI runs it in the Functional Smoke job against a fresh 4.3.6 broker; 4.2.9 is ru
 - Compressed sub-entry batches published over the stream protocol are not delivered to an AMQP 0-9-1 reader, and offsets inside them are skipped.
 - On 4.2.x and 4.3.0 to 4.3.6 a message the broker cannot convert ends every read that reaches it ([§5.6](#56-messages-the-broker-cannot-convert-541)).
 - Managed services are not claimed: none was tested.
+
+## Migration DDL
+
+[`RABBITMQ_MIGRATION_DDL`](../../src/lib/db/providers/stream/rabbitmq/migration-ddl.ts) is what the schema-diff migration generator writes for `rabbitmq`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+It declines the whole diff: `refusal` is the one line the migration prints after its header, in place of any DDL, and `transactionWrapper` is `null`.
+A broker keeps no schema and no catalog, so there is no table DDL to decline or to wrap (#1656).
+
+The refusal reason it prints, verbatim:
+
+- "A stream holds messages, not rows with declared columns, so there is no column definition to change."
 
 ## 16. References
 

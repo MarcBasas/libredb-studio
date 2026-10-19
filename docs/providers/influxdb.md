@@ -427,6 +427,14 @@ SELECT last("hum") FROM "home".."home" GROUP BY "room"
 EXPLAIN SELECT count("co") FROM "home".."home"
 ```
 
+### 5.11 SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/timeseries/influxdb/influxdb-sql-grammar.ts`](../../src/lib/db/providers/timeseries/influxdb/influxdb-sql-grammar.ts), the `influxdb` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+`readsSqlText` is `false`: `influxdb` takes one InfluxQL statement, whose strings escape with a backslash, where `/.../` is a regex where the parser asks for one and a `--` comment ends at a lone `\r`, so a SQL span reader misreads where a literal ends; the provider reads it with its own lexer (`src/lib/db/providers/timeseries/influxdb/influxql-lexer.ts`) and refuses every write before sending it.
+The confirmation gate therefore answers from this engine's row of `NON_SQL_DESTRUCTIVE_VOCABULARY` in `src/lib/db/destructive-commands.ts` instead of a SQL reading.
+Its grammar is `DEFAULT_SQL_GRAMMAR`, the compatibility default, since no SQL grammar of its own applies to this text.
+Redaction is `none`: a redacted statement is stored as `?`, because a reader guessing where a literal ends in a language it does not read can store the literal.
+
 ## 6. Schema introspection
 
 ### 6.1 The object surface
@@ -650,6 +658,16 @@ readOnly: true
 - The plaintext consent survives a Host or Port change in the dialog (D204).
 - No agent execution and no MCP `run_read_query` (B94).
 - The Charts tab defects of section 5.8 (U79, U80).
+
+## Migration DDL
+
+[`INFLUXDB_MIGRATION_DDL`](../../src/lib/db/providers/timeseries/influxdb/influxdb-migration-ddl.ts) is what the schema-diff migration generator writes for `influxdb`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+It declines the whole diff: `refusal` is the one line the migration prints after its header, in place of any DDL, and `transactionWrapper` is `null`.
+`influxdb` text is an InfluxQL statement, not SQL, and the provider is read-only, so there is no table DDL to wrap (#284).
+
+The refusal reason it prints, verbatim:
+
+- "A measurement's tags and fields are created by the points written to it, not declared with columns, so there is no column definition to change."
 
 ## 14. References
 

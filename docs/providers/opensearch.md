@@ -633,7 +633,7 @@ double quotes instead"*). The two search ids genuinely cannot share a quoting br
 **`[…]` is also an identifier quote**, MySQL/SQL-Server style: `SELECT [customer] FROM probe_orders`
 answers the field's value, while `SELECT [1, 2]` is refused with "All items between Brackets should be
 identifiers, got:LITERAL_INT". So `OPENSEARCH_GRAMMAR.bracket` is `"quoted-identifier"`
-([`grammar.ts`](../../src/lib/sql/grammar.ts)) — where `elasticsearch` leaves it at the default,
+([`opensearch-sql-grammar.ts`](../../src/lib/db/providers/sql/search/opensearch-sql-grammar.ts)), where `elasticsearch` leaves it at the default,
 because `[` has no meaning in that grammar at all.
 
 **`#` really is a line comment**, and this is where the fork's SQL plugin parts company with upstream.
@@ -718,8 +718,8 @@ Consequences elsewhere in the product:
   unimplemented features, so the EDIT toggle and the editable cell are not offered (#269).
 - The schema-diff migration generator emits, in place of a column change: *"OpenSearch SQL reads only;
   change a field by reindexing into an index whose mapping declares it."*
-  (the `NO_COLUMN_MODIFICATION` table in
-  [`migration-generator.ts`](../../src/lib/schema-diff/migration-generator.ts)). It says *reindex*
+  (the `OPENSEARCH_MIGRATION_DDL` refusal in
+  [`opensearch-migration-ddl.ts`](../../src/lib/db/providers/sql/search/opensearch-migration-ddl.ts)). It says *reindex*
   rather than "use the mapping API" because an existing field's type cannot be changed in place at
   all, even outside SQL.
 - `schemaRefreshPattern` is `\b(DELETE)\b`
@@ -756,6 +756,18 @@ So there is nothing for the route to end, and the absence is a declared boundary
 fallback: the caller shape-checks for the method and this provider does not answer it.
 
 ---
+
+### 5.8 SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/sql/search/opensearch-sql-grammar.ts`](../../src/lib/db/providers/sql/search/opensearch-sql-grammar.ts), the `opensearch` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+Its grammar is `OPENSEARCH_GRAMMAR`, the one reading the statement splitter, the row limiter, the confirmation gate and query-event redaction share, so they cannot disagree about where a literal or a comment ends.
+Every fact was established by live probe on 2026-08-19 against OpenSearch 3.8.0; it disagrees with Elasticsearch about `#` and about `[...]`.
+`#` is a line comment: `SELECT 1 AS a # , 2 AS b` answers one column, the same with a newline before `, 2 AS b` answers two, and `SELECT customer # FROM probe_orders` is a `SemanticCheckException` because the `FROM` was hidden.
+`[...]` is a name quote: `SELECT [customer] FROM probe_orders` answers the field's value, `SELECT [1, 2]` is refused with "All items between Brackets should be identifiers, got:LITERAL_INT", and `[customer]]` and `[a[b]]` are both refused, so it has no escape and does not nest.
+Block comments are flat, by the same probe and answer as Elasticsearch, and `SELECT q'{it's}'` is refused, "Illegal SQL expression".
+`//` is not established, for the reason and at the cost the Elasticsearch row states.
+`readsSqlText` is `true`, deliberately: both search engines answer `POST`ed statements with columns and rows, and both providers extend `SQLBaseProvider` and call `prepareQuery`, so reading the text as not SQL would switch the SQL checks off for text that is SQL.
+Redaction is `sql` with no name quote: a redacted statement keeps its words, and every literal and quoted run becomes `?`.
 
 ## 6. Schema introspection
 
@@ -1702,6 +1714,20 @@ because the provider exposes no `cancelQuery`
 
 ---
 
+## Migration DDL
+
+[`OPENSEARCH_MIGRATION_DDL`](../../src/lib/db/providers/sql/search/opensearch-migration-ddl.ts) is what the schema-diff migration generator writes for `opensearch`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+It declines the whole diff: `refusal` is the one line the migration prints after its header, in place of any DDL, and `transactionWrapper` is `null`.
+Measured 2026-08-19 on OpenSearch 3.8.0: `ALTER TABLE probe_orders ADD COLUMN x INT` and `... MODIFY COLUMN customer TEXT` are refused with `SQLFeatureNotSupportedException`, "Query must start with SELECT, DELETE, SHOW or DESCRIBE".
+OpenSearch SQL has no `BEGIN` either, measured on 3.8.0, so there is no wrapper (#284).
+An existing field's type cannot be changed in a mapping at all, which is why the reason says reindex rather than "use the mapping API".
+
+The refusal reason it prints, verbatim:
+
+- "OpenSearch SQL reads only; change a field by reindexing into an index whose mapping declares it."
+
+---
+
 ## 14. References
 
 - Source: [`src/lib/db/providers/sql/search/`](../../src/lib/db/providers/sql/search/)
@@ -1711,7 +1737,7 @@ because the provider exposes no `cancelQuery`
 - Interface & DTOs: [`src/lib/db/types.ts`](../../src/lib/db/types.ts)
 - Errors: [`src/lib/db/errors.ts`](../../src/lib/db/errors.ts)
 - Connection form config: [`src/lib/db-ui-config.ts`](../../src/lib/db-ui-config.ts)
-- Dialect facts elsewhere in the codebase: `OPENSEARCH_GRAMMAR` in [`src/lib/sql/grammar.ts`](../../src/lib/sql/grammar.ts) (`#`, `[…]`, block comments) · `quoteIdentifier()` in [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) (backticks) · `LITERAL_ESCAPE` in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) (both escape forms) · [`src/lib/sql/fence-tags.ts`](../../src/lib/sql/fence-tags.ts) (the fence tag)
+- Dialect facts elsewhere in the codebase: `OPENSEARCH_GRAMMAR` in [`src/lib/db/providers/sql/search/opensearch-sql-grammar.ts`](../../src/lib/db/providers/sql/search/opensearch-sql-grammar.ts) (`#`, `[…]`, block comments) · `quoteIdentifier()` in [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) (backticks) · `LITERAL_ESCAPE` in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) (both escape forms) · [`src/lib/sql/fence-tags.ts`](../../src/lib/sql/fence-tags.ts) (the fence tag)
 - Local cluster: [`database-compose.yml`](../../database-compose.yml) (`opensearch` service, host port 9201)
 - Tests: [`tests/integration/db/opensearch-provider.test.ts`](../../tests/integration/db/opensearch-provider.test.ts) · [`tests/unit/db/search/`](../../tests/unit/db/search/)
 - API contract: [`docs/API_DOCS.md`](../API_DOCS.md)

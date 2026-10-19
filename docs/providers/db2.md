@@ -389,6 +389,18 @@ Measured through 1.0.25 on 12.1.0.0 and 11.5.9.0: a BOOLEAN edited from the grid
 A value bound to a CLOB, DBCLOB or BLOB column declared 32768 bytes or longer is not written and no error is reported (K24), so the inline editor offers no edit of any such column and says why on the cell, the preview leaves those columns out, and a result holding one carries a warning.
 An import writes its values as literals, so K24 does not reach it.
 
+### 7.6 SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/sql/db2/sql-grammar.ts`](../../src/lib/db/providers/sql/db2/sql-grammar.ts), the `db2` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+Its grammar is `DB2_GRAMMAR`, the one reading the statement splitter, the row limiter, the confirmation gate and query-event redaction share, so they cannot disagree about where a literal or a comment ends.
+Every fact was probed on 2026-10-03 on DB2/LINUXX8664 12.1.0.0 through db2-node 1.0.22, the driver the provider sends statements with (#786).
+`#` is code: `SELECT 1 AS a FROM SYSIBM.SYSDUMMY1 # note` and `SELECT 1 # 2 AS a FROM SYSIBM.SYSDUMMY1` are both SQLCODE -104 at the `#`.
+`[` is not established: `SELECT 1 AS [a] FROM SYSIBM.SYSDUMMY1` is SQLCODE -104, so it is no name quote, but SQL PL writes an array element as `a[1]` and no subscript reading was measured in plain SQL, so the fail-safe default stays.
+Block comments nest: `SELECT 1 AS a /* a /* b */ FROM SYSIBM.SYSDUMMY1 */ FROM SYSIBM.SYSDUMMY1` answers the row, and the same text without the outer closer is SQLCODE -104.
+`q'[x]'` and `// note` are each SQLCODE -104, so there is no alternate quoting and no `//` comment.
+`readsSqlText` is `true`: the editor text is SQL, and the provider extends `SQLBaseProvider`.
+Redaction is `sql` with no name quote: a redacted statement keeps its words, and every literal and quoted run becomes `?`.
+
 ## 8. Maintenance
 
 Run Statistics and Reorganize Table run on one table or materialized query table at a time, from its menu in the object tree; a view, an alias or any other kind is refused by name before anything is sent (RUNSTATS on a view answers SQLSTATE 428DY, measured), and there is no database-wide card, because Db2 LUW has no whole-database RUNSTATS or REORG.
@@ -473,6 +485,19 @@ DB2_CA_FILE=<ca.pem> DB2_TLS_HOST=<host> bun tests/live/db2-live-check.ts
 Both scripts connect as the compose service's `db2inst1` / `Password123` unless `DB2_USER` and `DB2_PASSWORD` say otherwise.
 The K23 probe and the live check's password check need `DB2_K23_USER` and `DB2_K23_PASSWORD`, a user whose password holds all of `!`, `^`, `[`, `]` and `|`; without them the probe prints `PRESENT (not probed)` and the check prints `SKIP`.
 The 2026-10-04 runs on 1.0.25 made that user in the container with `useradd` and `chpasswd` from a file, so no shell read the password, granted it `CONNECT`, enabled TLS as section 3.3 shows, and loaded the fixture by hand after the image skipped it on a fresh volume (D160).
+
+## Migration DDL
+
+[`DB2_MIGRATION_DDL`](../../src/lib/db/providers/sql/db2/migration-ddl.ts) is what the schema-diff migration generator writes for `db2`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+Db2 (#786) has no standalone `BEGIN;`, and `BEGIN` opens a compound SQL block, so `transactionWrapper` is `null`.
+A dropped foreign key or index is written without `IF EXISTS`, measured on Db2 LUW 12.1.0.0: `ALTER TABLE "C" DROP CONSTRAINT IF EXISTS "fk_c"` and `DROP INDEX IF EXISTS "ix_c"` are both SQL0104N at `EXISTS`, while the bare statements run.
+`DROP TABLE` keeps `IF EXISTS`, and `ADD COLUMN` and `DROP COLUMN` take the standard spelling, both measured on 12.1.0.0.
+A modified column is a comment: Db2 retypes a column with `ALTER COLUMN ... SET DATA TYPE`, and several such changes leave the table REORG-pending until a REORG runs, which a flat migration file cannot schedule.
+The fields it takes unchanged from `src/lib/db/migration-ddl/shared.ts` are `standardAddColumn`, `standardAddForeignKey`, `standardColumnDef`, `standardCreateIndex`, `standardCreateTableForeignKey`, `standardDropColumn`, `standardDropTable` and `standardPrimaryKey`.
+
+The refusal reason it prints, verbatim:
+
+- "Db2 changes a column with ALTER COLUMN ... SET DATA TYPE and may leave the table REORG-pending; write the change by hand."
 
 ## 14. References
 

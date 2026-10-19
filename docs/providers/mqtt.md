@@ -315,6 +315,14 @@ Every read reports what it saw, why it stopped, and what it can prove it lost. `
 the panel not to read the page's `total` at all; the field itself is `0` on every page, because the shape
 requires a number and there is no count a broker publishes.
 
+### 5.1 SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/keyvalue/mqtt/sql-grammar.ts`](../../src/lib/db/providers/keyvalue/mqtt/sql-grammar.ts), the `mqtt` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+`readsSqlText` is `false`: there is no query console in this version ([§2.1](#21-where-it-sits)), the Keys panel is the surface, so no statement text of this engine is SQL.
+The confirmation gate therefore answers from this engine's row of `NON_SQL_DESTRUCTIVE_VOCABULARY` in `src/lib/db/destructive-commands.ts` instead of a SQL reading.
+Its grammar is `DEFAULT_SQL_GRAMMAR`, the compatibility default, since no SQL grammar of its own applies to this text.
+Redaction is `none`: a redacted statement is stored as `?`, because a reader guessing where a literal ends in a language it does not read can store the literal.
+
 ## 6. Objects
 
 ### 6.1 The `topic` kind
@@ -526,6 +534,16 @@ Each replay asserts the topics by name and the type of each, so a decoder that r
   admin account, it is not MQTT, and it does not exist on every broker. Candidate for a later version.
 - `$SYS` is not subscribed to by default, for the reasons in 3.8.
 - The Keys panel cannot ask for a second page, by the choice in 3.7.
+
+## Migration DDL
+
+[`MQTT_MIGRATION_DDL`](../../src/lib/db/providers/keyvalue/mqtt/migration-ddl.ts) is what the schema-diff migration generator writes for `mqtt`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+It declines the whole diff: `refusal` is the one line the migration prints after its header, in place of any DDL, and `transactionWrapper` is `null`.
+A broker keeps no schema and no catalog, so there is no table DDL to decline or to wrap (#1635).
+
+The refusal reason it prints, verbatim:
+
+- "A broker keeps no schema and no catalog, so there is no column definition to change."
 
 ## 13. References
 

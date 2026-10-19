@@ -333,6 +333,14 @@ A field a document lacks and a stored null both show as NULL in the grid, so `wh
 
 Cancel aborts the in-flight request.
 
+### 5.8 SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/document/firestore/sql-grammar.ts`](../../src/lib/db/providers/document/firestore/sql-grammar.ts), the `firestore` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+`readsSqlText` is `false`: the console takes one Firestore read statement in its own grammar ([§5.2](#52-grammar)), which the provider parses itself.
+The confirmation gate therefore answers from this engine's row of `NON_SQL_DESTRUCTIVE_VOCABULARY` in `src/lib/db/destructive-commands.ts` instead of a SQL reading.
+Its grammar is `DEFAULT_SQL_GRAMMAR`, the compatibility default, since no SQL grammar of its own applies to this text.
+Redaction is `none`: a redacted statement is stored as `?`, because a reader guessing where a literal ends in a language it does not read can store the literal.
+
 ## 6. Schema introspection
 
 ### 6.1 The tree
@@ -529,6 +537,16 @@ On 2026-10-12 a real project's `(default)` database answered as those built answ
 
 Not supported in this version, each a BACKLOG entry: writes of any kind, Pipelines, Datastore mode, the MongoDB-compatible API (use the `mongodb` type), Firebase Auth user sign-in under Security Rules, service-account impersonation, regional endpoints, real-time listeners, agent statement execution and MCP, collection export, point-in-time reads, `limitToLast`, bytes literals in the console, a read budget meter, an absent-cell marker in the grid, full support for the Enterprise BSON types, and a CI job running the emulator.
 An egress HTTPS proxy is not supported.
+
+## Migration DDL
+
+[`FIRESTORE_MIGRATION_DDL`](../../src/lib/db/providers/document/firestore/migration-ddl.ts) is what the schema-diff migration generator writes for `firestore`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+It declines the whole diff: `refusal` is the one line the migration prints after its header, in place of any DDL, and `transactionWrapper` is `null`.
+A document store keeps no schema and no catalog, so there is no table DDL to decline or to wrap.
+
+The refusal reason it prints, verbatim:
+
+- "A document store keeps no schema, so there is no column definition to change."
 
 ## 15. References
 

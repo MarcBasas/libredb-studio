@@ -270,6 +270,14 @@ MEASURED on the demo: 38 observations carry an empty value, and only 31 of them 
 other 7 are EVENT items, so an empty value is a third state, distinct from `UNAVAILABLE`, which is
 shown as the word the agent printed rather than as an empty cell.
 
+### 5.6 SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/industrial/mtconnect/sql-grammar.ts`](../../src/lib/db/providers/industrial/mtconnect/sql-grammar.ts), the `mtconnect` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+`readsSqlText` is `false`: the console takes one request line in the agent's own URL grammar, so no span of it is SQL (#1722).
+The confirmation gate therefore answers from this engine's row of `NON_SQL_DESTRUCTIVE_VOCABULARY` in `src/lib/db/destructive-commands.ts` instead of a SQL reading.
+Its grammar is `DEFAULT_SQL_GRAMMAR`, the compatibility default, since no SQL grammar of its own applies to this text.
+Redaction is `none`: a redacted statement is stored as `?`, because a reader guessing where a literal ends in a language it does not read can store the literal.
+
 ## 6. Schema introspection
 
 ### 6.1 One container level
@@ -386,6 +394,16 @@ stand-in, and no local copy of a rule the shared modules own.
   preference (5.2).
 - The Agent device's adapter addresses are visible to an MCP client (10.2).
 - A composition's own name is carried where the observation has one; MEASURED on 6 of 478.
+
+## Migration DDL
+
+[`MTCONNECT_MIGRATION_DDL`](../../src/lib/db/providers/industrial/mtconnect/migration-ddl.ts) is what the schema-diff migration generator writes for `mtconnect`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+It declines the whole diff: `refusal` is the one line the migration prints after its header, in place of any DDL, and `transactionWrapper` is `null`.
+An agent's device model is the agent's own and every route this provider sends is a GET, so there is no table DDL to wrap either (#1722).
+
+The refusal reason it prints, verbatim:
+
+- "An MTConnect data item's shape is declared in the agent's own device model, not in columns a client can change, and every request this provider sends is a GET, so there is no column definition to change."
 
 ## 13. References
 

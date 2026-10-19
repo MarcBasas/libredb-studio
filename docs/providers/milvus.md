@@ -388,6 +388,14 @@ Cancel stops a running call and the server stops the search; a queued request le
 The server keeps parsing a large filter after a cancel, which is why the filter bound is summed over the request.
 The confirmation gate reads a Milvus request with the provider's own guard, so what asks and what runs are one parse: every request of this version reads, so none asks, and a request the guard refuses is refused in the editor, before anything is sent and with nothing written to history.
 
+### 5.8 SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/vector/milvus/sql-grammar.ts`](../../src/lib/db/providers/vector/milvus/sql-grammar.ts), the `milvus` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+`readsSqlText` is `false`: `milvus` takes one Milvus console request, a `POST /v2/vectordb/<route>` line and one JSON body, whose strings escape with a backslash and whose filter is a Milvus expression the server parses; the provider extends `BaseDatabaseProvider` and parses the text itself.
+The confirmation gate therefore answers from this engine's row of `NON_SQL_DESTRUCTIVE_VOCABULARY` in `src/lib/db/destructive-commands.ts` instead of a SQL reading.
+Its grammar is `DEFAULT_SQL_GRAMMAR`, the compatibility default, since no SQL grammar of its own applies to this text.
+Redaction is `none`: a redacted statement is stored as `?`, because a reader guessing where a literal ends in a language it does not read can store the literal.
+
 ## 6. Schema introspection
 
 ### 6.1 The object surface
@@ -518,6 +526,16 @@ Milvus's RBAC hides neither the topology nor other databases' row counts from an
 - The management port 9091 answers without authentication on 3.0.2, so the operator keeps it off the network.
 - A load the server continues after Load's 10-second poll is not covered by the one-load lock.
 - Clusters, Milvus Lite and 2.6 and older are not claimed.
+
+## Migration DDL
+
+[`MILVUS_MIGRATION_DDL`](../../src/lib/db/providers/vector/milvus/migration-ddl.ts) is what the schema-diff migration generator writes for `milvus`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+It declines the whole diff: `refusal` is the one line the migration prints after its header, in place of any DDL, and `transactionWrapper` is `null`.
+`milvus` text is a Milvus console request, not SQL, so there is no table DDL to wrap (#284).
+
+The refusal reason it prints, verbatim:
+
+- "A collection's schema is declared through Milvus's own collection API, not SQL DDL, so there is no column definition to change."
 
 ## 14. References
 

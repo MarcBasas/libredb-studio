@@ -1124,9 +1124,12 @@ Those three reach code and tests only; the four prose greps of the published blo
 
 **Also always, and not named above until the Kafka provider found them (#1088):** each is a record, a population or a pinned list no search above prints by itself.
 
-- [ ] `src/lib/db/destructive-commands.ts`: `NON_SQL_DESTRUCTIVE_VOCABULARY`, a row for every id `NON_SQL_DIALECTS` names, which `tests/unit/db/destructive-commands.test.ts` holds to exactly those ids.
+- [ ] `src/lib/db/destructive-commands.ts`: `NON_SQL_DESTRUCTIVE_VOCABULARY`, a row for every id whose grammar module declares `readsSqlText: false`, which `tests/unit/db/destructive-commands.test.ts` holds to exactly those ids.
       A text that cannot write takes the row that names no operation and decides alone, the Prometheus and Kafka shape.
-- [ ] `src/lib/schema-diff/migration-generator.ts`: `NO_TABLE_DDL`, beside `NO_COLUMN_MODIFICATION` and `NO_TRANSACTION_WRAPPER`, for an engine whose diff gets no table DDL at all; every id in it is in `NO_TRANSACTION_WRAPPER` too.
+- [ ] `src/lib/db/migration-ddl/index.ts`: the new id's row in `MIGRATION_DDL`, which the compiler holds complete.
+      Write the row's module beside the provider at the placement rule, `<family>/<id>-migration-ddl.ts` for a flat provider or `<family>/<id>/migration-ddl.ts` for a directory one, as a `MigrationDdlSpec`: `tableDdl: "refused"` with its one `refusal` line for an engine whose diff gets no table DDL at all, or `"written"` with every statement kind and a `transactionWrapper` decision (#284), sharing PostgreSQL's spelling only by importing a named building block from `shared.ts` (#269).
+      Give the provider doc its `Migration DDL` section, which `tests/unit/db/migration-ddl/docs.test.ts` holds to the module, then run `UPDATE_GOLDEN=1 bun tests/run-tests.ts tests/unit/db/migration-ddl/golden.test.ts` and read the new golden file before committing it.
+      Add the new id to `PLACEMENT` in `tests/unit/db/migration-ddl/census.test.ts`, which the compiler holds complete, and, when the module refuses table DDL, to its `REFUSED` list, a plain list the compiler does not hold.
 - [ ] `tests/unit/lib/db-ui-config.test.ts`: `FIELD_CHECKLIST`, when the new id's connection fields include one the checklist does not hold.
 - [ ] The pinned lists and per-dialect pins: `tests/components/ConnectionModal.test.tsx` (its mocks and its `SHIPPED` census), `tests/components/rich-text.test.tsx` and `tests/unit/lib/sql/fence-tags.test.ts` (the hand lists of canonical tags), `tests/unit/aws-listing-fields.test.ts` (`productNames`), `tests/unit/db/object-edit-expectation.test.ts` (the census counts), `tests/unit/lib/export/result-export.test.ts` and `tests/unit/sql/values.test.ts` (the literal and placeholder pins).
 - [ ] `docs/API_DOCS.md`: the `type DatabaseType` line names every type-id.
@@ -1175,25 +1178,28 @@ Those three reach code and tests only; the four prose greps of the published blo
 - [ ] `src/lib/connection-string-parser.ts` — the scheme(s), if `supportsConnectionString`
 - [ ] `src/lib/query-generators.ts` — only if the dialect needs its own branch; the default is
       PostgreSQL-shaped, so check before assuming it fits
-- [ ] `src/lib/schema-diff/migration-generator.ts` — same shape, same hazard: the modified-column
-      chain's trailing `else` is PostgreSQL DDL, so an unlisted id silently inherits it (#269). Give the
-      dialect a branch, or list it in `NO_COLUMN_MODIFICATION` to emit an honest comment instead. A new
-      id also needs a decision in `NO_TRANSACTION_WRAPPER` (#284): does `BEGIN;`/`COMMIT;` wrap this
-      engine's DDL at all, or does it belong in the set that gets no wrapper? An id absent from that
-      set inherits the PostgreSQL-shaped wrapper by default, which is silently wrong for a non-SQL or
-      non-transactional engine the same way the modified-column `else` used to be
-- [ ] `src/lib/sql/grammar.ts` — **two decisions, neither of which the compiler can force.** First,
-      whether your engine's query text is SQL at all (`NON_SQL_DIALECTS`): an id absent from that set is
-      declared to write SQL, and the confirmation gate then applies a SQL span reader to it — which for
-      a JSON or command-line grammar reports ordinary text as unreadable and prompts on every run (#297).
-      Second, the four grammar facts (`SQL_GRAMMARS`): `#`, `[…]`, whether block comments nest, and
-      whether `q'…'` is a literal. An id absent from that table reads under the compatibility default,
-      which is SQL Server's bracket reading and MySQL-ish everything else — fine where your engine
-      agrees, a lost row bound or a false prompt where it does not (that is what PostgreSQL's bracket
-      row cost before it was established). Establish each fact from your engine's own documentation or
-      its driver's tokenizer, never from a neighbouring dialect, and leave it at the default rather than
-      guess. `tests/unit/sql/grammar.test.ts` holds `Record<DatabaseType, …>` maps for both decisions,
-      so the compiler will at least stop you from *forgetting* that a decision exists
+- [ ] `src/lib/db/sql-grammar/`: write your engine's grammar module, `<family>/<id>/sql-grammar.ts`
+      under `src/lib/db/providers/` (or `<family>/<id>-sql-grammar.ts` beside a provider that is one
+      flat file), exporting `<ID>_SQL_GRAMMAR` with every fact of `SqlGrammarSpec`, and add its row to
+      `SQL_GRAMMAR` in `src/lib/db/sql-grammar/index.ts`, which the compiler holds total over
+      `DatabaseType`. **Two of its facts are decisions the compiler cannot make for you.** First,
+      `readsSqlText`: `true` declares the text SQL, and the confirmation gate then applies a SQL span
+      reader to it, which for a JSON or command-line grammar reports ordinary text as unreadable and
+      prompts on every run (#297); it must agree with the provider's `queryLanguage`, which
+      `tests/isolated/sql-grammar-reads-sql-text.test.ts` holds. Second, `grammar`: your own constant
+      with `#`, `[…]`, whether block comments nest and whether `q'…'` is a literal, or
+      `DEFAULT_SQL_GRAMMAR`, the compatibility default, which is SQL Server's bracket reading and
+      MySQL-ish everything else: fine where your engine agrees, a lost row bound or a false prompt
+      where it does not (that is what PostgreSQL's bracket row cost before it was established).
+      Establish each fact from your engine's own documentation or its driver's tokenizer, never from a
+      neighbouring dialect, and leave it at the default rather than guess. `redaction` says what a
+      redacted query event keeps: `sql` with the name quote, `command` with the module's own reader,
+      or `none`, which stores `?`. An engine on `DEFAULT_SQL_GRAMMAR` or with `readsSqlText: false`
+      takes `none` or `command`, never `sql`, because a reader guessing where a literal ends can store
+      the literal; `tests/unit/db/sql-grammar/census.test.ts` holds it. Then regenerate the golden file with
+      `UPDATE_GOLDEN=1 bun tests/run-tests.ts tests/unit/db/sql-grammar/golden.test.ts`, commit it,
+      and add the `SQL grammar` subsection to your provider doc, which
+      `tests/unit/db/sql-grammar/docs.test.ts` holds to the module
 - [ ] `src/lib/db/types.ts`: `queryLanguage`, only when the engine's query text is neither SQL nor JSON.
       A new member is not neutral: a reader written `=== "json"` sends it into its SQL branch and one written `!== "sql"` into its MongoDB branch, so every reader needs an explicit arm or a test pinning that its branch is right.
       `grep -rn queryLanguage src` is not the whole population: `src/components/agent/AnswerCard.tsx` reads it through `editorLanguageForTabType`.
@@ -1266,8 +1272,8 @@ connection-form test), so the compiler and those tests refuse to pass until each
 `tests/hooks/use-connection-form.test.ts`,
 `tests/unit/schema-diff/migration-generator.test.ts` (`MODIFIED_COLUMN_COVERAGE` — classify the new id
 as having its own dialect branch or as unable to express a column modification; and
-`TRANSACTION_WRAPPER_COVERAGE` — classify it as `"wrapped"` or `"unwrapped"`, matching whatever you
-chose in `NO_TRANSACTION_WRAPPER`),
+`TRANSACTION_WRAPPER_COVERAGE` — classify it as `"wrapped"` or `"unwrapped"`, matching the module's
+`transactionWrapper`),
 `tests/unit/sql/grammar.test.ts` (`GRAMMAR_COVERAGE` and `SQL_TEXT_COVERAGE` — record whether the id
 has an established grammar or reads at the default, and whether its query text is SQL).
 

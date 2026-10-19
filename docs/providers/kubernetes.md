@@ -314,6 +314,14 @@ A statement reads at most 5,000 rows; a page at or past that answers a sentence 
 
 Query history masks the values of `--token`, `--password`, `--client-key`, `--client-certificate`, `--from-literal` and `--docker-password` in every spelling, though the console refuses every line that carries them; a tab keeps what was typed, a saved query keeps what was saved, and the embedded workspace writes no history.
 
+### 5.1 SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/platform/kubernetes/sql-grammar.ts`](../../src/lib/db/providers/platform/kubernetes/sql-grammar.ts), the `kubernetes` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+`readsSqlText` is `false`: `kubernetes` takes one kubectl subset statement, words split by POSIX shell rules, and a SQL span reader would report its quoting as unreadable and prompt on every run.
+The confirmation gate therefore answers from this engine's row of `NON_SQL_DESTRUCTIVE_VOCABULARY` in `src/lib/db/destructive-commands.ts` instead of a SQL reading.
+Its grammar is `DEFAULT_SQL_GRAMMAR`, the compatibility default, since no SQL grammar of its own applies to this text.
+Redaction is `none`: a redacted statement is stored as `?`, because a reader guessing where a literal ends in a language it does not read can store the literal.
+
 ## 6. Schema: the tree
 
 One container level: `Cluster` first, then the namespaces, each with the kinds it holds; the Default namespace is the session's.
@@ -509,6 +517,16 @@ Not measured: an etcd-backed managed cluster, Rancher's proxy, OpenShift (its pr
 - No auto-execute on Kubernetes: a kubectl answer is never run in the editor, so the run route refuses `autoExecute`.
 - `inspect_usage` needs metrics-server: without `metrics.k8s.io` the run records that usage is unavailable and names metrics-server.
 - Restart counts are cumulative since a container started, so `profile_workloads` shows a count with the last termination time and reason, never a rate.
+
+## Migration DDL
+
+[`KUBERNETES_MIGRATION_DDL`](../../src/lib/db/providers/platform/kubernetes/migration-ddl.ts) is what the schema-diff migration generator writes for `kubernetes`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+It declines the whole diff: `refusal` is the one line the migration prints after its header, in place of any DDL, and `transactionWrapper` is `null`.
+`kubernetes` text is one kubectl statement, not SQL, so there is no table DDL to wrap (#284).
+
+The refusal reason it prints, verbatim:
+
+- "Kubernetes objects follow the schema their API version serves, and Studio writes none, so there is no column definition to change."
 
 ## 15. References
 

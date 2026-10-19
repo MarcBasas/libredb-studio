@@ -326,6 +326,14 @@ Export PNG draws the whole graph on the theme's background, and Export JSON writ
 Masking follows the grid's rule: when the grid would mask, a property whose key the masking config flags is masked in the captions, the inspector and both exports.
 A node or relationship found under a column the grid masks by name has every property masked with that column's pattern, as the grid masks the whole cell; its labels, type and elementId stay.
 
+### 5.7 SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/graph/neo4j/sql-grammar.ts`](../../src/lib/db/providers/graph/neo4j/sql-grammar.ts), the `neo4j` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+`readsSqlText` is `false`: `neo4j` takes one Cypher statement, whose strings escape with a backslash, where `//` opens a comment and a backtick quotes a name, so a SQL span reader would misread where a literal ends; the provider reads it with the graph lexer (`src/lib/db/graph/cypher/lexer.ts`) and refuses every write before sending it.
+The confirmation gate therefore answers from this engine's row of `NON_SQL_DESTRUCTIVE_VOCABULARY` in `src/lib/db/destructive-commands.ts` instead of a SQL reading.
+Its grammar is `DEFAULT_SQL_GRAMMAR`, the compatibility default, since no SQL grammar of its own applies to this text.
+Redaction is `none`: a redacted statement is stored as `?`, because a reader guessing where a literal ends in a language it does not read can store the literal.
+
 ## 6. Schema introspection
 
 ### 6.1 The object surface (#789)
@@ -487,6 +495,16 @@ Each line is one run.
 - No verified TLS through an SSH tunnel, filed as D142.
 - No client certificate, no routing `neo4j://` URI, no cluster routing and no Aura in this version.
 - The UI shows the plain name "Neo4j" and a generic graph icon, never Neo4j's logo.
+
+## Migration DDL
+
+[`NEO4J_MIGRATION_DDL`](../../src/lib/db/providers/graph/neo4j/migration-ddl.ts) is what the schema-diff migration generator writes for `neo4j`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+It declines the whole diff: `refusal` is the one line the migration prints after its header, in place of any DDL, and `transactionWrapper` is `null`.
+`neo4j` text is a Cypher statement, not SQL, and the provider is read-only, so there is no table DDL to wrap (#284).
+
+The refusal reason it prints, verbatim:
+
+- "A node label groups nodes whose properties are not declared columns, so there is no column definition to change."
 
 ## 14. References
 

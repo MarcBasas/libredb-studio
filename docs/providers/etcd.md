@@ -335,6 +335,14 @@ Cancelling a read or a watch stops it; a write already sent is not stopped and t
 The confirmation gate reads the provider's own parser, so what runs and what asks are one parse, and it never sends an etcd statement to the model provider.
 A prefix delete asks for the prefix typed exactly, `/app/` and `/App/` being different prefixes; a key holding a newline is typed in Go's quoted form.
 
+### 5.6 SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/keyvalue/etcd/sql-grammar.ts`](../../src/lib/db/providers/keyvalue/etcd/sql-grammar.ts), the `etcd` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+`readsSqlText` is `false`: `etcd` takes an etcdctl command line (#1089), whose words are read by the shell's quoting rules and a txn body by etcdctl's own, and a key may be spelled like any SQL keyword; the provider extends `BaseDatabaseProvider` and parses the text itself.
+The confirmation gate therefore answers from this engine's row of `NON_SQL_DESTRUCTIVE_VOCABULARY` in `src/lib/db/destructive-commands.ts` instead of a SQL reading.
+Its grammar is `DEFAULT_SQL_GRAMMAR`, the compatibility default, since no SQL grammar of its own applies to this text.
+Redaction is `none`: a redacted statement is stored as `?`, because a reader guessing where a literal ends in a language it does not read can store the literal.
+
 ## 6. Schema introspection
 
 ### 6.1 The object surface (#789)
@@ -523,6 +531,16 @@ kube-apiserver compacts etcd every 5 minutes, so Compact history is for a NOSPAC
 - The watch is bounded; a live watch panel is filed as U56.
 - A watch whose member goes silent after etcd answered its create, with the connection left open, reports a quiet window, since nothing on the client tells a silent member from a quiet key range; a window that runs on for about 16 seconds after the member went silent lets the keepalive drop the connection (a ping every 10 seconds, unanswered for 6) and ends the watch as an error.
 - The connection dialog sends a client certificate the current SSL mode no longer draws, filed as U60.
+
+## Migration DDL
+
+[`ETCD_MIGRATION_DDL`](../../src/lib/db/providers/keyvalue/etcd/migration-ddl.ts) is what the schema-diff migration generator writes for `etcd`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+It declines the whole diff: `refusal` is the one line the migration prints after its header, in place of any DDL, and `transactionWrapper` is `null`.
+`etcd` text is an etcdctl command line, not SQL, so there is no table DDL to wrap (#284, #1089).
+
+The refusal reason it prints, verbatim:
+
+- "A key-prefix group holds keys whose values are bytes, not rows with declared columns, so there is no column definition to change."
 
 ## 14. References
 

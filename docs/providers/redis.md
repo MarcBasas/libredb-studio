@@ -861,6 +861,15 @@ prefixes rather than objects — so it is offered here and nowhere else: a catal
 
 ---
 
+### 5.4 SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/keyvalue/redis-sql-grammar.ts`](../../src/lib/db/providers/keyvalue/redis-sql-grammar.ts), the `redis` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+`readsSqlText` is `false`: Redis takes a command line, which never reaches the SQL readers on the query path, since the provider extends `BaseDatabaseProvider` and never calls `prepareQuery`; it reaches the confirmation gate because both execution paths ask about whatever is in the editor before running it (#297).
+The confirmation gate therefore answers from this engine's row of `NON_SQL_DESTRUCTIVE_VOCABULARY` in `src/lib/db/destructive-commands.ts` instead of a SQL reading.
+Its grammar is `DEFAULT_SQL_GRAMMAR`, the compatibility default, since no SQL grammar of its own applies to this text.
+Redaction is `command`, read by the module's own reader over the one command `readRedisCommandText()` reads for the provider: a redacted statement keeps that command's name, upper-cased as the provider sends it, and one `?` for every argument, keys and values alike.
+A text that sends nothing (blank, only comments, a second command or an unclosed quote) keeps nothing (`?`), and so does a JSON command the provider would refuse.
+
 ## 6. Schema introspection
 
 the object surface ([`redis.ts`](../../src/lib/db/providers/keyvalue/redis.ts)) returns one
@@ -2099,6 +2108,18 @@ request/response contract.
   answers a modified column per dialect; keys are not tables and carry no column definitions, so it
   emits `-- Redis: Cannot alter column "<name>". ...` where it previously emitted PostgreSQL
   `ALTER TABLE ... ALTER COLUMN` DDL that means nothing here.
+
+---
+
+## Migration DDL
+
+[`REDIS_MIGRATION_DDL`](../../src/lib/db/providers/keyvalue/redis-migration-ddl.ts) is what the schema-diff migration generator writes for `redis`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+It declines the whole diff: `refusal` is the one line the migration prints after its header, in place of any DDL, and `transactionWrapper` is `null`.
+`redis` writes no SQL text at all (`readsSqlText: false`), so there is no table DDL to wrap (#284).
+
+The refusal reason it prints, verbatim:
+
+- "Keys are not tables and have no column definitions to change."
 
 ---
 

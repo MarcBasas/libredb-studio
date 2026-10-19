@@ -252,7 +252,7 @@ The engine accepts `$1` and `?` placeholders, but the route body has no paramete
 
 ### 5.4 The DataFusion grammar
 
-The statement splitter, the row limiter, the confirmation gate and the read policy read text under one measured grammar row, `DATAFUSION_GRAMMAR` in `src/lib/sql/grammar.ts`, so they cannot disagree about where a comment or a literal ends.
+The statement splitter, the row limiter, the confirmation gate and the read policy read text under one measured grammar row, `DATAFUSION_GRAMMAR` in `src/lib/db/providers/timeseries/influxdb/influxdb3-sql-grammar.ts`, so they cannot disagree about where a comment or a literal ends.
 
 | Field | Value | Measured on 3.12.0 Core |
 |---|---|---|
@@ -366,6 +366,18 @@ The Explain button is not offered ([D198](../BACKLOG.md)); a typed `EXPLAIN` ret
 
 A timestamp through this type carries no zone, and the same row read through InfluxDB (InfluxQL) ends in `Z`, so a timestamp copied from one type into a statement of the other needs its `Z` added or removed.
 For the Charts tab, order by `time` ascending and choose `time` as the x axis: the default x axis is the first tag ([U79](../BACKLOG.md)), and "Group by hour" reads a `Z` time in local time ([U80](../BACKLOG.md)).
+
+### 5.12 SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/timeseries/influxdb/influxdb3-sql-grammar.ts`](../../src/lib/db/providers/timeseries/influxdb/influxdb3-sql-grammar.ts), the `influxdb3` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+Its grammar is `DATAFUSION_GRAMMAR`, the one reading the statement splitter, the row limiter, the confirmation gate and query-event redaction share, so they cannot disagree about where a literal or a comment ends.
+Every fact is Apache DataFusion as InfluxDB 3.12.0 Core parses it, each a statement the server answered through `POST /api/v3/query_sql` with the body the provider sends, re-run 2026-10-04.
+`#` opens nothing: `SELECT 1 AS x # c` is HTTP 400, `ParserError("Expected: end of statement, found: # at Line: 1, Column: 15")`.
+`[` is a subscript and an array literal that nests, never a name quote: `SELECT [1,2][1] AS x` answers 1, `SELECT [[1,2],[3,4]][2][1] AS x` answers 3, `SELECT ['a]b'][1] AS x` answers `a]b`, and `SELECT [room] FROM home` answers an array column named `make_array(home.room)`.
+Block comments nest: `SELECT 1 /* a /* b */ c */ AS x` answers `{"x":1}`.
+`SELECT q'[x]' AS x` and `SELECT 1 AS x // c` are each HTTP 400 `ParserError`, so there is no alternate quoting and no `//` comment.
+`readsSqlText` is `true`, for the search pair's reason: its text is SQL and its provider extends `SQLBaseProvider`, so the SQL gate reads it and will prompt on a `DELETE` or `DROP` the provider then refuses, a documented cost.
+Redaction is `sql` with no name quote: a redacted statement keeps its words, and every literal and quoted run becomes `?`.
 
 ## 6. Schema introspection
 
@@ -531,6 +543,16 @@ The token goes in `password`, there is no `user`, and `allowInsecureAuth: true` 
 - An admin token reads plugin secrets and other users' query text from `system.*` tables by name.
 - InfluxDB 3 Enterprise is not tested, and Cloud Serverless and Dedicated cannot be reached by this type ([D201](../BACKLOG.md), [D202](../BACKLOG.md)).
 - No agent execution and no MCP `run_read_query` ([B94](../BACKLOG.md)).
+
+## Migration DDL
+
+[`INFLUXDB3_MIGRATION_DDL`](../../src/lib/db/providers/timeseries/influxdb/influxdb3-migration-ddl.ts) is what the schema-diff migration generator writes for `influxdb3`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+It declines the whole diff: `refusal` is the one line the migration prints after its header, in place of any DDL, and `transactionWrapper` is `null`.
+`influxdb3` text is SQL, but the 3.x planner refuses DDL and DML, so there is no table DDL to wrap (#284).
+
+The refusal reason it prints, verbatim:
+
+- "A table's tags and fields are created by the line protocol written to it, and InfluxDB 3's SQL takes no DDL, so there is no column definition to change."
 
 ## 14. References
 

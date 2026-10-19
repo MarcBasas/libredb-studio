@@ -518,7 +518,7 @@ Its ticked bounds row carries the chip `SQLite: killed at its timeout`, and the 
 (`DEFAULT_QUERY_LIMIT = 500`). No transactions, no cancellation ([§3.4](#34-no-transactions-api-no-cancellation-no-pool)).
 
 The inherited path reads the statement under **SQLite's** grammar, which the base passes down from the
-provider's own `type` ([`grammar.ts`](../../src/lib/sql/grammar.ts)). SQLite has two comment forms,
+provider's own `type` ([`sqlite-sql-grammar.ts`](../../src/lib/db/providers/sql/sqlite-sql-grammar.ts)). SQLite has two comment forms,
 `--` and `/* … */`; `#` opens neither. Its own tokenizer (the amalgamation bundled with
 `better-sqlite3` classifies `#` as `CC_VARALPHA`) reads `#name` as a bind variable, i.e. code. The
 shared reader used to guess MySQL's rule here, which swallowed the rest of the line and cost the
@@ -641,6 +641,18 @@ than the `Buffer` form the response carries (#1381); that is the same for every 
 hands back bytes.
 
 ---
+
+### SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/sql/sqlite-sql-grammar.ts`](../../src/lib/db/providers/sql/sqlite-sql-grammar.ts), the `sqlite` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+Its grammar is `SQLITE_GRAMMAR`, the one reading the statement splitter, the row limiter, the confirmation gate and query-event redaction share, so they cannot disagree about where a literal or a comment ends.
+`SQLITE_GRAMMAR` lives in `src/lib/db/sql-grammar/shared.ts`, the one grammar two engines share, since libSQL reads SQLite's grammar.
+`#` is code and `[...]` a quoted identifier, from the amalgamation bundled with `better-sqlite3`: `#` is `CC_VARALPHA`, a bind-variable prefix, comments open on `--` and `/*` only, and `[` is `CC_QUOTE2`, scanned to the first `]`.
+Block comments are flat: `case CC_SLASH` scans for the first `*/` with no depth count.
+`//` is code, probed 2026-08-25 through the bundled driver: `SELECT 1 AS a // note` and `SELECT 1 // 2` are both 'near "/": syntax error'.
+`CREATE TRIGGER ... BEGIN ... END` is the one statement with a body: measured through node:sqlite 3.50.4, the trigger cut at its inner `;` was `incomplete input`.
+`readsSqlText` is `true`: the editor text is SQL.
+Redaction is `sql` with no name quote: a redacted statement keeps its words, and every literal and quoted run becomes `?`.
 
 ## 6. Schema introspection
 
@@ -1640,6 +1652,25 @@ not apply to SQLite ([§3.4](#34-no-transactions-api-no-cancellation-no-pool)).
   base-dir allowlist restricting resolvable paths (proposed in
   [issue #125](https://github.com/libredb/libredb-studio/issues/125)) was deliberately left out of
   this honesty fix — new security-configuration surface needs its own issue.
+
+---
+
+## Migration DDL
+
+[`SQLITE_MIGRATION_DDL`](../../src/lib/db/providers/sql/sqlite-migration-ddl.ts) is what the schema-diff migration generator writes for `sqlite`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+SQLite runs its own transaction, so `transactionWrapper` is `null` (#284).
+Its ALTER TABLE page enumerates rename table, rename column, add column, drop column, and SET/DROP NOT NULL since 3.53.0, and adding a constraint is not among them.
+Measured on sqlite3 3.53.3: `ALTER TABLE "users" ADD CONSTRAINT "fk_users_dept_id" FOREIGN KEY ("dept_id") REFERENCES "departments"("id")` is `near "FOREIGN": syntax error`.
+So an added table takes the key inside `CREATE TABLE`, after the columns and the `PRIMARY KEY` line, where 3.53.3 accepts it and `PRAGMA foreign_key_list` reports it, and an added foreign key on an existing table is a comment (#515).
+The key carries no `CONSTRAINT` name, because SQLite never reads a foreign key's name back.
+A dropped column and a dropped foreign key are comments naming the table recreation.
+A modified column is a comment too, though SQLite gained `ALTER COLUMN ... SET/DROP NOT NULL` in 3.53.0: the provider runs on whichever SQLite `bun:sqlite` or `node:sqlite` bundles, chosen at runtime with `LIBREDB_SQLITE_DRIVER` as an override, so the statement would write a migration that succeeds on one deployment and fails on another.
+The fields it takes unchanged from `src/lib/db/migration-ddl/shared.ts` are `standardAddColumn`, `standardColumnDef`, `standardCreateIndex`, `standardDropIndex`, `standardDropTable` and `standardPrimaryKey`.
+
+Every refusal reason it can print, verbatim:
+
+- "A foreign key is declarable only as a CREATE TABLE constraint; recreate the table and copy the rows."
+- "Requires table recreation."
 
 ---
 
