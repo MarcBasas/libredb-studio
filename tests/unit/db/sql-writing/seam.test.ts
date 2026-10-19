@@ -141,6 +141,20 @@ describe("SQL writing seam", () => {
     expect(forbiddenImports(mysql.absPath, `import type { DatabaseType } from "@/lib/types";\n`)).toEqual([]);
   });
 
+  // Spec 5.4: the inline editor reads its key column kinds and bound edits from the registry,
+  // so it imports nothing from either export module or any engine's own module.
+  test("the inline editing hook imports no export module and no engine module", () => {
+    const forbidden = importsOf(join(ROOT, "src", "hooks", "use-inline-editing.ts"))
+      .map(({ specifier }) => specifier)
+      .filter(
+        (specifier) =>
+          specifier.startsWith("@/lib/export/result-export") ||
+          specifier.startsWith("@/lib/export/typed-literals") ||
+          specifier.startsWith("@/lib/db/providers/"),
+      );
+    expect(forbidden).toEqual([]);
+  });
+
   for (const engine of ENGINE_MODULES) {
     test(`${engine.id}: loads first in a fresh process`, () => {
       const result = Bun.spawnSync(["bun", "-e", `await import(${JSON.stringify(engine.absPath)});`], {

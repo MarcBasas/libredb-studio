@@ -1012,8 +1012,9 @@ about which fields of the `Date` are the value:
   Measured on 26ai Free 23.26.3.0.0 (`oracledb` 26.0.0, `TZ=Europe/Istanbul`): a bare `SET "COL" = :1`
   is refused with `ORA-01861: literal does not match format string` on `DATE` and `ORA-01843: An
   invalid month was specified.` on `TIMESTAMP` and both zoned timestamp types. So an edit still in the
-  column's form (`oracleBoundEdit`, sharing the masks and regexes in
-  [`result-export.ts`](../../src/lib/export/result-export.ts)) binds `:n` inside `TO_DATE(:n,
+  column's form (`inlineEdit.boundEdit` in
+  [`oracle-sql-writing.ts`](../../src/lib/db/providers/sql/oracle-sql-writing.ts), sharing the
+  masks and regexes the SQL INSERT export reads there) binds `:n` inside `TO_DATE(:n,
   '[S]YYYY-MM-DD HH24:MI:SS')`, `TO_TIMESTAMP(:n, '[S]YYYY-MM-DD HH24:MI:SS[.FF]')`, or
   `FROM_TZ(TO_TIMESTAMP(:n, 'YYYY-MM-DD HH24:MI:SS.FF3'), 'UTC')` (binding `YYYY-MM-DD HH:MM:SS.sss`).
   Text in any other shape, or in a column declared as another type, is bound as `:n` untouched.

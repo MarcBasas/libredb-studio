@@ -220,29 +220,6 @@ export const FALSE_POSITIVES: readonly Listed[] = [
 
 /** Every branch of spec 2.6 not yet moved, with the PR that moves it. */
 export const DEBT: readonly Debt[] = [
-  {
-    path: "src/hooks/use-inline-editing.ts",
-    declaration: "NO_INSTANT_TYPE_DIALECTS",
-    count: 2,
-    pr: 3,
-    reason: MOVES_IN[3],
-  },
-  {
-    path: "src/hooks/use-inline-editing.ts",
-    declaration: "FLOAT64_ONLY_DIALECTS",
-    count: 2,
-    pr: 3,
-    reason: MOVES_IN[3],
-  },
-  {
-    path: "src/hooks/use-inline-editing.ts",
-    declaration: "NO_EXACT_DECIMAL_DIALECTS",
-    count: 2,
-    pr: 3,
-    reason: MOVES_IN[3],
-  },
-  { path: "src/hooks/use-inline-editing.ts", declaration: "boundEditText", count: 1, pr: 3, reason: MOVES_IN[3] },
-  { path: "src/hooks/use-inline-editing.ts", declaration: "boundEditValue", count: 1, pr: 3, reason: MOVES_IN[3] },
   { path: "src/lib/export/result-export.ts", declaration: "DIALECT_TYPES", count: 1, pr: 4, reason: MOVES_IN[4] },
   { path: "src/lib/export/result-export.ts", declaration: "STANDS_ALONE", count: 1, pr: 4, reason: MOVES_IN[4] },
   {
