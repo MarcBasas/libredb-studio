@@ -10,9 +10,9 @@ export interface ExecutionUiSpec {
   /**
    * The keyword that keeps an open transaction, named in the rolled-back notice.
    *
-   * THE KEYWORD IS THE ENGINE'S, not SQL's. This sentence said "Add COMMIT" while the only
-   * caller of the ender was a SQL script route. Naming the wrong one tells them to type a
-   * command their engine does not have.
+   * THE KEYWORD IS THE ENGINE'S, not SQL's. The rolled-back notice in use-query-execution.ts
+   * said "Add COMMIT" while the only caller of the ender was a SQL script route. Naming the
+   * wrong one tells them to type a command their engine does not have.
    */
   readonly commitKeyword: string;
   /** The consent card's deadline chip and sentence, or null where the engine has none. */
