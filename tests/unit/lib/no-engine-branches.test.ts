@@ -50,17 +50,6 @@ export interface Debt extends Listed {
   readonly pr: 2 | 3 | 4 | 5 | 6 | 7 | 8;
 }
 
-/** What each later PR of the engine contract plan moves. */
-const MOVES_IN: Readonly<Record<Debt["pr"], string>> = {
-  2: "SQL writing, values: the literal, identifier and placeholder rules",
-  3: "SQL writing, inline editing: the editor's per-engine value rules",
-  4: "SQL writing, export: the per-engine export tables",
-  5: "the SQL grammar: tokenizer, update target, redaction and completion quoting",
-  6: "migration DDL (engine contract spec 5.5, MigrationDdlSpec)",
-  7: "the connection form, connection string and seed checks",
-  8: "execution UI and the explain request default",
-};
-
 const DISPLAY_ORDER = "display order only";
 const INBOUND = "an inbound mapping from an outside name to a type id";
 const AGENT_LEG = "the agent-leg pattern, guarded by its own tests";
@@ -220,33 +209,7 @@ export const FALSE_POSITIVES: readonly Listed[] = [
 
 /** Every branch of spec 2.6 not yet moved, with the PR that moves it. */
 export const DEBT: readonly Debt[] = [
-  { path: "src/components/ConnectionModal.tsx", declaration: "isCouchbase", count: 1, pr: 7, reason: MOVES_IN[7] },
-  { path: "src/components/ConnectionModal.tsx", declaration: "isTrino", count: 1, pr: 7, reason: MOVES_IN[7] },
-  { path: "src/components/ConnectionModal.tsx", declaration: "isCassandra", count: 1, pr: 7, reason: MOVES_IN[7] },
-  { path: "src/components/ConnectionModal.tsx", declaration: "isMongoDB", count: 1, pr: 7, reason: MOVES_IN[7] },
-  { path: "src/components/ConnectionModal.tsx", declaration: "isLibSQL", count: 1, pr: 7, reason: MOVES_IN[7] },
-  { path: "src/components/ConnectionModal.tsx", declaration: "formContent", count: 4, pr: 7, reason: MOVES_IN[7] },
-  { path: "src/hooks/use-connection-form.ts", declaration: "buildConnection", count: 4, pr: 7, reason: MOVES_IN[7] },
-  {
-    path: "src/lib/connection-string-parser.ts",
-    declaration: "ENGINE_URI_SCHEMES",
-    count: 1,
-    pr: 7,
-    reason: MOVES_IN[7],
-  },
-  { path: "src/lib/connection-string-parser.ts", declaration: "readQueryTLS", count: 4, pr: 7, reason: MOVES_IN[7] },
-  { path: "src/lib/seed/types.ts", declaration: "SEED_LOAD_CHECKS", count: 1, pr: 7, reason: MOVES_IN[7] },
-  { path: "src/lib/seed/types.ts", declaration: "SeedConnectionSchema", count: 2, pr: 7, reason: MOVES_IN[7] },
-  {
-    path: "src/lib/seed/connection-filter.ts",
-    declaration: "assertApiKeyPairIsElasticsearch",
-    count: 1,
-    pr: 7,
-    reason: MOVES_IN[7],
-  },
-  { path: "src/hooks/use-query-execution.ts", declaration: "keepKeyword", count: 1, pr: 8, reason: MOVES_IN[8] },
-  { path: "src/components/agent/ConsentCard.tsx", declaration: "isSqlite", count: 1, pr: 8, reason: MOVES_IN[8] },
-  { path: "src/components/VisualExplain.tsx", declaration: "response", count: 1, pr: 8, reason: MOVES_IN[8] },
+  // Empty: every engine-contract move has landed.
 ];
 
 /** Every file git lists under `paths`: tracked, or untracked and not ignored. */

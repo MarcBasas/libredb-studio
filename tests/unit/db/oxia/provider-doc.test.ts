@@ -183,6 +183,8 @@ const OUTLINE: readonly string[] = [
   "### 4.6 A token needs TLS off this machine",
   "### 4.7 Server versions",
   "### 4.8 Pulsar's oxia:// URL",
+  "### Connection string",
+  "### Execution UI",
   "## 5. Query interface",
   "### 5.1 The command",
   "### 5.2 Commands and flags",
@@ -226,6 +228,8 @@ const BROWSER_SET: ReadonlySet<string> = new Set([
   "order.ts",
   "cursor.ts",
   "sql-writing.ts",
+  "connection-string.ts",
+  "execution-ui.ts",
   "migration-ddl.ts",
   "sql-grammar.ts",
 ]);
