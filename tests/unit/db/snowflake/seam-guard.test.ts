@@ -21,7 +21,8 @@
  *    `@/lib/types`, `@/lib/app-version`, `@/lib/logger`, `../sql-base`, `@/lib/db/sql-grammar/shared` (the SQL
  *    grammar contract's building blocks, for `sql-grammar.ts`), `jose`, `node:crypto` and `node:zlib`; types are
  *    free. `migration-ddl.ts`, the engine's migration DDL contract module, may also import values from
- *    `@/lib/db/migration-ddl/*`, its contract's shared building blocks.
+ *    `@/lib/db/migration-ddl/*`, its contract's shared building blocks, and `sql-writing.ts` and its
+ *    `typed-literals.ts` sibling, the engine's SQL writing contract modules, from `@/lib/db/sql-writing/*`.
  * 8. Only `account.ts` builds an origin: outside it, the only values imported from `@/lib/db/http/endpoint` are
  *    `endpointUrl` and `rejectForeignLink`, which act on an origin already built; and `account-host.ts`, which the
  *    browser bundles, imports nothing.
@@ -67,7 +68,11 @@ const OUTSIDE_VALUES = [
  * The per-engine contract modules, each with the contract directory whose shared building blocks it may import as
  * values (rule 7). No other file of this directory may.
  */
-const CONTRACT_VALUES: Readonly<Record<string, string>> = { "migration-ddl": "src/lib/db/migration-ddl/" };
+const CONTRACT_VALUES: Readonly<Record<string, string>> = {
+  "migration-ddl": "src/lib/db/migration-ddl/",
+  "sql-writing": "src/lib/db/sql-writing/",
+  "typed-literals": "src/lib/db/sql-writing/",
+};
 const PACKAGE_VALUES = new Set(["jose"]);
 const BUILTIN_VALUES = new Set(["node:crypto", "node:zlib"]);
 const SOCKET_FACTORIES = ["createNodeTransport", "createNodeByteTransport"];
@@ -599,6 +604,18 @@ describe("planted violations fail by name", () => {
       `rule 7: ${DIR}/introspect.ts imports a value from @/lib/db/migration-ddl/shared, which this directory may not`,
     ],
     [
+      "introspect.ts",
+      "introspect.ts",
+      'import { literalStandard } from "@/lib/db/sql-writing/shared";\n',
+      `rule 7: ${DIR}/introspect.ts imports a value from @/lib/db/sql-writing/shared, which this directory may not`,
+    ],
+    [
+      "sql-writing.ts",
+      "sql-writing.ts",
+      'import { standardDropTable } from "@/lib/db/migration-ddl/shared";\n',
+      `rule 7: ${DIR}/sql-writing.ts imports a value from @/lib/db/migration-ddl/shared, which this directory may not`,
+    ],
+    [
       "decode.ts",
       "decode.ts",
       'const loaded = await import(["./intro", "spect"].join(""));\n',
@@ -644,6 +661,12 @@ describe("planted violations fail by name", () => {
     ["introspect.ts", "introspect.ts", 'const sql = "SHOW DATABASES LIMIT 1";\n'],
     ["migration-ddl.ts", "migration-ddl.ts", 'import { standardDropTable } from "@/lib/db/migration-ddl/shared";\n'],
     ["migration-ddl.ts", "migration-ddl.ts", "const drop = (table: string) => `DROP TABLE ${table};`;\n"],
+    ["sql-writing.ts", "sql-writing.ts", 'import { binaryStandardHex } from "@/lib/db/sql-writing/export-shared";\n'],
+    [
+      "typed-literals.ts",
+      "typed-literals.ts",
+      'import { literalDoubleAndBackslash } from "@/lib/db/sql-writing/shared";\n',
+    ],
     ["errors.ts", "errors.ts", "const fix = (body: string) => `ALTER USER ADD KEY PAIR k PUBLIC_KEY = '${body}'`;\n"],
     ["index.ts", "index.ts", 'const sentence = "Set Warehouse on the connection to run statements.";\n'],
     ["errors.ts", "errors.ts", 'const sentence = "Snowflake refused POST /api/v2/statements before it ran.";\n'],
