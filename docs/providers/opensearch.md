@@ -652,8 +652,8 @@ the terminator is accepted **here too** (measured) and one answer that runs on b
 `SELECT 'a\'b'` → `a'b` too, so a backslash escapes the quote; `SELECT 'a\\b'` → one backslash, so it
 escapes itself; and `SELECT 'a\'` is a `ParserException`, because the trailing backslash escaped the
 closing quote and left the literal open — which is exactly the defect #290 is about. Hence
-`opensearch: "double-and-backslash"` in `LITERAL_ESCAPE` ([`src/lib/sql/values.ts`](../../src/lib/sql/values.ts)),
-where `elasticsearch` is `"standard"` (a backslash there is data).
+`escapeLiteral: literalDoubleAndBackslash` in `OPENSEARCH_SQL_WRITING` ([`opensearch-sql-writing.ts`](../../src/lib/db/providers/sql/search/opensearch-sql-writing.ts)),
+where `elasticsearch` takes `literalStandard` (a backslash there is data).
 
 **`_id` is selectable here.** `SELECT _id FROM probe_orders` returns the document id; upstream answers
 "Unknown column [_id]". It is still not reported as a column or as a key, because it is metadata rather
@@ -1702,7 +1702,7 @@ because the provider exposes no `cancelQuery`
 - Interface & DTOs: [`src/lib/db/types.ts`](../../src/lib/db/types.ts)
 - Errors: [`src/lib/db/errors.ts`](../../src/lib/db/errors.ts)
 - Connection form config: [`src/lib/db-ui-config.ts`](../../src/lib/db-ui-config.ts)
-- Dialect facts elsewhere in the codebase: `OPENSEARCH_GRAMMAR` in [`src/lib/sql/grammar.ts`](../../src/lib/sql/grammar.ts) (`#`, `[…]`, block comments) · `quoteIdentifier()` in [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) (backticks) · `LITERAL_ESCAPE` in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) (both escape forms) · [`src/lib/sql/fence-tags.ts`](../../src/lib/sql/fence-tags.ts) (the fence tag)
+- Dialect facts elsewhere in the codebase: `OPENSEARCH_GRAMMAR` in [`src/lib/sql/grammar.ts`](../../src/lib/sql/grammar.ts) (`#`, `[…]`, block comments) · `quoteIdentifier()` in [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) (backticks) · `OPENSEARCH_SQL_WRITING` in [`opensearch-sql-writing.ts`](../../src/lib/db/providers/sql/search/opensearch-sql-writing.ts) (both escape forms) · [`src/lib/sql/fence-tags.ts`](../../src/lib/sql/fence-tags.ts) (the fence tag)
 - Local cluster: [`database-compose.yml`](../../database-compose.yml) (`opensearch` service, host port 9201)
 - Tests: [`tests/integration/db/opensearch-provider.test.ts`](../../tests/integration/db/opensearch-provider.test.ts) · [`tests/unit/db/search/`](../../tests/unit/db/search/)
 - API contract: [`docs/API_DOCS.md`](../API_DOCS.md)
