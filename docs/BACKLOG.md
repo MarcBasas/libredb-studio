@@ -2043,7 +2043,7 @@ The #787 branch drafted a branch that emits `SET DATA TYPE`, `SET`/`DROP NOT NUL
 
 Found 2026-10-03 while scoping the Db2 provider's first version (#786).
 
-**Done when:** the column modification is expressed through a declared capability rather than a `dialect === "db2"` branch, each statement it emits runs on Db2 12.1 against the fixture, the REORG-pending advisory names the table, and `tests/unit/schema-diff/migration-generator.test.ts` moves `db2` out of the comment-only coverage.
+**Done when:** `DB2_MIGRATION_DDL`'s `modifyColumn` emits `SET DATA TYPE`, `SET`/`DROP NOT NULL` and `SET`/`DROP DEFAULT` with the REORG advisory, each statement it emits runs on Db2 12.1 against the fixture, the REORG-pending advisory names the table, and `tests/unit/schema-diff/migration-generator.test.ts` moves `db2` out of the comment-only coverage.
 
 ### D148. Db2 has no transactions, SANDBOX or query cancel
 

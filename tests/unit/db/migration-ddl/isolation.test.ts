@@ -11,6 +11,7 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { EXTERNAL_DATABASE_TYPES } from "@/lib/db/compatibility";
 import { GOLDEN_KEYS } from "./fixtures";
 import { type EngineModule, engineModules, ROOT } from "./modules";
 
@@ -68,7 +69,7 @@ beforeAll(async () => {
 
 describe("migration DDL isolation", () => {
   test("one process per type id", () => {
-    expect(MODULES.length).toBe(42);
+    expect(MODULES.length).toBe(EXTERNAL_DATABASE_TYPES.length + 1);
   });
 
   for (const engine of MODULES) {

@@ -11,12 +11,14 @@ import { EXTERNAL_DATABASE_TYPES } from "@/lib/db/compatibility";
 import { GOLDEN_KEYS, renderGolden } from "./fixtures";
 
 const GOLDEN_DIR = join(import.meta.dir, "golden");
+/** Every type id: the external engines plus the embedded LibreDB store. */
+const ENGINE_COUNT = EXTERNAL_DATABASE_TYPES.length + 1;
 
 describe("migration DDL golden files", () => {
   test("the keys are every engine id, then the three non-engine keys", () => {
-    expect(GOLDEN_KEYS.length).toBe(45);
-    expect([...GOLDEN_KEYS.slice(0, 42)].sort()).toEqual([...EXTERNAL_DATABASE_TYPES, "libredb"].sort());
-    expect(GOLDEN_KEYS.slice(42)).toEqual(["no-connection", "constructor", "not-an-engine"]);
+    expect(GOLDEN_KEYS.length).toBe(ENGINE_COUNT + 3);
+    expect([...GOLDEN_KEYS.slice(0, ENGINE_COUNT)].sort()).toEqual([...EXTERNAL_DATABASE_TYPES, "libredb"].sort());
+    expect(GOLDEN_KEYS.slice(ENGINE_COUNT)).toEqual(["no-connection", "constructor", "not-an-engine"]);
   });
 
   for (const key of GOLDEN_KEYS) {
