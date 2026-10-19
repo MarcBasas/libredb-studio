@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { beforeAll, describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import ts from "typescript";
@@ -124,11 +124,26 @@ const resolvedPath = (from: string, specifier: string): string | undefined => {
   return undefined;
 };
 
+/**
+ * Each file under `src/` and the paths its imports resolve to. Parsing the whole tree is most of
+ * this file's time, so `beforeAll` does it once and every sibling's importer check reads it.
+ */
+let srcImports: ReadonlyMap<string, readonly string[]> = new Map();
+
+beforeAll(() => {
+  srcImports = new Map(
+    sourceFiles(SRC).map((file) => [
+      file,
+      importsOf(file).flatMap(({ specifier }) => resolvedPath(file, specifier) ?? []),
+    ]),
+  );
+}, 60_000);
+
 /** Every file under `src/` that imports `target`, by whatever spelling, as a path from the repo root. */
 const importersOf = (target: string): string[] =>
-  sourceFiles(SRC)
-    .filter((file) => importsOf(file).some(({ specifier }) => resolvedPath(file, specifier) === target))
-    .map((file) =>
+  [...srcImports]
+    .filter(([, targets]) => targets.includes(target))
+    .map(([file]) =>
       file
         .slice(ROOT.length + 1)
         .split("\\")
