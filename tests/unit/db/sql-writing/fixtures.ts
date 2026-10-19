@@ -5,8 +5,8 @@
  * only today's public functions, so a file under `golden/` records what the tree
  * answered before any per-engine module existed, and a diff in one is a behaviour
  * change. The isolation test reuses `renderGolden` to prove that one engine's row
- * cannot move another engine's output. The inline edit lines come last, from
- * `renderInlineEditGolden`.
+ * cannot move another engine's output. The inline edit lines come next, from
+ * `renderInlineEditGolden`, and the SQL export lines last, from `renderExportGolden`.
  *
  * Four keys are not engines. `no-connection` is the generator that has no connection
  * to name a dialect, so it renders `undefined`. `empty-string` renders `""`, which a
@@ -20,6 +20,7 @@ import { EXTERNAL_DATABASE_TYPES } from "@/lib/db/compatibility";
 import { quoteIdentifier } from "@/lib/sql/identifier";
 import { positionalPlaceholder, quoteLiteral, temporalLiteral, unquoteLiteral } from "@/lib/sql/values";
 import type { DatabaseType } from "@/lib/types";
+import { renderExportGolden } from "./export-fixtures";
 import { renderInlineEditGolden } from "./inline-edit-fixtures";
 
 export const GOLDEN_KEYS: readonly string[] = Object.freeze([
@@ -77,7 +78,7 @@ export async function renderGolden(type: string | undefined): Promise<string> {
   for (const [value, kind] of TEMPORAL_VALUES) {
     line(`temporalLiteral(${show(value)}, ${show(kind)}, ${t})`, temporalLiteral(value, kind, dialect));
   }
-  return `${lines.join("\n")}\n${await renderInlineEditGolden(type)}`;
+  return `${lines.join("\n")}\n${await renderInlineEditGolden(type)}\n${renderExportGolden(type)}`;
 }
 
 /** The golden file name of a key. */
