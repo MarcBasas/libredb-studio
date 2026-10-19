@@ -67,7 +67,35 @@ const forbiddenImports = (file: string, text?: string): string[] =>
     .filter(({ specifier, typeOnly }) => !ALLOWED.has(specifier) && !(typeOnly && TYPE_ONLY_ALLOWED.has(specifier)))
     .map(({ specifier, typeOnly }) => (typeOnly ? `type ${specifier}` : specifier));
 
+/** What `types.ts` or `shared.ts` imports beyond a type-only import of the contract's types; both are leaves. */
+const LEAF_TYPE_ONLY_ALLOWED = new Set(["./types", "@/lib/db/sql-writing/types", "@/lib/types"]);
+const LEAVES = ["types.ts", "shared.ts"].map((name) => join(ROOT, "src", "lib", "db", "sql-writing", name));
+
+const leafViolations = (file: string, text?: string): string[] =>
+  importsOf(file, text)
+    .filter(({ specifier, typeOnly }) => !(typeOnly && LEAF_TYPE_ONLY_ALLOWED.has(specifier)))
+    .map(({ specifier, typeOnly }) => (typeOnly ? `type ${specifier}` : specifier));
+
 describe("SQL writing seam", () => {
+  // Every engine module may import these two, so an import here reaches every engine transitively.
+  for (const leaf of LEAVES) {
+    test(`${leaf.slice(ROOT.length + 1)}: imports nothing but types`, () => {
+      expect(leafViolations(leaf)).toEqual([]);
+    });
+  }
+
+  test("a planted import in a leaf is caught", () => {
+    const shared = LEAVES[1];
+    expect(leafViolations(shared, `import { quoteIdentifier } from "@/lib/sql/identifier";\n`)).toEqual([
+      "@/lib/sql/identifier",
+    ]);
+    expect(leafViolations(shared, `import type { X } from "@/lib/export/result-export";\n`)).toEqual([
+      "type @/lib/export/result-export",
+    ]);
+    expect(leafViolations(shared, `import { SqlWritingSpec } from "./types";\n`)).toEqual(["./types"]);
+    expect(leafViolations(shared, `import type { SqlWritingSpec } from "./types";\n`)).toEqual([]);
+  });
+
   test("the modules on disk are the registry's rows", () => {
     expect(ENGINE_MODULES.map(({ id }) => id).sort()).toEqual(Object.keys(SQL_WRITING).sort());
   });
