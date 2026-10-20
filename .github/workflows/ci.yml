@@ -614,7 +614,19 @@ jobs:
           out="$(mktemp -d)"
           bun build --target=node --outdir "$out" tests/live/opcua-live-check.ts \
             --external proper-lockfile --external "@duckdb/*" --external cpu-features
-          node "$out/opcua-live-check.js"
+          # `--require reflect-metadata` IS MEASURED, not defensive. node-opcua reaches the
+          # network through tsyringe, which refuses to load without the polyfill: the bundle
+          # threw `tsyringe requires a reflect polyfill` on Node and exited 1 (run 39299407452).
+          # Bun needs nothing, which is why the Bun run above has always passed and this line is
+          # the one that fell over. Reproduced and fixed under the runner's own Node v24.21.0:
+          # plain `node` throws, `node --require reflect-metadata` gets past module load and
+          # fails only on ECONNREFUSED where no fixture is listening, which is the right failure
+          # for a machine with no server. MEASURED the same way: the other five provider bundles
+          # in this job load under Node with no polyfill, because only this check reaches
+          # `createDatabaseProvider`. `reflect-metadata` is a transitive dependency here
+          # (tsyringe <- node-opcua); if a lockfile update ever drops it, this line is where
+          # that shows up.
+          node --require reflect-metadata "$out/opcua-live-check.js"
 
       - name: MTConnect provider check
         run: |
