@@ -602,9 +602,19 @@ jobs:
           # platform it is on, and `cpu-features` is loaded by ssh2 inside a try/catch.
           # MEASURED: the five other provider bundles in this job build with no external at all,
           # so the flags are on the one line that needs them rather than on all six.
-          bun build --target=node --outfile=/tmp/opcua-live-check.mjs tests/live/opcua-live-check.ts \
+          # `--outdir` AND NOT `--outfile`, and that is the second thing CI measured rather than a
+          # preference. With `--outfile` this line failed on the runner with
+          # `error: cannot write multiple output files without an output directory` (run
+          # 39297290735), while the same command succeeded locally on darwin-arm64 - so the
+          # number of outputs bun decides to emit for these externals is not the same on both
+          # platforms, and `--outdir` is the form that holds whatever it emits. The glob is
+          # needed too: `--external @duckdb/node-bindings-linux-x64` does NOT cover the import,
+          # which is the subpath `@duckdb/node-bindings-linux-x64/duckdb.node`. MEASURED: with the
+          # eight package names spelled out and no glob, the build still exits 1 on all eight.
+          out="$(mktemp -d)"
+          bun build --target=node --outdir "$out" tests/live/opcua-live-check.ts \
             --external proper-lockfile --external "@duckdb/*" --external cpu-features
-          node /tmp/opcua-live-check.mjs
+          node "$out/opcua-live-check.js"
 
       - name: MTConnect provider check
         run: |
