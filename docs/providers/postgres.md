@@ -1444,6 +1444,22 @@ this precedence:
 3. **`options.ssl === false`** → no SSL.
 4. Otherwise `undefined` (driver default).
 
+### Connection string
+
+The scheme shown for PostgreSQL is `postgres://`, and the parser also accepts `postgresql://`.
+Its row in `CONNECTION_STRING` is declared in [`postgres-connection-string.ts`](../../src/lib/db/providers/sql/postgres-connection-string.ts).
+Its `readTls` reads `sslmode` first, and the boolean `ssl` only when no `sslmode` is present: a string carrying both said the specific thing on purpose.
+`sslmode` maps libpq's `disable`, `require`, `verify-ca` and `verify-full`, and leaves `prefer` and `allow` unmapped: they mean "encrypt if the server offers it", which no SSL mode describes.
+`verify-system` is not in that table either, since it is this form's own mode name and not a libpq one.
+`ssl=true` maps to `verify-system` and `ssl=false` to `disable`, by the boolean rule (D26) in `src/lib/db/connection-string/shared.ts`.
+`sslrootcert`, `sslcert` and `sslkey` are read by nobody on purpose: they name files on the machine that wrote the string, and the server that opens the connection cannot read that path.
+It runs no seed load check.
+
+### Execution UI
+
+The rolled-back notice names `COMMIT` as the keyword that keeps an open transaction, and `postgres` has no consent deadline, so the agent's consent card shows no deadline chip or sentence for it.
+Its row in `EXECUTION_UI` is declared in [`postgres-execution-ui.ts`](../../src/lib/db/providers/sql/postgres-execution-ui.ts).
+
 ---
 
 ## 5. Query interface
@@ -1547,7 +1563,7 @@ and, **only for `SELECT`/CTE-`SELECT` queries that don't already have a `LIMIT`*
   annotated `SELECT` classified as an unknown statement type and returned **every** row while the
   UI badge reported it as not limited (#275).
 - The statement's characters are read under **PostgreSQL's** grammar, which the provider passes down
-  from its own `type` ([`grammar.ts`](../../src/lib/sql/grammar.ts)). PostgreSQL has exactly two
+  from its own `type` ([`postgres-sql-grammar.ts`](../../src/lib/db/providers/sql/postgres-sql-grammar.ts)). PostgreSQL has exactly two
   comment forms, `--` and `/* … */`; `#` is an operator character (`#>` and `#>>` walk a jsonb path,
   `#-` deletes one, `##` is geometric, `#` is integer XOR). The shared reader used to approximate
   that with "a comment unless the next character makes an operator", which kept everyday jsonb queries
@@ -1783,7 +1799,7 @@ The SQL INSERT export writes them as quoted literals, `'NaN'`, which PostgreSQL 
 
 ### 5.7 What the SQL INSERT and DDL exports write
 
-The result export reads each cell's declared type ([§5.4](#54-declared-column-types)) for the values whose generic form PostgreSQL refuses (#1386, [`typed-literals.ts`](../../src/lib/export/typed-literals.ts)):
+The result export reads each cell's declared type ([§5.4](#54-declared-column-types)) for the values whose generic form PostgreSQL refuses (#1386, [`postgres-typed-literals.ts`](../../src/lib/db/providers/sql/postgres-typed-literals.ts)):
 
 | Declared | Arrives as | Written as |
 |---|---|---|
@@ -1803,9 +1819,23 @@ Before this, the same file stopped at its first row with `ERROR: malformed array
 
 The editor's confirmation gate asks before the shared destructive keywords, `MERGE` among them ([query-optimization.md](../editor/query-optimization.md#destructive-statement-confirmation)).
 On this dialect it also asks before a `DO` block, whatever the block does: the block's code is a literal, `$$ ... $$` or `'...'`, which the gate does not read.
-The grammar row's `confirmCodeForms` names `DO` followed by a body and `DO LANGUAGE` ([`grammar.ts`](../../src/lib/sql/grammar.ts)), so the `DO` of `INSERT ... ON CONFLICT DO NOTHING` and of `CREATE RULE ... DO INSTEAD`, which a word follows, does not ask.
+The grammar row's `confirmCodeForms` names `DO` followed by a body and `DO LANGUAGE` ([`postgres-sql-grammar.ts`](../../src/lib/db/providers/sql/postgres-sql-grammar.ts)), so the `DO` of `INSERT ... ON CONFLICT DO NOTHING` and of `CREATE RULE ... DO INSTEAD`, which a word follows, does not ask.
 
 ---
+
+### 5.9 SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/sql/postgres-sql-grammar.ts`](../../src/lib/db/providers/sql/postgres-sql-grammar.ts), the `postgres` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+Its grammar is `POSTGRES_GRAMMAR`, the one reading the statement splitter, the row limiter, the confirmation gate and query-event redaction share, so they cannot disagree about where a literal or a comment ends.
+`#` is an operator character (`#>`, `#>>` and `#-` walk or delete a jsonb path), and the only comment forms are `--` and the block form.
+Block comments nest, per the PostgreSQL manual (4.1.5 Comments, checked 2026-08-05).
+`[...]` is a subscript and array constructors nest (manual 4.2.3 and 4.2.12), established from the manual because the undeterminable reading prompted on `ARRAY[[1,2],[3,4]]` and `j['a]b']`, everyday reads in this dialect.
+`//` is code on 18, and the most explicit of the refusals: `SELECT 1 // 2` is "operator does not exist: integer // integer", so `//` is an operator name here.
+The row bound goes before Materialize's `AS OF [AT LEAST] <t>`, which shares this type id (E2E pass of 2026-10-03/04, #1398): `SELECT * FROM ui_mv AS OF AT LEAST 0` with the bound appended is `Expected end of statement, found LIMIT`, and with the bound before the clause it returns rows.
+Completion quotes a catalog name by PostgreSQL's `quote_ident` rule, with the keyword set taken from PostgreSQL 18's `kwlist.h`: a name stays bare only when it is lower case and not a keyword other than an unreserved one, and a qualifier written in double quotes before the dot is read back with its doubled quotes undone.
+Only PostgreSQL completions introduce quoted table names; every other dialect quotes through the connection's capabilities.
+`readsSqlText` is `true`: the editor text is SQL, and the provider extends `SQLBaseProvider`.
+Redaction is `sql` with `"` as its name quote: a redacted statement keeps its words and every name in that quote, and every literal becomes `?`.
 
 ## 6. Schema introspection
 
@@ -2340,6 +2370,25 @@ other providers that offer `reindex`, such as SQLite, libSQL and Couchbase, say 
 | `reindexGlobalTitle` | *Rebuild Indexes* |
 | `reindexGlobalDesc` | *Runs REINDEX DATABASE, reconstructing every index in the database.* |
 
+### SQL writing
+
+[`sql/postgres-sql-writing.ts`](../../src/lib/db/providers/sql/postgres-sql-writing.ts) declares how a generated statement spells a literal, a name and a bind for this engine, and it is this engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../../src/lib/db/sql-writing/index.ts)), which the readers in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) and [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) look up.
+A literal is written by `literalStandard` and read back by `unquoteStandard`: the quote is doubled and a backslash is data.
+A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-quoted name with an inner double quote doubled.
+A bind is spelled by `placeholderDollar`, as `$1`, `$2`.
+`standard_conforming_strings` has been on by default since PostgreSQL 9.1, so a backslash in a plain literal is data.
+`pg` takes `$n`.
+Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
+
+The module's `export` field spells a result export's column types through `ddlTypes`, the standard spelling with `BYTEA` for a binary column, and writes a binary cell with `binaryPgBytea`, `'\x0102'::bytea`.
+PostgreSQL's `X'…'` is a bit string, not `bytea`, and there is no cast between the two: measured on 18.4, `SELECT pg_typeof(X'0102')` answers `bit` and `SELECT X'0102'::bytea` is `ERROR: cannot cast type bit to bytea`.
+The hex-input form is written as a plain literal rather than `E'\\x…'` because it survives `standard_conforming_strings` in both positions: with the setting `off`, `SELECT length('\x0102deadbeef'::bytea)` still answers 6.
+Each name in `standsAlone` was measured, one `CREATE TABLE probe (c <name>)` per name on PostgreSQL 18.4, read back out of `format_type`, and is listed only because PostgreSQL both accepted it and stored it unnarrowed.
+`character varying` is unbounded there.
+`bareSpelling` writes a bare `bit` as `bit varying`: `pg` hands a bit string back as text such as `1010`, which a bare `bit` (`bit(1)`) refuses with `bit string length 4 does not match type bit(1)`, and `bit varying` takes at any length (#1386).
+`nonFinite` is `QUOTED_WORD_NON_FINITE`, which writes NaN and the infinities as the quoted words `'NaN'`, `'Infinity'` and `'-Infinity'`: replayed into PostgreSQL 18.6 (2026-10-04), they read back into `real`, `double precision` and `timestamptz`.
+`typedLiteral` writes the cells whose generic form PostgreSQL refuses, arrays and intervals among them, from the engine's own [`postgres-typed-literals.ts`](../../src/lib/db/providers/sql/postgres-typed-literals.ts).
+
 ---
 
 ## 11. Error handling
@@ -2730,6 +2779,16 @@ await server.disconnect();                                 // closes every datab
   checks the chain, which is what a managed provider's certificate needs) or `verify-ca`/`verify-full`
   with a `caCert`. *Future:* prefer verifying modes by default and treat the heuristic as
   encryption-only opportunistic TLS.
+
+---
+
+## Migration DDL
+
+[`POSTGRES_MIGRATION_DDL`](../../src/lib/db/providers/sql/postgres-migration-ddl.ts) is what the schema-diff migration generator writes for `postgres`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+PostgreSQL is the shape the shared building blocks were written from, so every statement is the shared one and the migration is wrapped in `BEGIN;` and `COMMIT;`.
+The fields it takes unchanged from `src/lib/db/migration-ddl/shared.ts` are `BEGIN_COMMIT`, `standardAddColumn`, `standardAddForeignKey`, `standardColumnDef`, `standardCreateIndex`, `standardCreateTableForeignKey`, `standardDropColumn`, `standardDropForeignKey`, `standardDropIndex`, `standardDropTable`, `standardModifyColumn` and `standardPrimaryKey`.
+
+It prints no refusal reason.
 
 ---
 

@@ -652,6 +652,15 @@ Explicitly **not** supported, so that a reader does not go looking:
   `database_name = current_database()` (§3.1, §3.3), so a database attached inside a session is
   queryable but is not enumerated in the tree.
 
+### Connection string
+
+`duckdb` has no connection string scheme, no `readTls` and no seed load check: every field of its row in `CONNECTION_STRING` is `null` ([`connection-string.ts`](../../src/lib/db/providers/sql/duckdb/connection-string.ts)).
+
+### Execution UI
+
+The rolled-back notice names `COMMIT` as the keyword that keeps an open transaction, and `duckdb` has no consent deadline, so the agent's consent card shows no deadline chip or sentence for it.
+Its row in `EXECUTION_UI` is declared in [`execution-ui.ts`](../../src/lib/db/providers/sql/duckdb/execution-ui.ts).
+
 ---
 
 ## 5. Query interface
@@ -739,7 +748,7 @@ form; the strategy publishes no timings and fabricates none. See §3.6 for the f
 ### What the SQL INSERT and DDL exports write
 
 `@duckdb/node-api` answers an INTERVAL as `{months, days, micros}`, a MAP as a list of `{key, value}` entries and a STRUCT as an object.
-Written as JSON, the INTERVAL and the MAP were `Conversion Error` on replay, so the SQL INSERT export reads the declared type (#1386, [`typed-literals.ts`](../../src/lib/export/typed-literals.ts)) and writes `INTERVAL '14 months 3 days 14706000001 microseconds'`, `MAP {'k': 1}` (`MAP {}` when empty), `{'a': 7, 'b': ['p']}` and `[1, 2, 3]`, recursing through the element types, with a number inside a container written bare.
+Written as JSON, the INTERVAL and the MAP were `Conversion Error` on replay, so the SQL INSERT export reads the declared type (#1386, [`duckdb/typed-literals.ts`](../../src/lib/db/providers/sql/duckdb/typed-literals.ts)) and writes `INTERVAL '14 months 3 days 14706000001 microseconds'`, `MAP {'k': 1}` (`MAP {}` when empty), `{'a': 7, 'b': ['p']}` and `[1, 2, 3]`, recursing through the element types, with a number inside a container written bare.
 A quoted scalar (`'170141183460469231731687303715884105727'` into a `HUGEINT`) is left as it was, since DuckDB reads it back.
 The DDL keeps `STRUCT("a" INTEGER, "b" VARCHAR[])`, `INTEGER[3]`, `INTEGER[][]` and `MAP(INTEGER, VARCHAR[])` instead of writing `TEXT`.
 A composite that does not have its declared shape is skipped with a `-- Row N skipped` comment naming the column.
@@ -771,6 +780,19 @@ Two facts decide that text, and the modal's sequence code carries them too:
   Measured on 1.5.5: a typed name holding a double quote makes `nextval` resolve a different sequence name, and the `CREATE TABLE` fails with DuckDB's own Catalog Error.
 
 The type list changes from the shared list only where the engine disagrees (`JSON`, not `JSONB`); a row that reads like the old shared list is the engine agreeing with it, not a row nobody looked at.
+
+### SQL grammar
+
+How this engine's statement text is read is declared once, in [`src/lib/db/providers/sql/duckdb/sql-grammar.ts`](../../src/lib/db/providers/sql/duckdb/sql-grammar.ts), the `duckdb` row of the SQL grammar registry in `src/lib/db/sql-grammar/`.
+Its grammar is `DUCKDB_GRAMMAR`, the one reading the statement splitter, the row limiter, the confirmation gate and query-event redaction share, so they cannot disagree about where a literal or a comment ends.
+Every fact was measured on v1.5.5 through `@duckdb/node-api` 1.5.5-r.4, and the object is separate from `POSTGRES_GRAMMAR` although the values coincide: DuckDB's dialect is Postgres-shaped rather than PostgreSQL's, and a divergence should be a value changing here rather than a split.
+`#` is code: `SELECT 1 # x` is `Parser Error: syntax error at or near "#"`.
+`[` is a subscript, not a name quote: `SELECT [1,2][1]` answers 1, a list literal followed by a 1-based index.
+Block comments nest: `/* a /* b */ still */ SELECT 1` runs.
+`SELECT q'[x]' AS a` is `Catalog Error: Type with name q does not exist!`, and `SELECT 1 AS a // note` is `Parser Error: syntax error at or near "//"`.
+The update-target reader takes `PIVOT`, `UNPIVOT`, `UNNEST`, `SUMMARIZE`, `DESCRIBE` and `SHOW` as words that open a query here alone: on DuckDB 1.5.5 `(PIVOT orders ON k USING max(note))` is a scalar subquery that answers with another table's value, and asking about them on every engine cost PostgreSQL a refusal for `coalesce(show, '')`.
+`readsSqlText` is `true`: the editor text is SQL, and the provider extends `SQLBaseProvider`.
+Redaction is `sql` with no name quote: a redacted statement keeps its words, and every literal and quoted run becomes `?`.
 
 ## 6. Schema introspection
 
@@ -1043,7 +1065,7 @@ expression arrive bare. Measured 2026-09-21 on DuckDB v1.5.5 through `@duckdb/no
 | no default | none | SQL NULL |
 
 Each column carries both readings. `defaultValue` is the value, decoded by `unquoteLiteral()`
-(`src/lib/sql/values.ts`) with this dialect's `"standard"` escaping, so `'it''s'` reads as
+(`src/lib/sql/values.ts`) with the `unquoteStandard` reader this engine's SQL writing module names, so `'it''s'` reads as
 `it's` and a backslash stays ordinary data. Text that is not exactly one complete literal,
 a number or an expression such as a generated column's `CAST((id * 2) AS INTEGER)`, passes through unchanged. `defaultExpression` is the
 catalog text itself, which is always valid SQL here and is what the schema-diff migration
@@ -1345,6 +1367,27 @@ The agent reads it through `runServerPack` and `agentEnginePack`, and the dialec
 This overlay overrides no Shared member, so every Shared member is the `sql` statement-language family's own.
 `profile_table` is still offered here and answers `UNSUPPORTED_DIALECT` (B111).
 A pack does not open agent mode: execution is gated by `AGENT_EXECUTION_ENGINES` and the execution-profile check.
+
+### 9.4 SQL writing
+
+[`duckdb/sql-writing.ts`](../../src/lib/db/providers/sql/duckdb/sql-writing.ts) declares how a generated statement spells a literal, a name and a bind for this engine, and it is this engine's row of `SQL_WRITING` ([`src/lib/db/sql-writing/index.ts`](../../src/lib/db/sql-writing/index.ts)), which the readers in [`src/lib/sql/values.ts`](../../src/lib/sql/values.ts) and [`src/lib/sql/identifier.ts`](../../src/lib/sql/identifier.ts) look up.
+A literal is written by `literalStandard` and read back by `unquoteStandard`: the quote is doubled and a backslash is data.
+A name is quoted by `identifierDoubleQuoted`, the SQL standard form: a double-quoted name with an inner double quote doubled.
+A bind is spelled by `placeholderQuestion`, as `?` at every position.
+Measured on DuckDB v1.5.5, both directions: `SELECT 'it''s'` answers `it's`, and `SELECT 'a\b', length('a\b')` answers the three characters `a\b`, so a backslash is data, and doubling it would add a second one to the value.
+The name quote is measured on v1.5.5 too: `"quoted identifier"` works, and `[…]` is a LIST literal here rather than a name quote, so the bracket form would be wrong for it.
+DuckDB binds both forms, measured on v1.5.5: `runAndReadAll("SELECT ?::INTEGER AS a, ?::VARCHAR AS b", [7, "x"])` and `runAndReadAll("SELECT $1::INTEGER AS a", [9])` each answer, so `?` is a choice rather than a reading.
+`$` is overloaded in this dialect: `$tag$…$tag$` is a dollar-quoted string literal (measured), so a `$1` written into a generated statement sits one character away from a form the readers have to tell apart, while `?` has no second meaning anywhere in DuckDB's grammar.
+`?` also matches the positional order the driver binds by, which is the array's, not the digit's.
+Inline row editing reads a key column's kind through the shared `INSTANT_TYPE_NAMES`, `FLOAT64_TYPE_NAMES` and `EXACT_DECIMAL_TYPE_NAMES` of the module's `inlineEdit`, and binds every edit as typed.
+
+The module's `export` field writes a result export's column types from `STANDARD_DDL_TYPES`.
+Each name in `standsAlone` was measured on DuckDB v1.5.5, one `CREATE TABLE probe (c <name>)` per name read back out of `duckdb_columns().data_type`, and resolved to an unnarrowed type: the seven text spellings to `VARCHAR`, the four byte ones to `BLOB`, the four moment ones to `TIMESTAMP` (and `TIMESTAMP WITH TIME ZONE` to itself).
+`numeric` and `decimal` are the absences that matter: DuckDB accepts both and stores `DECIMAL(18,3)`, which rounds away every value past the third decimal, so they are re-spelled from their family.
+A binary cell is written by `binaryUnhex`, not the standard hex: measured on v1.5.5, `SELECT typeof(X'0102')` answers `VARCHAR` and `SELECT X'0102'` answers the five characters `x0102`, while `unhex('0102deadbeef')` answers a real `BLOB` that reads back as `hex(payload)` = `0102DEADBEEF` with `octet_length(payload)` 6, `unhex('')` inserts the zero-length blob, and `0x0102` is a parser error.
+`nonFinite` is `QUOTED_WORD_NON_FINITE`, which writes the quoted words `'NaN'`, `'Infinity'` and `'-Infinity'`, which DuckDB read back into `DOUBLE` and `FLOAT` when replayed (2026-10-04).
+`typedLiteral` writes intervals, maps, structs and the other cells whose JSON form DuckDB refuses, from the engine's own [`duckdb/typed-literals.ts`](../../src/lib/db/providers/sql/duckdb/typed-literals.ts).
+`NO_BARE_SPELLING` completes it.
 
 
 
@@ -1653,6 +1696,22 @@ The reach described in this section is an admin editor's on an inline connection
 | A listed object carries no row count | `estimated_size` is an estimate, and `count(*)` per object is an N+1 | Ours, §6 and §3.5 |
 | A macro's Source pane shows a BODY, not a `CREATE MACRO` statement | `duckdb_functions().macro_definition` is the only text the engine publishes, and there is no `duckdb_macros()` | The engine's; ours to assemble in a later phase, and the pane says `form: partial` meanwhile (§6, Object source) |
 | Every definition text is a regeneration, never the author's bytes | The catalog stores a parsed object, not the submitted statement | The engine's (§6, Object source) |
+
+---
+
+## Migration DDL
+
+[`DUCKDB_MIGRATION_DDL`](../../src/lib/db/providers/sql/duckdb/migration-ddl.ts) is what the schema-diff migration generator writes for `duckdb`, read through `migrationDdlFor` in `src/lib/db/migration-ddl/`.
+DuckDB writes the shared statements wrapped in `BEGIN;` and `COMMIT;`, except for foreign keys, which it declares only as a `CREATE TABLE` table constraint.
+Measured on DuckDB v1.5.5: `CREATE TABLE "users" (..., PRIMARY KEY ("id"), FOREIGN KEY ("dept_id") REFERENCES "departments"("id"))` lands and `duckdb_constraints()` reports the key, so an added table takes the key inside the statement.
+`ALTER TABLE t ADD CONSTRAINT fk FOREIGN KEY (a) REFERENCES u(id)` parses and then answers "Not implemented Error: No support for that ALTER TABLE option yet!" on v1.5.5, as does the `UNIQUE` form, so an added foreign key on an existing table is a comment.
+`ALTER TABLE t DROP CONSTRAINT IF EXISTS fk_x` answers the same "Not implemented" error, which is not an `IF EXISTS` no-op, so a dropped foreign key is a comment too.
+The fields it takes unchanged from `src/lib/db/migration-ddl/shared.ts` are `BEGIN_COMMIT`, `standardAddColumn`, `standardColumnDef`, `standardCreateIndex`, `standardDropColumn`, `standardDropIndex`, `standardDropTable`, `standardModifyColumn` and `standardPrimaryKey`.
+
+Every refusal reason it can print, verbatim:
+
+- "ALTER TABLE cannot add one yet; recreate the table and copy the rows."
+- "Requires table recreation."
 
 ---
 

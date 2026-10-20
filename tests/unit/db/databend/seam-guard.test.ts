@@ -15,7 +15,13 @@
  * 6. `index.ts` holds no `system.` SQL: every statement it sends comes from `objects.ts` or `introspect.ts`.
  * 7. A value is imported from outside this directory only from `@/lib/db/http/*`, `@/lib/db/errors`,
  *    `@/lib/db/utils/*`, `@/lib/sql/*`, `@/lib/types`, the base classes, `@/lib/db/object-kinds`, `tunnelRoute` of
- *    `@/lib/db/connection-fingerprint`, `@/lib/app-version` (I15) and the runtime's `node:crypto`; types are free.
+ *    `@/lib/db/connection-fingerprint`, `@/lib/app-version` (I15), `@/lib/db/sql-grammar/shared` (the SQL grammar
+ *    contract's building blocks, for `sql-grammar.ts`) and the runtime's `node:crypto`; types are free.
+ *    `execution-ui.ts`, the engine's execution UI contract module, may also import values from
+ *    `@/lib/db/execution-ui/shared`, its contract's shared building block, `migration-ddl.ts`, the engine's
+ *    migration DDL contract module, from `@/lib/db/migration-ddl/*`, its contract's shared building blocks, and
+ *    `sql-writing.ts` and its `typed-literals.ts` sibling, the engine's SQL writing contract modules, from
+ *    `@/lib/db/sql-writing/*`.
  * 8. Every value export has an importer other than its own file, so nothing is exported only for a test [12 #15].
  *    An importer is a module under `src/`, or `tests/unit/db/databend/provider-doc.test.ts`, which reads back what
  *    `docs/providers/databend.md` quotes (design section 10); no other test file counts. The doc test reaches only
@@ -49,10 +55,21 @@ const OUTSIDE_VALUES = [
   SQL_BASE,
   "src/lib/db/object-kinds.ts",
   "src/lib/app-version.ts",
+  "src/lib/db/sql-grammar/shared.ts",
 ];
 /** A module a value may come from only under the names listed. */
 const OUTSIDE_NAMED: Readonly<Record<string, readonly string[]>> = {
   "src/lib/db/connection-fingerprint.ts": ["tunnelRoute"],
+};
+/**
+ * The per-engine contract modules, each with the contract module or directory whose shared building blocks it may
+ * import as values (rule 7). No other file of this directory may.
+ */
+const CONTRACT_VALUES: Readonly<Record<string, string>> = {
+  "execution-ui": "src/lib/db/execution-ui/shared.ts",
+  "migration-ddl": "src/lib/db/migration-ddl/",
+  "sql-writing": "src/lib/db/sql-writing/",
+  "typed-literals": "src/lib/db/sql-writing/",
 };
 const BUILTIN_VALUES = new Set(["node:crypto"]);
 const HEADER_FILES = new Set(["connection-options", "session", "http-transport"]);
@@ -216,6 +233,7 @@ function seamFindings(file: string, text: string): string[] {
     if (typeOnly || inDirectory(target)) continue;
     const named = OUTSIDE_NAMED[target];
     const allowed =
+      (Object.hasOwn(CONTRACT_VALUES, name) && target.startsWith(CONTRACT_VALUES[name])) ||
       OUTSIDE_VALUES.some((prefix) => target.startsWith(prefix)) ||
       (named !== undefined && names.length > 0 && names.every((bound) => named.includes(bound)));
     if (!allowed) findings.push(`rule 7: ${file} imports a value from ${specifier}, which this directory may not`);
@@ -487,6 +505,30 @@ describe("planted violations fail by name", () => {
       `rule 7: ${DIR}/index.ts imports a value from @/lib/db/factory, which this directory may not`,
     ],
     [
+      "objects.ts",
+      "objects.ts",
+      'import { SQL_COMMIT_KEYWORD } from "@/lib/db/execution-ui/shared";\n',
+      `rule 7: ${DIR}/objects.ts imports a value from @/lib/db/execution-ui/shared, which this directory may not`,
+    ],
+    [
+      "objects.ts",
+      "objects.ts",
+      'import { standardDropTable } from "@/lib/db/migration-ddl/shared";\n',
+      `rule 7: ${DIR}/objects.ts imports a value from @/lib/db/migration-ddl/shared, which this directory may not`,
+    ],
+    [
+      "objects.ts",
+      "objects.ts",
+      'import { literalStandard } from "@/lib/db/sql-writing/shared";\n',
+      `rule 7: ${DIR}/objects.ts imports a value from @/lib/db/sql-writing/shared, which this directory may not`,
+    ],
+    [
+      "sql-writing.ts",
+      "sql-writing.ts",
+      'import { standardDropTable } from "@/lib/db/migration-ddl/shared";\n',
+      `rule 7: ${DIR}/sql-writing.ts imports a value from @/lib/db/migration-ddl/shared, which this directory may not`,
+    ],
+    [
       "decode.ts",
       "decode.ts",
       'import { readFileSync } from "node:fs";\n',
@@ -518,6 +560,14 @@ describe("planted violations fail by name", () => {
     ["decode.ts", "decode.ts", 'import type { Readable } from "node:stream";\n'],
     ["errors.ts", "errors.ts", 'const sentence = "Databend refused POST /v1/query before it ran.";\n'],
     ["session.ts", "session.ts", 'const header = "x-databend-session";\n'],
+    ["execution-ui.ts", "execution-ui.ts", 'import { SQL_COMMIT_KEYWORD } from "@/lib/db/execution-ui/shared";\n'],
+    ["migration-ddl.ts", "migration-ddl.ts", 'import { standardDropTable } from "@/lib/db/migration-ddl/shared";\n'],
+    ["sql-writing.ts", "sql-writing.ts", 'import { binaryUnhex } from "@/lib/db/sql-writing/export-shared";\n'],
+    [
+      "typed-literals.ts",
+      "typed-literals.ts",
+      'import { literalDoubleAndBackslash } from "@/lib/db/sql-writing/shared";\n',
+    ],
   ])("%s (from %s) with %p passes", (as, from, line) => {
     expect(plant(as, from, line)).toEqual([]);
   });
