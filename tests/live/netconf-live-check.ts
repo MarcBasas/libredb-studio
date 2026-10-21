@@ -491,15 +491,18 @@ await check("the key walk folds the list into one entry, and the bare key value 
    * paging 5,000 entries is a design question and not a line to slip into this one.
    */
   await withProvider(connectionWith(), async (provider) => {
+    // A folder's own prefix ends with the separator, and a folder comes back in `prefixes`: the
+    // spelling and the shape `scanKeysPage` has answered since #1802.
     const level = await provider.scanKeysPage({
-      pattern: `running/${MODULE}:interfaces`,
+      pattern: `running/${MODULE}:interfaces/`,
       cursor: "0",
       count: 100,
     } as never);
     assert(
-      stringify(level.keys) === stringify([`running/${MODULE}:interfaces/interface`]),
-      `the level below interfaces now holds ${stringify(level.keys)}; if it lists entries, the walk was fixed ` +
-        "and this check, its docblock and scanKeysPage's all have to be rewritten",
+      stringify(level.prefixes) === stringify([`running/${MODULE}:interfaces/interface/`]) &&
+        stringify(level.keys) === stringify([]),
+      `the level below interfaces now holds ${stringify(level.prefixes)} and ${stringify(level.keys)}; if it lists ` +
+        "entries, the walk was fixed and this check, its docblock and scanKeysPage's all have to be rewritten",
     );
 
     // And the documented spelling, measured: the bare key value becomes an XML element name, so
