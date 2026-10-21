@@ -13,7 +13,7 @@ import {
 import type { UserPayload } from "@/lib/auth";
 import { AuthConfigError } from "@/lib/auth-errors";
 import { getOIDCConfig, mapOIDCRole } from "@/lib/oidc";
-import { comparableIssuer } from "@/lib/oidc-issuer";
+import { comparableIssuer, oidcUsername } from "@/lib/oidc-identity";
 
 /**
  * The identity provider's access token as a session, for a native client that signs in to the provider itself
@@ -202,7 +202,7 @@ async function verify(token: string, audience: string): Promise<BearerAuthentica
   // The callback's identity, without its last fallback to `sub`: `username` keys the user's server storage, rate limit
   // and audit lines, so a token that names the person differently would open a second, empty workspace.
   const subject = nonEmptyString(payload.sub);
-  const username = nonEmptyString(payload.email) ?? nonEmptyString(payload.preferred_username);
+  const username = oidcUsername(payload);
   if (subject === null || username === null) return { kind: "denied", reason: "bearer_no_identity" };
 
   const role = mapOIDCRole(payload, config.roleClaim, config.adminRoles, config.userRoles);

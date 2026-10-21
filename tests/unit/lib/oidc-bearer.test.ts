@@ -134,6 +134,16 @@ describe("authenticateBearer", () => {
     await expectDenied(await sign(claims({ email: "", preferred_username: "" })), "bearer_no_identity");
   });
 
+  test("passes over an unverified email and never takes an email-shaped preferred_username", async () => {
+    const unverified = await authenticate(await sign(claims({ email: "bob@example.test", email_verified: false })));
+    expect(unverified.kind === "authenticated" && unverified.session.username).toBe("ada");
+
+    await expectDenied(
+      await sign(claims({ email: undefined, preferred_username: "bob@example.test" })),
+      "bearer_no_identity",
+    );
+  });
+
   test("refuses a token without a non-empty sub", async () => {
     await expectDenied(await sign(claims({ sub: "" })), "bearer_no_identity");
     await expectDenied(await sign(claims({ sub: undefined })), "bearer_no_identity");

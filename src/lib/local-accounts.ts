@@ -19,7 +19,7 @@ import { governanceServable } from "@/lib/governance/freshness";
 import { governanceState, sessionRevoked } from "@/lib/governance/state";
 import { getAuthUsers, type AuthUser } from "@/lib/local-auth";
 import { logger } from "@/lib/logger";
-import { comparableIssuer } from "@/lib/oidc-issuer";
+import { comparableIssuer } from "@/lib/oidc-identity";
 import { hashPassword, needsRehash, passwordMatchesHash } from "@/lib/password-hash";
 import { getStorageProvider } from "@/lib/storage/factory";
 import {

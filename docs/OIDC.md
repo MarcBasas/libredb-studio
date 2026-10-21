@@ -427,7 +427,9 @@ A session signed in through OIDC also carries the provider's identifiers for the
 
 `openid-client` accepts an ID token only when its `iss` is exactly the issuer that discovery at `OIDC_ISSUER` returned, and discovery accepts only an issuer that equals `OIDC_ISSUER` once both are normalized as URLs.
 So for a Keycloak realm `idpIssuer` equals `OIDC_ISSUER`, while an issuer that is a bare host, such as Auth0's, ends in a slash that `OIDC_ISSUER` may leave out.
-`username` keeps its meaning: the email, else `preferred_username`, else `sub`, for display and rate limiting.
+`username` keeps its meaning, for display, rate limiting and, without governance, as the key of the user's saved work: the email, unless the provider marks it unverified (`email_verified: false`), else a `preferred_username` that is not email-shaped, else `sub`.
+An unverified email and an email-shaped `preferred_username` are passed over because a provider may let a user set either freely, and `bob@example.com` chosen that way would otherwise open Bob's workspace.
+A provider that marks its users' emails unverified, as Keycloak does for an account created without verification, therefore names them by `preferred_username`; set Email verified on those accounts to keep the email.
 The registered JWT claims `sub` and `iss` stay unused, because MCP tokens already put the username in `sub`.
 Password, passkey and launch sessions carry neither claim.
 A session a native client's access token stands for carries both, from the access token ([Bearer access tokens for native clients](#bearer-access-tokens-for-native-clients)).
@@ -493,7 +495,7 @@ Studio accepts an access token only when all of these hold:
 - It is not an ID token: its `aud` does not contain `OIDC_CLIENT_ID`, it carries no `nonce`, `at_hash` or `c_hash`, Keycloak's `typ` claim is not `ID`, and its `typ` header is absent, `JWT` or `at+jwt`.
   For the same reason `OIDC_BEARER_AUDIENCE` equal to `OIDC_CLIENT_ID` is a configuration error.
 - With `OIDC_BEARER_CLIENT_IDS` set, its `azp`, else its `client_id`, is one of them.
-- It carries a non-empty `sub`, and an `email` or a `preferred_username`; there is no fallback to `sub`, because `username` keys the user's saved work, so a token that named the person differently would open a second, empty workspace.
+- It carries a non-empty `sub`, and a username under the rule of [Session Identity](#session-identity): an `email` the provider does not mark unverified, else a `preferred_username` that is not email-shaped; there is no fallback to `sub`, because `username` keys the user's saved work, so a token that named the person differently would open a second, empty workspace.
   The provider must put the claim the ID token carries in the access token too.
 - `OIDC_ROLE_CLAIM`, `OIDC_ADMIN_ROLES` and `OIDC_USER_ROLES` map a role from the access token's claims, as at sign-in.
   With `OIDC_USER_ROLES` unset every holder of a token for the audience is at least a `user`, so set `OIDC_BEARER_CLIENT_IDS`, `OIDC_USER_ROLES`, or both.
@@ -909,7 +911,7 @@ export async function login(role: Role, username?: string, sessionVersion?: numb
 3. Off for a request that arrived on a loopback host over plain HTTP — WebKitGTK's cookie store discards a `Secure` cookie delivered over HTTP, which would break the desktop shell (issue #232). A proxy that forwarded HTTPS to loopback still gets the flag, via `x-forwarded-proto`.
 4. On otherwise.
 
-The optional `username` parameter was added for OIDC — local login passes the email, while the OIDC callback resolves it through a fallback chain: `claims.email || claims.preferred_username || claims.sub || role` (so a username is always set regardless of which claims the provider returns).
+The optional `username` parameter was added for OIDC: local login passes the email, while the OIDC callback resolves it with `oidcUsername()` (`src/lib/oidc-identity.ts`), falling back to `claims.sub`, then the role: the email unless `email_verified` is `false`, else a `preferred_username` without an `@` (so a username is always set regardless of which claims the provider returns, and never one a user could copy from someone else).
 
 The optional `identity` is passed only by the OIDC callback, as `{ subject: claims.sub, issuer: claims.iss }`, and becomes the private claims `idpSubject` and `idpIssuer` described under [Session Identity](#session-identity).
 Every other caller passes none, so password, passkey and launch sessions sign exactly `role`, `username` and `sessionVersion`.
