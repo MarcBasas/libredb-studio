@@ -427,7 +427,8 @@ A session signed in through OIDC also carries the provider's identifiers for the
 
 `openid-client` accepts an ID token only when its `iss` is exactly the issuer that discovery at `OIDC_ISSUER` returned, and discovery accepts only an issuer that equals `OIDC_ISSUER` once both are normalized as URLs.
 So for a Keycloak realm `idpIssuer` equals `OIDC_ISSUER`, while an issuer that is a bare host, such as Auth0's, ends in a slash that `OIDC_ISSUER` may leave out.
-`username` keeps its meaning, for display, rate limiting and, without governance, as the key of the user's saved work: the email, unless the provider marks it unverified (`email_verified: false`), else a `preferred_username` that is not email-shaped, else `sub`.
+`username` keeps its meaning, for display, rate limiting and, without governance, as the key of the user's saved work: the email, unless the provider marks it unverified (`email_verified` is `false`, or the string `"false"` some providers send), else a `preferred_username` that is not email-shaped, else `sub`.
+A provider that sends no `email_verified`, such as Microsoft Entra ID, marks nothing, so its email is taken; there the provider's own control over the `email` claim is what keeps it from being copied.
 An unverified email and an email-shaped `preferred_username` are passed over because a provider may let a user set either freely, and `bob@example.com` chosen that way would otherwise open Bob's workspace.
 A provider that marks its users' emails unverified, as Keycloak does for an account created without verification, therefore names them by `preferred_username`; set Email verified on those accounts to keep the email.
 The registered JWT claims `sub` and `iss` stay unused, because MCP tokens already put the username in `sub`.

@@ -20,6 +20,15 @@ function nonEmptyString(value: unknown): string | null {
 }
 
 /**
+ * Whether the provider marks the email unverified: `false`, or the string "false" some providers send instead of a
+ * boolean. A provider that sends no `email_verified` at all, such as Microsoft Entra ID, marks nothing, and its email
+ * is taken as it was before this rule.
+ */
+function emailMarkedUnverified(value: unknown): boolean {
+  return value === false || (typeof value === "string" && value.trim().toLowerCase() === "false");
+}
+
+/**
  * The session's `username` from a token's claims, or null when no claim can carry it. Without governance `username`
  * keys the person's saved work, rate limit and audit lines, so it comes only from a claim another person cannot copy:
  * the `email`, unless the provider marks it unverified (`email_verified: false`), else a `preferred_username` that is
@@ -28,7 +37,7 @@ function nonEmptyString(value: unknown): string | null {
  */
 export function oidcUsername(claims: Record<string, unknown>): string | null {
   const email = nonEmptyString(claims.email);
-  if (email !== null && claims.email_verified !== false) return email;
+  if (email !== null && !emailMarkedUnverified(claims.email_verified)) return email;
   const name = nonEmptyString(claims.preferred_username);
   return name !== null && !name.includes("@") ? name : null;
 }

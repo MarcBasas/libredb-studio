@@ -26,6 +26,17 @@ describe("oidcUsername", () => {
     expect(oidcUsername({ email: "bob@example.test", email_verified: false })).toBeNull();
   });
 
+  test('reads email_verified sent as a string, as some providers do, so "false" is not taken for verified', () => {
+    for (const unverified of ["false", "FALSE", " False "]) {
+      expect(
+        oidcUsername({ email: "bob@example.test", email_verified: unverified, preferred_username: "mallory" }),
+      ).toBe("mallory");
+    }
+    expect(oidcUsername({ email: "ada@example.test", email_verified: "true", preferred_username: "ada" })).toBe(
+      "ada@example.test",
+    );
+  });
+
   test("never takes an email-shaped preferred_username, which a user may be free to choose", () => {
     expect(oidcUsername({ preferred_username: "bob@example.test" })).toBeNull();
     expect(
