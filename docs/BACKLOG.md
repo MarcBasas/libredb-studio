@@ -369,7 +369,7 @@ So the consolidation this entry asks for now has two sources to reconcile rather
 
 **A third mapping exists, by the same decision.**
 The Kafka provider (#1088, section 3.5) maps the TLS panel in `tlsOptions` of `src/lib/db/providers/stream/kafka/connection-options.ts`, `ca`, `cert` and `key` from the panel and the same `rejectUnauthorized` rule, because that PR too was decided to touch no other provider.
-It is a mapping only: the TLS connection is the Kafka client's own, over `node:tls`, so there is no request path to share, and it adds the server-name rule a Kafka client needs (SNI for a DNS host, none for an IP literal).
+It is a mapping only: the TLS connection is the Kafka client's own, over `node:tls`, so there is no request path to share, and its adapter turns on the client's server-name option, which since `@platformatic/kafka` 2.14.0 sends SNI for a DNS host and none for an IP literal.
 
 Not a defect in what any of them measures - it is a field the form offers and the transport
 discards, which is the kind of silence a security setting must not have.
@@ -1717,8 +1717,8 @@ Each is drafted below as an upstream issue, for the maintainer to approve, rewor
    The metadata cache answers an internal topic's name with `undefined` (`dist/clients/base/base.js`), and `listOffsets` dereferences it inside the socket handler, with the same unsettled call.
    Draft: "listOffsets on an internal topic should reject with an error rather than throw inside the socket handler."
 5. **`tlsServerName` and IP literals.**
-   With `tlsServerName: true` the client sends the connection's host as the server name even when it is an IP literal, which Node 26 and Bun refuse with `ERR_INVALID_ARG_VALUE` and Node 24 warns on (DEP0123); the provider rebuilds its clients without the option when a broker is advertised by IP.
-   Draft: "Skip SNI for a host that is an IP literal, as RFC 6066 requires."
+   With `tlsServerName: true` the client sent the connection's host as the server name even when it was an IP literal, which Node 26 and Bun refuse with `ERR_INVALID_ARG_VALUE` and Node 24 warns on (DEP0123), and the provider rebuilt its clients without the option when a broker was advertised by IP.
+   Fixed upstream in 2.14.0, which sends no server name for an IP literal (`dist/network/connection.js`); the provider took 2.14.0 on 2026-10-26 and dropped the rebuild, so this item needs no filing.
 6. **A fetch session epoch left behind.**
    A fetch answered with a partition error leaves the client's fetch session epoch behind the broker's, so the next fetch to that broker meets INVALID_FETCH_SESSION_EPOCH; the provider's own fetches open no session.
    Draft: "After a fetch that answers a partition error, the session epoch should follow the broker's, or the session be reset."
