@@ -25,7 +25,7 @@ The Graph tab's canvas library and its layout carry only the MIT notice each pac
 
 | Package | Version | License | Reached as |
 | --- | --- | --- | --- |
-| [`cytoscape`](https://github.com/cytoscape/cytoscape.js) | 3.34.3 | MIT | direct dependency, no runtime dependencies of its own |
+| [`cytoscape`](https://github.com/cytoscape/cytoscape.js) | 3.34.4 | MIT | direct dependency, no runtime dependencies of its own |
 | [`cytoscape-fcose`](https://github.com/iVis-at-Bilkent/cytoscape.js-fcose) | 2.2.0 | MIT | direct dependency |
 | [`cose-base`](https://github.com/iVis-at-Bilkent/cose-base) | 2.2.0 | MIT | dependency of `cytoscape-fcose` |
 | [`layout-base`](https://github.com/iVis-at-Bilkent/layout-base) | 2.0.1 | MIT | dependency of `cose-base` |
