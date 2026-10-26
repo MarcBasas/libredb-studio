@@ -54,7 +54,7 @@
         "cytoscape": "3.34.4",
         "cytoscape-fcose": "2.2.0",
         "date-fns": "^4.4.0",
-        "db2-node": "1.0.27",
+        "db2-node": "1.0.25",
         "elkjs": "^0.12.0",
         "embla-carousel-react": "^8.6.0",
         "framer-motion": "^14.0.0",
@@ -1586,7 +1586,7 @@
 
     "date-fns": ["date-fns@4.4.0", "", {}, "sha512-+1UMbeh68lH1SegH83CGWwpb6OHHbpSgr3+s5Eww5M4CAgswBpoWS0AjTOfEJ33HiYKz1hdj/KTFprzXHmq/6w=="],
 
-    "db2-node": ["db2-node@1.0.27", "", {}, "sha512-+Z89WSAas53eX31o+sL036hI5gfW/yp0qPaEBnVu+JYWx+L7hrEQIugNuBxxZ9pBqkFVvS9vR8Sfttz1+YcYLQ=="],
+    "db2-node": ["db2-node@1.0.25", "", {}, "sha512-ZvVRQ1vjhfUK6/ixdepSz3ZxIOVdOSoCANFoz3zTjGIA5UBtQtYk+/x3p2+1urAVxyp7TQliEga91/2yZwJzrg=="],
 
     "debug": ["debug@4.4.3", "", { "dependencies": { "ms": "^2.1.3" } }, "sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA=="],
 
