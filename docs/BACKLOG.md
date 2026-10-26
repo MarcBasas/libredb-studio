@@ -32,7 +32,7 @@ None of it is a GitHub issue.
 - [Value interpolation](#value-interpolation) — V1
 - [Row editing](#row-editing) — R1–R3 · 3
 - [Studio UI and query execution](#studio-ui-and-query-execution) — X2-X25, U2-U148 · 134
-- [Dependencies](#dependencies) — P1-P9 · 7
+- [Dependencies](#dependencies) — P1-P11 · 9
 - [Documentation](#documentation) — DOC3-DOC35 · 31
 - [Release pipeline](#release-pipeline) — REL1-REL9 · 9
 - [Chart configuration surface](#chart-configuration-surface) — N1 · 1
@@ -5967,6 +5967,31 @@ Nothing under `src/` imports a `workflow` package, and the runtime image carries
 Found while measuring the official Qdrant client, which pins undici 7.29.0.
 
 **Done when:** the lockfile resolves undici at 7.29.1 or later for both packages, by updating them or by an override with its `//overrides` note, and the regenerated `bun.lock` holds no undici copy inside the advisory's range.
+
+### P10. The rustls and rustls-webpki linked into db2-node's addons are inside six newer RustSec advisories
+
+The `db2-node` 1.0.25 addons statically link `rustls` 0.23.45, `rustls-webpki` 0.103.15 and `tokio` 1.51.0, which npm audit, Dependabot and the CycloneDX SBOM cannot see.
+Checked through the OSV API on 2026-10-26, they are inside RUSTSEC-2026-0346 to RUSTSEC-2026-0349 (`rustls`, patched in 0.23.46), RUSTSEC-2026-0382 (`rustls-webpki`, patched in 0.103.16) and the informational RUSTSEC-2026-0386 (`tokio`, patched in 1.51.6), all published after the 2026-10-04 check.
+Only RUSTSEC-2026-0382 is reachable from the addons, through a verified TLS connection whose trust store holds the operating system's roots; section 12 of `docs/providers/db2.md` gives the reading of each.
+The 1.0.26 and 1.0.27 `Cargo.lock` are byte for byte the 1.0.25 one, so no release moves past them yet, and the crates are compiled in: only a new `db2-node` release can move one.
+
+Found 2026-10-26 while measuring `db2-node` 1.0.27 for the Dependabot production group.
+
+**Done when:** a `db2-node` release links `rustls` 0.23.46 and `rustls-webpki` 0.103.16 or later, the pin moves to it with the measurement its `//dependencies` note asks for, and OSV names no advisory for its `Cargo.lock` but the unmaintained notices section 12 lists.
+
+### P11. db2-node 1.0.26 and 1.0.27 intermittently fail the statement after a one-row result fetched by CNTQRY
+
+On 1.0.26 and 1.0.27 a provider read intermittently fails with `Protocol error: prepare failed with QRYNOPRM`, and every later statement on that connection that reuses the section fails the same way.
+`tests/live/db2-live-check.ts` failed in 5 of 8 runs on Db2 11.5.9.0 and 3 of 8 on 12.1.0.0 through 1.0.27, at "describeObject reads the materialized query table APP.ORDER_TOTALS" or at the two `readObjectSource` checks after it; through 1.0.25, on the same two containers the same day, it passed 8 of 8 on each, and 1.0.26 failed 1 of 3 on 11.5.9.0.
+The wire dump (`DB2_WIRE_DEBUG_HEX=1`) of one failure shows the step before it: the OPNQRY reply to the view-text read carried a QRYDSC and no row, the driver sent CNTQRY, received the one 32680-byte QRYDTA row with ENDQRYRM and SQLCARD, and the next PRPSQLSTT was answered with QRYNOPRM.
+1.0.26 changed exactly that path: off z/OS it now completes a reply at the DRDA chain end instead of draining further frames for a timeout ("complete LUW replies at the DRDA chain end instead of timed drains" in its release notes).
+A loop of the same two reads on one fresh connection, 50 times on each server, did not fail, so the trigger needs more of the live check's sequence than those two statements.
+1.0.27 also fixes K24: a bound CLOB, DBCLOB or BLOB is written alone and beside other parameters, 100000, 40000 and 70000 bytes long, on 12.1.0.0 and 11.5.9.0, so D225 waits on this entry.
+Not yet reported upstream.
+
+Found 2026-10-26 while measuring `db2-node` 1.0.27 for the Dependabot production group; the pin stays at 1.0.25.
+
+**Done when:** a `db2-node` release passes `tests/live/db2-live-check.ts` in 8 of 8 runs on each of Db2 12.1.0.0 and 11.5.9.0, and the pin moves to it with the measurement its `//dependencies` note asks for.
 
 ## Documentation
 
