@@ -2,8 +2,8 @@ apiVersion: v2
 name: libredb-studio
 description: Web-based SQL IDE for cloud-native teams supporting forty-two engines - PostgreSQL, MySQL, SQLite, DuckDB, Oracle, Db2 LUW, SQL Server, MongoDB, Redis, Couchbase, Firestore, ClickHouse, Apache Druid, Elasticsearch, OpenSearch, Trino, BigQuery, Snowflake, Apache Spark, Apache Cassandra, libSQL, Prometheus, Apache Kafka, MQTT, RabbitMQ, etcd, Neo4j, Milvus, Qdrant, Weaviate, InfluxDB, InfluxDB 3, Oxia, Databend, S3-compatible object storage, Kubernetes, OPC UA, MTConnect, Modbus, NETCONF, SNMP and Sparkplug B
 type: application
-version: 0.1.103
-appVersion: "1.0.0"
+version: 0.1.104
+appVersion: "1.1.0"
 kubeVersion: ">=1.26.0-0"
 home: https://github.com/libredb/libredb-studio
 icon: https://raw.githubusercontent.com/libredb/libredb-studio/main/public/logo.svg
@@ -301,10 +301,16 @@ annotations:
   # False: 0.1.101 adds config.llmModelEffort, written as LLM_MODEL_EFFORT, the reasoning effort for
   # the openai provider. It is empty by default, so an install that does not set it renders exactly
   # as before; the default image, 1.0.0, does not read it.
-  artifacthub.io/containsSecurityUpdates: "false"
+  # True: 0.1.103 tracks app release 1.1.0, which hardens how the app checks what it is sent. The
+  # multi-query route validates its paging options as the query route does, a file database path
+  # can no longer stall the server, and the confirmation gate now asks before a write it used to
+  # miss: a data-modifying WITH list, EXPLAIN ANALYZE of a write, and a statement after a bare
+  # carriage return in a line comment. No template, value or default moves, so the upgrade is the
+  # image.
+  artifacthub.io/containsSecurityUpdates: "true"
   artifacthub.io/images: |
     - name: libredb-studio
-      image: ghcr.io/libredb/libredb-studio:1.0.0
+      image: ghcr.io/libredb/libredb-studio:1.1.0
       platforms:
         - linux/amd64
         - linux/arm64
